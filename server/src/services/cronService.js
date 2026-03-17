@@ -5,6 +5,8 @@ import { processIncomingMessage } from "../agents/customerBotAgent.js";
 import { SupportTicket } from "../models/SupportTicket.js";
 import { TenantConfig } from "../models/TenantConfig.js";
 import { Client } from "../models/Client.js";
+import { ScheduledPost } from "../models/ScheduledPost.js";
+import { publishScheduledPost } from "../services/socialMediaService.js";
 import { runHotLeadWorkflow } from "../workflows/runner.js";
 import { appendHotLead } from "../services/googleSheetsService.js";
 
@@ -112,6 +114,42 @@ export const startCronJobs = () => {
 
     cron.schedule("*/5 * * * *", () => {
         pollGmailInbox();
+    });
+
+    // Social Media: publish due scheduled posts every minute
+    cron.schedule("* * * * *", async () => {
+        try {
+            const duePosts = await ScheduledPost.find({
+                status: "PENDING",
+                scheduledAt: { $lte: new Date() },
+            }).limit(10);
+
+            for (const post of duePosts) {
+                console.log(`📱 [SOCIAL CRON] Zamanlanmış post yayınlanıyor: ${post._id} → [${post.platforms.join(", ")}]`);
+                try {
+                    const results = await publishScheduledPost(post);
+                    const hasError = Object.values(results).some((r) => !r.success);
+                    post.status = hasError ? "FAILED" : "PUBLISHED";
+                    post.publishedAt = new Date();
+                    post.results = results;
+                    if (hasError) {
+                        post.errorMessage = Object.entries(results)
+                            .filter(([, v]) => !v.success)
+                            .map(([k, v]) => `${k}: ${v.error}`)
+                            .join("; ");
+                    }
+                    await post.save();
+                    console.log(`   ✅ Post ${post.status}: ${post._id}`);
+                } catch (err) {
+                    post.status = "FAILED";
+                    post.errorMessage = err.message;
+                    await post.save();
+                    console.error(`   ❌ Post yayın hatası: ${err.message}`);
+                }
+            }
+        } catch (err) {
+            console.error("❌ [SOCIAL CRON] Scheduler hatası:", err.message);
+        }
     });
 
     console.log("⏰ Cron jobs initialized.");

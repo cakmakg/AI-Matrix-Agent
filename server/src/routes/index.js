@@ -11,6 +11,7 @@ import financeRoutes from "./financeRoutes.js";
 import tenantRoutes from "./tenantRoutes.js";
 import knowledgeRoutes from "./knowledgeRoutes.js";
 import skillRoutes from "./skillRoutes.js";
+import socialRoutes from "./socialRoutes.js";
 import { classifyEmail } from "../controllers/classifyController.js";
 import { webhookAuth } from "../middleware/webhook.js";
 
@@ -27,6 +28,7 @@ router.use("/finance", financeRoutes);
 router.use("/tenant", tenantRoutes);
 router.use("/knowledge", knowledgeRoutes);
 router.use("/skills", skillRoutes);
+router.use("/social", socialRoutes);
 router.post("/classify-email", webhookAuth, classifyEmail);
 
 export default router;

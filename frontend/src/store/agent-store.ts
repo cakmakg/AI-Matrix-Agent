@@ -97,7 +97,45 @@ export interface CampaignDraftSummary {
     createdAt: string;
 }
 
-export type ActiveView = "control" | "cfo" | "knowledge" | "settings" | "skills";
+export type SocialPlatform = "twitter" | "instagram" | "linkedin" | "facebook" | "google_ads";
+
+export interface SocialAccount {
+    _id: string;
+    platform: SocialPlatform;
+    label: string;
+    username: string;
+    accountId: string;
+    pageId: string;
+    isConnected: boolean;
+    followerCount: number;
+    profileImageUrl: string;
+    lastSynced: string | null;
+    createdAt: string;
+}
+
+export interface ScheduledPost {
+    _id: string;
+    platforms: SocialPlatform[];
+    content: string;
+    mediaUrls: string[];
+    scheduledAt: string;
+    status: "PENDING" | "PUBLISHED" | "FAILED" | "CANCELLED";
+    publishedAt: string | null;
+    errorMessage: string;
+    title: string;
+    threadId: string | null;
+    campaignId: string | null;
+    results: Record<string, unknown>;
+    createdAt: string;
+}
+
+export interface SocialSummary {
+    connectedCount: number;
+    pendingCount: number;
+    publishedThisWeek: number;
+}
+
+export type ActiveView = "control" | "cfo" | "knowledge" | "settings" | "skills" | "social";
 
 export type DrawerItem =
     | { type: "report"; threadId: string }
@@ -144,6 +182,11 @@ interface AgentStore {
     // ── Campaign Drafts (CMO) ──
     campaignDrafts: CampaignDraftSummary[];
 
+    // ── Social Media ──
+    socialAccounts: SocialAccount[];
+    scheduledPosts: ScheduledPost[];
+    socialSummary: SocialSummary;
+
     // ── UI Navigation ──
     activeView: ActiveView;
     drawerItem: DrawerItem | null;
@@ -178,6 +221,17 @@ interface AgentStore {
     approveSupportTicket: (ticketId: string, isApproved: boolean, feedback?: string) => Promise<void>;
     fetchCampaignDrafts: () => Promise<void>;
     approveCampaign: (campaignId: string, isApproved: boolean, feedback?: string) => Promise<void>;
+
+    // ── Social Media Actions ──
+    fetchSocialAccounts: () => Promise<void>;
+    connectSocialAccount: (data: { platform: SocialPlatform; label: string; accessToken: string; accessTokenSecret?: string; refreshToken?: string; pageId?: string; customerId?: string }) => Promise<void>;
+    disconnectSocialAccount: (id: string) => Promise<void>;
+    syncSocialAccount: (id: string) => Promise<void>;
+    fetchScheduledPosts: () => Promise<void>;
+    createScheduledPost: (data: { platforms: SocialPlatform[]; content: string; scheduledAt: string; mediaUrls?: string[]; title?: string }) => Promise<void>;
+    cancelScheduledPost: (id: string) => Promise<void>;
+    publishPostNow: (id: string) => Promise<void>;
+    fetchSocialSummary: () => Promise<void>;
 
     // ── UI Navigation ──
     setActiveView: (view: ActiveView) => void;
@@ -228,6 +282,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     archiveOpen: false,
     supportTickets: [],
     campaignDrafts: [],
+    socialAccounts: [],
+    scheduledPosts: [],
+    socialSummary: { connectedCount: 0, pendingCount: 0, publishedThisWeek: 0 },
     activeView: "control",
     drawerItem: null,
     editedContent: null,
@@ -927,6 +984,134 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
             await fetchCampaignDrafts();
         } catch (err) {
             addAlert({ message: `Kampanya hatasi: ${err instanceof Error ? err.message : String(err)}`, type: "error" });
+        }
+    },
+
+    // ── Social Media ──
+    fetchSocialAccounts: async () => {
+        try {
+            const headers: Record<string, string> = {};
+            if (get().apiKey) headers["x-api-key"] = get().apiKey!;
+            const res = await fetch("/api/social/accounts", { headers });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json() as { accounts: SocialAccount[] };
+            set({ socialAccounts: data.accounts ?? [] });
+        } catch (err) {
+            console.error("fetchSocialAccounts failed:", err);
+        }
+    },
+
+    connectSocialAccount: async (payload) => {
+        const { addAlert } = get();
+        try {
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (get().apiKey) headers["x-api-key"] = get().apiKey!;
+            const res = await fetch("/api/social/accounts/connect", { method: "POST", headers, body: JSON.stringify(payload) });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            addAlert({ message: `${payload.platform} hesabı bağlandı.`, type: "success" });
+            await get().fetchSocialAccounts();
+            await get().fetchSocialSummary();
+        } catch (err) {
+            addAlert({ message: `Bağlantı hatası: ${err instanceof Error ? err.message : String(err)}`, type: "error" });
+        }
+    },
+
+    disconnectSocialAccount: async (id: string) => {
+        const { addAlert } = get();
+        try {
+            const headers: Record<string, string> = {};
+            if (get().apiKey) headers["x-api-key"] = get().apiKey!;
+            await fetch(`/api/social/accounts/${id}`, { method: "DELETE", headers });
+            addAlert({ message: "Hesap bağlantısı kesildi.", type: "warning" });
+            await get().fetchSocialAccounts();
+            await get().fetchSocialSummary();
+        } catch (err) {
+            addAlert({ message: `Hata: ${err instanceof Error ? err.message : String(err)}`, type: "error" });
+        }
+    },
+
+    syncSocialAccount: async (id: string) => {
+        const { addAlert } = get();
+        try {
+            const headers: Record<string, string> = {};
+            if (get().apiKey) headers["x-api-key"] = get().apiKey!;
+            const res = await fetch(`/api/social/accounts/${id}/sync`, { method: "POST", headers });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            addAlert({ message: "Hesap bilgileri güncellendi.", type: "success" });
+            await get().fetchSocialAccounts();
+        } catch (err) {
+            addAlert({ message: `Sync hatası: ${err instanceof Error ? err.message : String(err)}`, type: "error" });
+        }
+    },
+
+    fetchScheduledPosts: async () => {
+        try {
+            const headers: Record<string, string> = {};
+            if (get().apiKey) headers["x-api-key"] = get().apiKey!;
+            const res = await fetch("/api/social/posts", { headers });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json() as { posts: ScheduledPost[] };
+            set({ scheduledPosts: data.posts ?? [] });
+        } catch (err) {
+            console.error("fetchScheduledPosts failed:", err);
+        }
+    },
+
+    createScheduledPost: async (payload) => {
+        const { addAlert } = get();
+        try {
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (get().apiKey) headers["x-api-key"] = get().apiKey!;
+            const res = await fetch("/api/social/posts", { method: "POST", headers, body: JSON.stringify(payload) });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            addAlert({ message: "Post zamanlandı.", type: "success" });
+            await get().fetchScheduledPosts();
+            await get().fetchSocialSummary();
+        } catch (err) {
+            addAlert({ message: `Post oluşturma hatası: ${err instanceof Error ? err.message : String(err)}`, type: "error" });
+        }
+    },
+
+    cancelScheduledPost: async (id: string) => {
+        const { addAlert } = get();
+        try {
+            const headers: Record<string, string> = {};
+            if (get().apiKey) headers["x-api-key"] = get().apiKey!;
+            await fetch(`/api/social/posts/${id}`, { method: "DELETE", headers });
+            addAlert({ message: "Post iptal edildi.", type: "warning" });
+            await get().fetchScheduledPosts();
+            await get().fetchSocialSummary();
+        } catch (err) {
+            addAlert({ message: `İptal hatası: ${err instanceof Error ? err.message : String(err)}`, type: "error" });
+        }
+    },
+
+    publishPostNow: async (id: string) => {
+        const { addAlert } = get();
+        try {
+            const headers: Record<string, string> = {};
+            if (get().apiKey) headers["x-api-key"] = get().apiKey!;
+            const res = await fetch(`/api/social/posts/${id}/publish`, { method: "POST", headers });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json() as { status: string };
+            addAlert({ message: data.status === "PUBLISHED" ? "Post yayınlandı!" : "Bazı platformlarda hata oluştu.", type: data.status === "PUBLISHED" ? "success" : "warning" });
+            await get().fetchScheduledPosts();
+            await get().fetchSocialSummary();
+        } catch (err) {
+            addAlert({ message: `Yayın hatası: ${err instanceof Error ? err.message : String(err)}`, type: "error" });
+        }
+    },
+
+    fetchSocialSummary: async () => {
+        try {
+            const headers: Record<string, string> = {};
+            if (get().apiKey) headers["x-api-key"] = get().apiKey!;
+            const res = await fetch("/api/social/summary", { headers });
+            if (!res.ok) return;
+            const data = await res.json() as SocialSummary & { success: boolean };
+            set({ socialSummary: { connectedCount: data.connectedCount, pendingCount: data.pendingCount, publishedThisWeek: data.publishedThisWeek } });
+        } catch {
+            // silently fail
         }
     },
 }));

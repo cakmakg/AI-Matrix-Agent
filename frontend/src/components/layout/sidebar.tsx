@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { LayoutDashboard, BarChart3, BookOpen, Settings, Blocks, Activity } from "lucide-react";
+import { LayoutDashboard, BarChart3, BookOpen, Settings, Blocks, Activity, Share2 } from "lucide-react";
 import { useAgentStore } from "@/store/agent-store";
 import type { ActiveView } from "@/store/agent-store";
 import { CronTimer } from "@/components/hud/cron-timer";
@@ -10,6 +10,7 @@ import { CronTimer } from "@/components/hud/cron-timer";
 const NAV_ITEMS: { view: ActiveView; label: string; icon: React.ReactNode }[] = [
     { view: "control",   label: "Übersicht",          icon: <LayoutDashboard size={16} /> },
     { view: "cfo",       label: "CFO-Dashboard",      icon: <BarChart3 size={16} /> },
+    { view: "social",    label: "Soziale Medien",      icon: <Share2 size={16} /> },
     { view: "knowledge", label: "Wissensdatenbank",   icon: <BookOpen size={16} /> },
     { view: "skills",    label: "Skill Store",        icon: <Blocks size={16} /> },
     { view: "settings",  label: "Einstellungen",      icon: <Settings size={16} /> },
