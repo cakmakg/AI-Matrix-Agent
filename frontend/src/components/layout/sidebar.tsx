@@ -8,11 +8,11 @@ import type { ActiveView } from "@/store/agent-store";
 import { CronTimer } from "@/components/hud/cron-timer";
 
 const NAV_ITEMS: { view: ActiveView; label: string; icon: React.ReactNode }[] = [
-    { view: "control",   label: "Genel Bakış",  icon: <LayoutDashboard size={16} /> },
-    { view: "cfo",       label: "CFO Paneli",    icon: <BarChart3 size={16} /> },
-    { view: "knowledge", label: "Bilgi Tabanı",  icon: <BookOpen size={16} /> },
-    { view: "skills",    label: "Skill Store",   icon: <Blocks size={16} /> },
-    { view: "settings",  label: "Ayarlar",       icon: <Settings size={16} /> },
+    { view: "control",   label: "Übersicht",          icon: <LayoutDashboard size={16} /> },
+    { view: "cfo",       label: "CFO-Dashboard",      icon: <BarChart3 size={16} /> },
+    { view: "knowledge", label: "Wissensdatenbank",   icon: <BookOpen size={16} /> },
+    { view: "skills",    label: "Skill Store",        icon: <Blocks size={16} /> },
+    { view: "settings",  label: "Einstellungen",      icon: <Settings size={16} /> },
 ];
 
 export const Sidebar = () => {
@@ -79,7 +79,7 @@ export const Sidebar = () => {
                     <Activity size={12} className={isRunning ? "text-[#39ff14] animate-pulse" : "text-white/25"} />
                     <div className="flex-1 min-w-0">
                         <div className={`text-[11px] font-semibold ${isRunning ? "text-[#39ff14]/90" : "text-white/35"}`}>
-                            {isRunning ? "Çalışıyor" : "Sistem Hazır"}
+                            {isRunning ? "Agent läuft" : "System bereit"}
                         </div>
                         {isRunning && threadId && (
                             <div className="text-[9px] text-white/30 font-mono truncate">#{threadId.slice(0, 8)}</div>

@@ -91,10 +91,10 @@ function ReportPanel({ threadId }: { threadId: string }) {
             .then(r => r.json())
             .then(data => {
                 const text = (data.content || "").trim();
-                setFetchedContent(text || "*(İçerik bulunamadı)*");
+                setFetchedContent(text || "*(Inhalt nicht gefunden)*");
                 if (text) useAgentStore.setState({ pendingContent: text, workflowPhase: "AWAITING_APPROVAL" });
             })
-            .catch(() => setFetchedContent("*(İçerik yüklenemedi)*"))
+            .catch(() => setFetchedContent("*(Inhalt konnte nicht geladen werden)*"))
             .finally(() => setFetching(false));
     }, [threadId, pendingContent, apiKey]);
 
@@ -137,13 +137,13 @@ function ReportPanel({ threadId }: { threadId: string }) {
             <div className="flex items-center gap-3 px-5 py-3 border-b border-white/6 shrink-0">
                 <FileText size={13} className="text-[#ff2d55]/70 shrink-0" />
                 <div className="flex-1 min-w-0">
-                    <p className="font-mono text-[7px] text-[#ff2d55]/50 uppercase tracking-widest mb-0.5">HITL — Onay Kapısı</p>
+                    <p className="font-mono text-[7px] text-[#ff2d55]/50 uppercase tracking-widest mb-0.5">HITL — Genehmigungstor</p>
                     <p className="font-mono text-[10px] text-white/65 truncate">
                         {missionMessage?.slice(0, 80) ?? `Thread: ${threadId.slice(0, 20)}...`}
                     </p>
                 </div>
                 <span className="font-mono text-[7px] text-[#ffb000]/60 bg-[#ffb000]/8 border border-[#ffb000]/20 px-2 py-1 rounded-full uppercase tracking-widest animate-pulse">
-                    Onay Bekliyor
+                    Genehmigung ausstehend
                 </span>
             </div>
 
@@ -151,17 +151,17 @@ function ReportPanel({ threadId }: { threadId: string }) {
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 scrollbar-hide">
 
                 {/* A: Mission Brief */}
-                <AccordionSection title="Görev Özeti" icon={<Activity size={10} />} defaultOpen={false}>
+                <AccordionSection title="Aufgabenübersicht" icon={<Activity size={10} />} defaultOpen={false}>
                     {missionMessage && (
                         <div className="space-y-2">
-                            <p className="font-mono text-[8px] text-white/30 uppercase tracking-wider">Orijinal Görev</p>
+                            <p className="font-mono text-[8px] text-white/30 uppercase tracking-wider">Ursprüngliche Aufgabe</p>
                             <p className="font-mono text-[10px] text-white/65 leading-relaxed bg-white/3 rounded-lg px-3 py-2.5 border border-white/6">
                                 {missionMessage}
                             </p>
                         </div>
                     )}
                     <div className="mt-3">
-                        <p className="font-mono text-[8px] text-white/30 uppercase tracking-wider mb-2">İş Akışı</p>
+                        <p className="font-mono text-[8px] text-white/30 uppercase tracking-wider mb-2">Workflow</p>
                         <div className="flex items-center gap-1.5 flex-wrap">
                             {steps.map((s, i) => (
                                 <React.Fragment key={s}>
@@ -181,7 +181,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
                 <div className="rounded-xl border border-white/8 overflow-hidden">
                     {/* Toolbar */}
                     <div className="flex items-center gap-2 px-4 py-2 bg-white/2 border-b border-white/6">
-                        <span className="font-mono text-[8px] text-white/35 uppercase tracking-widest flex-1">İçerik</span>
+                        <span className="font-mono text-[8px] text-white/35 uppercase tracking-widest flex-1">Inhalt</span>
                         <div className="flex gap-1 bg-white/5 rounded-md p-0.5">
                             {(["preview", "edit"] as const).map(m => (
                                 <button
@@ -191,7 +191,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
                                         ${viewMode === m ? "bg-white/12 text-white/80" : "text-white/30 hover:text-white/55"}`}
                                 >
                                     {m === "preview" ? <Eye size={8} /> : <Edit3 size={8} />}
-                                    {m === "preview" ? "Önizleme" : "Düzenle"}
+                                    {m === "preview" ? "Vorschau" : "Bearbeiten"}
                                 </button>
                             ))}
                         </div>
@@ -202,7 +202,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
                         {fetching ? (
                             <div className="flex items-center justify-center h-40 gap-2 text-white/25">
                                 <Loader2 size={13} className="animate-spin" />
-                                <span className="font-mono text-[10px]">Rapor yükleniyor...</span>
+                                <span className="font-mono text-[10px]">Bericht wird geladen...</span>
                             </div>
                         ) : viewMode === "preview" ? (
                             <div className="px-5 py-4 prose prose-invert prose-sm max-w-none
@@ -220,7 +220,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
                                 onChange={e => setEditedContent(e.target.value)}
                                 className="w-full h-full min-h-[300px] bg-transparent px-5 py-4 font-mono text-[10px] text-white/65
                                            leading-relaxed resize-none outline-none placeholder:text-white/20"
-                                placeholder="İçerik yükleniyor..."
+                                placeholder="Inhalt wird geladen..."
                             />
                         )}
                     </div>
@@ -228,7 +228,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
                     {editedContent && editedContent !== rawContent && (
                         <div className="flex items-center gap-2 px-4 py-2 bg-[#ffb000]/5 border-t border-[#ffb000]/15">
                             <Edit3 size={9} className="text-[#ffb000]/60" />
-                            <span className="font-mono text-[8px] text-[#ffb000]/60">Düzenlemeler kaydedildi (onayda gönderilecek)</span>
+                            <span className="font-mono text-[8px] text-[#ffb000]/60">Änderungen gespeichert (werden bei Genehmigung gesendet)</span>
                         </div>
                     )}
                 </div>
@@ -242,12 +242,12 @@ function ReportPanel({ threadId }: { threadId: string }) {
                         <>
                             <div className="flex items-center gap-2 mb-2">
                                 <AlertTriangle size={10} className="text-[#ff2d55]/60" />
-                                <span className="font-mono text-[8px] text-[#ff2d55]/60 uppercase tracking-widest">Override Gerekçesi (zorunlu)</span>
+                                <span className="font-mono text-[8px] text-[#ff2d55]/60 uppercase tracking-widest">Ablehnungsgrund (Pflichtfeld)</span>
                             </div>
                             <textarea
                                 value={feedback}
                                 onChange={e => setFeedback(e.target.value)}
-                                placeholder="Ne değişmeli? Yazara geri bildirim ver..."
+                                placeholder="Was soll geändert werden? Feedback an den Autor..."
                                 rows={3}
                                 className="w-full bg-white/4 border border-[#ff2d55]/20 rounded-lg px-3 py-2.5 font-mono text-[10px] text-white/70
                                            placeholder:text-white/20 outline-none focus:border-[#ff2d55]/40 resize-none"
@@ -261,13 +261,13 @@ function ReportPanel({ threadId }: { threadId: string }) {
                                                disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                 >
                                     {submitting ? <Loader2 size={10} className="animate-spin" /> : <XCircle size={10} />}
-                                    Override — Yeniden Yaz
+                                    Ablehnen — Neu schreiben
                                 </button>
                                 <button
                                     onClick={() => { setRejectMode(false); setFeedback(""); }}
                                     className="px-4 rounded-lg font-mono text-[9px] text-white/35 border border-white/10 hover:border-white/20 transition-colors"
                                 >
-                                    İptal
+                                    Abbrechen
                                 </button>
                             </div>
                         </>
@@ -276,7 +276,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
                             <input
                                 value={feedback}
                                 onChange={e => setFeedback(e.target.value)}
-                                placeholder="Opsiyonel onay notu..."
+                                placeholder="Optionale Genehmigungsnotiz..."
                                 className="w-full bg-white/3 border border-white/8 rounded-lg px-3 py-2 font-mono text-[10px] text-white/65
                                            placeholder:text-white/18 outline-none focus:border-[#39ff14]/25"
                             />
@@ -291,7 +291,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
                                                disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                 >
                                     {submitting ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
-                                    Yetkilendir & Yayınla
+                                    Autorisieren & Veröffentlichen
                                 </motion.button>
                                 <button
                                     onClick={() => setRejectMode(true)}
@@ -308,7 +308,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
             ) : (
                 <div className="px-5 py-4 border-t border-white/8 shrink-0 flex items-center justify-center gap-2">
                     <Loader2 size={12} className="animate-spin text-[#00f0ff]" />
-                    <span className="font-mono text-[10px] text-[#00f0ff]/70">Payload iletiliyor...</span>
+                    <span className="font-mono text-[10px] text-[#00f0ff]/70">Wird übertragen...</span>
                 </div>
             )}
         </div>
@@ -348,7 +348,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
                 <Mail size={13} style={{ color: `${accentColor}99` }} className="shrink-0" />
                 <div className="flex-1 min-w-0">
                     <p className="font-mono text-[7px] uppercase tracking-widest mb-0.5" style={{ color: `${accentColor}66` }}>
-                        {isBug ? "Teknik Destek" : "Fiyat Sorusu"}
+                        {isBug ? "Technischer Support" : "Preisanfrage"}
                     </p>
                     <p className="font-mono text-[11px] text-white/75 truncate">{ticket.subject}</p>
                 </div>
@@ -370,15 +370,15 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 scrollbar-hide">
 
                 {/* A: Original Message */}
-                <AccordionSection title="Orijinal Mesaj" icon={<Mail size={10} />} defaultOpen={true} accent={accentColor}>
+                <AccordionSection title="Originalnachricht" icon={<Mail size={10} />} defaultOpen={true} accent={accentColor}>
                     <div className="space-y-2">
                         <div className="flex gap-4">
                             <div>
-                                <p className="font-mono text-[7px] text-white/25 uppercase tracking-wider mb-0.5">Kimden</p>
+                                <p className="font-mono text-[7px] text-white/25 uppercase tracking-wider mb-0.5">Von</p>
                                 <p className="font-mono text-[9px] text-white/60">{ticket.from}</p>
                             </div>
                             <div>
-                                <p className="font-mono text-[7px] text-white/25 uppercase tracking-wider mb-0.5">Tarih</p>
+                                <p className="font-mono text-[7px] text-white/25 uppercase tracking-wider mb-0.5">Datum</p>
                                 <p className="font-mono text-[9px] text-white/60 flex items-center gap-1">
                                     <Clock size={8} />
                                     {new Date(ticket.createdAt).toLocaleString("tr-TR")}
@@ -387,7 +387,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
                         </div>
                         {ticket.aiSummary && (
                             <div className="bg-white/3 rounded-lg px-3 py-2.5 border border-white/6">
-                                <p className="font-mono text-[8px] text-white/30 uppercase tracking-wider mb-1">AI Özeti</p>
+                                <p className="font-mono text-[8px] text-white/30 uppercase tracking-wider mb-1">KI-Zusammenfassung</p>
                                 <p className="font-mono text-[10px] text-white/60 leading-relaxed">{ticket.aiSummary}</p>
                             </div>
                         )}
@@ -396,7 +396,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
 
                 {/* B: RAG Sources */}
                 {ticket.ragSources?.length > 0 && (
-                    <AccordionSection title="RAG Kaynakları" icon={<Database size={10} />} defaultOpen={false} accent="#39ff14">
+                    <AccordionSection title="RAG-Quellen" icon={<Database size={10} />} defaultOpen={false} accent="#39ff14">
                         <div className="space-y-1.5">
                             {ticket.ragSources.map((src: { title: string; score: number }, i: number) => (
                                 <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/3 border border-white/6">
@@ -415,7 +415,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
                 <div className="rounded-xl border border-white/8 overflow-hidden">
                     <div className="flex items-center gap-2 px-4 py-2.5 bg-white/2 border-b border-white/6">
                         <Edit3 size={9} className="text-white/35" />
-                        <span className="font-mono text-[8px] text-white/40 uppercase tracking-widest flex-1">AI Taslak Yanıtı — Düzenlenebilir</span>
+                        <span className="font-mono text-[8px] text-white/40 uppercase tracking-widest flex-1">KI Antwortentwurf — Bearbeitbar</span>
                     </div>
                     <textarea
                         value={draft}
@@ -434,7 +434,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
                 <input
                     value={feedback}
                     onChange={e => setFeedback(e.target.value)}
-                    placeholder="Opsiyonel not..."
+                    placeholder="Optionale Anmerkung..."
                     className="w-full bg-white/3 border border-white/8 rounded-lg px-3 py-2 font-mono text-[10px] text-white/65
                                placeholder:text-white/18 outline-none focus:border-[#00f0ff]/25"
                 />
@@ -449,7 +449,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
                                    disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                         {submitting ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
-                        Yanıtı Gönder
+                        Antwort senden
                     </motion.button>
                     <button
                         onClick={handleArchive}
@@ -490,7 +490,7 @@ function EmptyState() {
                     <div>
                         <p className="font-mono text-[11px] font-bold text-white/70 mb-1">{agent.label}</p>
                         <p className="font-mono text-[9px] text-white/30 uppercase tracking-widest animate-pulse">
-                            çalışıyor...
+                            läuft...
                         </p>
                     </div>
                     <div className="flex gap-1.5">
@@ -530,10 +530,10 @@ function EmptyState() {
 export const OperatingTable = () => {
     const { drawerItem, setDrawerItem } = useAgentStore();
 
-    const typeLabel = drawerItem?.type === "report"   ? "HITL Raporu" :
-                      drawerItem?.type === "support"  ? "Destek Talebi" :
+    const typeLabel = drawerItem?.type === "report"   ? "HITL-Bericht" :
+                      drawerItem?.type === "support"  ? "Support-Anfrage" :
                       drawerItem?.type === "campaign" ? "CMO Studio" :
-                      "Görev Arşivi";
+                      "Aufgaben-Archiv";
 
     const typeAccent = drawerItem?.type === "report"   ? "#ff2d55" :
                        drawerItem?.type === "support"  ? "#00f0ff" :
@@ -610,7 +610,7 @@ export const OperatingTable = () => {
                                         <div className="flex flex-col h-full">
                                             <div className="px-5 py-4 border-b border-white/6 shrink-0">
                                                 <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5">
-                                                    Arşiv — Geçmiş Görev
+                                                    Archiv — Vergangene Aufgabe
                                                 </p>
                                                 <p className="text-sm font-semibold text-white/75 truncate">
                                                     {drawerItem.mission.task}

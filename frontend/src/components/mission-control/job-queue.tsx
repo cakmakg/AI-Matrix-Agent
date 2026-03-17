@@ -32,11 +32,11 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-    IDLE:     "Bekliyor",
-    THINKING: "Düşünüyor",
-    ACTIVE:   "Aktif",
-    SUCCESS:  "Tamamlandı",
-    ERROR:    "Hata",
+    IDLE:     "Wartend",
+    THINKING: "Analysiert",
+    ACTIVE:   "Aktiv",
+    SUCCESS:  "Abgeschlossen",
+    ERROR:    "Fehler",
 };
 
 /* ── KPI Card ────────────────────────────────────────────── */
@@ -130,7 +130,7 @@ function HitlCard({ threadId, task, preview, createdAt, onSelect }: {
             <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-white/5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#ff2d55] animate-pulse shrink-0" />
                 <span className="text-[10px] font-bold text-[#ff2d55] uppercase tracking-wider flex-1">
-                    HITL — Onay Bekliyor
+                    HITL — Genehmigung ausstehend
                 </span>
                 <ChevronRight size={11} className="text-white/25 group-hover:text-white/50 transition-colors" />
             </div>
@@ -170,7 +170,7 @@ function SupportCard({ ticket, onSelect }: {
                     : <AlertTriangle size={10} style={{ color: accentColor }} />
                 }
                 <span className="text-[10px] font-bold uppercase tracking-wider flex-1" style={{ color: `${accentColor}cc` }}>
-                    {isBug ? "Bug Raporu" : "Fiyat Sorusu"}
+                    {isBug ? "Fehlerbericht" : "Preisanfrage"}
                 </span>
                 {ticket.priority && (
                     <span className={`text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded border font-bold ${priorityClass}`}>
@@ -214,7 +214,7 @@ function CampaignCard({ campaign, onSelect }: {
         >
             <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-white/5">
                 <Megaphone size={10} className="text-[#ff6b35]" />
-                <span className="text-[10px] font-bold text-[#ff6b35] uppercase tracking-wider flex-1">CMO — Kampanya</span>
+                <span className="text-[10px] font-bold text-[#ff6b35] uppercase tracking-wider flex-1">CMO — Kampagne</span>
                 <div className="flex gap-1">
                     {["Li", "Tw", "Fb"].map(ch => (
                         <span key={ch} className="text-[8px] text-[#ff6b35]/60 bg-[#ff6b35]/10 px-1.5 py-0.5 rounded">{ch}</span>
@@ -302,10 +302,10 @@ export const JobQueue = () => {
     const handleSelect = (item: DrawerItem) => setDrawerItem(item);
 
     const tabs: { key: FilterTab; label: string; count: number }[] = [
-        { key: "all",      label: "Tümü",     count: total           },
+        { key: "all",      label: "Alle",     count: total           },
         { key: "hitl",     label: "HITL",     count: counts.hitl     },
-        { key: "support",  label: "Destek",   count: counts.support  },
-        { key: "campaign", label: "Kampanya", count: counts.campaign  },
+        { key: "support",  label: "Support",  count: counts.support  },
+        { key: "campaign", label: "Kampagne", count: counts.campaign  },
     ];
 
     const showHitl     = activeTab === "all" || activeTab === "hitl";
@@ -316,9 +316,9 @@ export const JobQueue = () => {
     const cronSec = String(cronSecondsLeft % 60).padStart(2, "0");
 
     const phaseLabel: Record<string, string> = {
-        IDLE: "Hazır", DISPATCHING: "Gönderiliyor", RUNNING: "Çalışıyor",
-        AWAITING_APPROVAL: "Onay Bekleniyor", PUBLISHING: "Yayınlanıyor",
-        DELIVERED: "Teslim Edildi", REVISING: "Revize Ediliyor",
+        IDLE: "Bereit", DISPATCHING: "Wird gesendet", RUNNING: "Läuft",
+        AWAITING_APPROVAL: "Genehmigung ausstehend", PUBLISHING: "Wird veröffentlicht",
+        DELIVERED: "Ausgeliefert", REVISING: "Wird überarbeitet",
     };
 
     return (
@@ -330,17 +330,17 @@ export const JobQueue = () => {
                 style={{ background: "#0b1220" }}
             >
                 <div>
-                    <h1 className="text-base font-semibold text-white tracking-wide">AI Orchestra Kontrol Merkezi</h1>
+                    <h1 className="text-base font-semibold text-white tracking-wide">AI Orchestra Kontrollzentrum</h1>
                     <p className="text-xs text-white/40 mt-0.5">
                         {workflowPhase !== "IDLE" && workflowPhase !== "DELIVERED"
                             ? `${phaseLabel[workflowPhase] ?? workflowPhase} — #${threadId?.slice(0, 8) ?? "—"}`
-                            : "Sistem hazır. Yeni görev bekliyor."}
+                            : "System bereit. Neue Aufgabe erwartet."}
                     </p>
                 </div>
                 <div className="flex items-center gap-4">
                     <span className="flex items-center gap-1.5 text-xs font-medium text-[#39ff14]/70">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14] animate-pulse" />
-                        Tüm Sistemler Aktif
+                        Alle Systeme aktiv
                     </span>
                     <button
                         onClick={refresh}
@@ -358,27 +358,27 @@ export const JobQueue = () => {
                 style={{ background: "#0b1220" }}
             >
                 <KpiCard
-                    title="Aktif Ajan"
+                    title="Aktive Agenten"
                     value={`${activeAgentCount}/12`}
-                    subtitle="Çalışan ajan sayısı"
+                    subtitle="Laufende Agenten"
                     accent="#39ff14"
                 />
                 <KpiCard
-                    title="Bekleyen İş"
+                    title="Ausstehende Aufgaben"
                     value={total}
-                    subtitle="HITL + Destek + Kampanya"
+                    subtitle="HITL + Support + Kampagne"
                     accent="#ff2d55"
                 />
                 <KpiCard
-                    title="İş Fazı"
+                    title="Arbeitsphase"
                     value={phaseLabel[workflowPhase] ?? workflowPhase}
-                    subtitle={threadId ? `Thread: #${threadId.slice(0, 6)}` : "Görev yok"}
+                    subtitle={threadId ? `Thread: #${threadId.slice(0, 6)}` : "Keine Aufgabe"}
                     accent="#00f0ff"
                 />
                 <KpiCard
-                    title="Sonraki Radar"
+                    title="Nächster Radar"
                     value={`${cronMin}:${cronSec}`}
-                    subtitle="Otomatik R&D taraması"
+                    subtitle="Automatischer F&E-Scan"
                     accent="#ffb000"
                 />
             </div>
@@ -396,10 +396,10 @@ export const JobQueue = () => {
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-sm font-semibold text-white/60 flex items-center gap-2">
                                 <Users size={13} className="text-white/30" />
-                                Ajan Ekibi
+                                Agenten-Team
                             </h2>
                             <span className="text-xs font-semibold text-[#39ff14]/60">
-                                {activeAgentCount > 0 ? `${activeAgentCount} Aktif` : "Hazır Bekleniyor"}
+                                {activeAgentCount > 0 ? `${activeAgentCount} Aktiv` : "Bereit"}
                             </span>
                         </div>
                         <div className="grid grid-cols-4 gap-2.5">
@@ -412,11 +412,11 @@ export const JobQueue = () => {
                         <h2 className="text-sm font-semibold text-white/60 flex items-center gap-2 mb-1 sticky top-0 pb-2 border-b border-white/4"
                             style={{ background: "#070c14" }}>
                             <Radio size={13} className="text-white/30" />
-                            Anlık Aktivite Akışı
+                            Echtzeit-Aktivitätslog
                         </h2>
                         {logs.length === 0 ? (
                             <p className="text-xs text-white/20 py-6 text-center">
-                                Henüz aktivite yok. Bir görev gönderin.
+                                Noch keine Aktivitäten. Aufgabe senden.
                             </p>
                         ) : (
                             [...logs].reverse().slice(0, 30).map(log => (
@@ -434,7 +434,7 @@ export const JobQueue = () => {
                     {/* Mission Input */}
                     <div className="px-5 py-4 border-b border-white/6 shrink-0">
                         <h3 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">
-                            Yeni Görev Gönder
+                            Neue Aufgabe senden
                         </h3>
                         <div className="relative">
                             <textarea
@@ -443,7 +443,7 @@ export const JobQueue = () => {
                                 onKeyDown={e => {
                                     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
                                 }}
-                                placeholder="Görev açıklamasını yazın... (Enter ile gönder)"
+                                placeholder="Aufgabenbeschreibung eingeben... (Enter zum Senden)"
                                 rows={3}
                                 className="w-full bg-white/4 border border-white/10 rounded-xl px-4 py-3 pr-10 text-sm text-white/80
                                            placeholder:text-white/20 outline-none focus:border-[#00f0ff]/35 focus:bg-white/5
@@ -466,7 +466,7 @@ export const JobQueue = () => {
                                            uppercase tracking-wider border border-[#39ff14]/20 text-[#39ff14]/60
                                            hover:bg-[#39ff14]/8 hover:border-[#39ff14]/40 hover:text-[#39ff14] transition-all"
                             >
-                                <Zap size={11} /> R&D Radar
+                                <Zap size={11} /> F&E-Radar
                             </button>
                             <button
                                 onClick={pullLatestArtifact}
@@ -474,7 +474,7 @@ export const JobQueue = () => {
                                            uppercase tracking-wider border border-white/12 text-white/40
                                            hover:bg-white/5 hover:border-white/20 hover:text-white/60 transition-all"
                             >
-                                <Download size={11} /> Son Rapor
+                                <Download size={11} /> Letzter Bericht
                             </button>
                         </div>
                     </div>
@@ -536,8 +536,8 @@ export const JobQueue = () => {
                                     ◫
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-white/25">Bekleyen iş yok</p>
-                                    <p className="text-xs text-white/15 mt-1">Sistemler hazır bekleniyor</p>
+                                    <p className="text-sm font-medium text-white/25">Keine ausstehenden Aufgaben</p>
+                                    <p className="text-xs text-white/15 mt-1">Systeme bereit</p>
                                 </div>
                             </div>
                         )}
@@ -547,7 +547,7 @@ export const JobQueue = () => {
                                 <div className="flex items-center gap-2 mt-2 mb-1">
                                     <div className="flex-1 h-px bg-white/6" />
                                     <span className="text-[9px] text-white/20 uppercase tracking-widest flex items-center gap-1 font-mono">
-                                        <Clock size={8} /> Arşiv
+                                        <Clock size={8} /> Archiv
                                     </span>
                                     <div className="flex-1 h-px bg-white/6" />
                                 </div>

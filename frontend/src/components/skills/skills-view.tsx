@@ -33,21 +33,21 @@ interface TenantConfigResponse {
 const SKILLS_MANIFEST: Skill[] = [
     {
         id: "knowledge_search",
-        name: "Bilgi Tabanı (RAG)",
-        description: "Müşterinin özel PDF/Metin veritabanında semantik arama yapar.",
+        name: "Wissensdatenbank (RAG)",
+        description: "Führt semantische Suche in der Wissensdatenbank des Kunden durch.",
         icon: <FileText size={16} />
     },
     {
         id: "calendar_booking",
-        name: "Google Calendar Randevu",
-        description: "Müşteri adına Google Calendar'a randevu etkinlikleri ekler.",
+        name: "Google Calendar Termin",
+        description: "Fügt Terminevents im Google Calendar im Auftrag des Kunden hinzu.",
         icon: <Calendar size={16} />,
         fields: [{ key: "calendarId", label: "Calendar ID" }]
     },
     {
         id: "whatsapp_send",
-        name: "WhatsApp Mesaj Gönderimi",
-        description: "Twilio veya Meta API üzerinden müşteriye WhatsApp mesajı atar.",
+        name: "WhatsApp-Nachrichtenversand",
+        description: "Sendet WhatsApp-Nachrichten über Twilio oder Meta API.",
         icon: <MessageCircle size={16} />,
         fields: [{ key: "apiKey", label: "Twilio/Meta API Key" }, { key: "senderNumber", label: "Sender Number" }]
     }
@@ -70,7 +70,7 @@ export const SkillsView = () => {
                     setSkillConfigs(data.config.skillConfigs || {});
                 }
             })
-            .catch(() => addAlert({ message: "Skill Store yüklenemedi.", type: "error" }))
+            .catch(() => addAlert({ message: "Skill-Store konnte nicht geladen werden.", type: "error" }))
             .finally(() => setLoading(false));
     }, [addAlert]);
 
@@ -96,17 +96,17 @@ export const SkillsView = () => {
                 body: JSON.stringify({ enabledSkills, skillConfigs })
             });
             if (res.ok) {
-                addAlert({ message: "Skill Store yapılandırması kaydedildi.", type: "success" });
+                addAlert({ message: "Skill-Store-Konfiguration gespeichert.", type: "success" });
             } else {
-                addAlert({ message: "Kayıt sırasında hata oluştu.", type: "error" });
+                addAlert({ message: "Fehler beim Speichern.", type: "error" });
             }
         } catch {
-            addAlert({ message: "Kayıt sırasında hata oluştu.", type: "error" });
+            addAlert({ message: "Fehler beim Speichern.", type: "error" });
         }
         setSaving(false);
     };
 
-    if (loading) return <div className="p-8 text-white/50 font-mono text-sm">Yükleniyor...</div>;
+    if (loading) return <div className="p-8 text-white/50 font-mono text-sm">Wird geladen...</div>;
 
     return (
         <div className="flex-1 flex flex-col h-full bg-[#090e1a] overflow-hidden">
@@ -125,7 +125,7 @@ export const SkillsView = () => {
                     disabled={saving}
                     className="px-4 py-1.5 bg-neon-green/10 text-neon-green border border-neon-green/30 rounded font-mono text-[10px] hover:bg-neon-green hover:text-black transition-all disabled:opacity-50"
                 >
-                    {saving ? "KAYDEDİLİYOR..." : "KAYDET"}
+                    {saving ? "WIRD GESPEICHERT..." : "SPEICHERN"}
                 </button>
             </header>
 

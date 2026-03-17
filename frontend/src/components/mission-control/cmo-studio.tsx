@@ -21,7 +21,7 @@ function parseCampaignSections(raw: string): PlatformSection[] {
         { key: "linkedin", label: "LinkedIn Post",   icon: "🔷", color: "#0077b5", charLimit: undefined },
         { key: "twitter",  label: "Twitter / X",     icon: "⬛", color: "#e7e9ea", charLimit: 280 },
         { key: "meta",     label: "Meta / Google Ads",icon: "🟧", color: "#ff6b35", charLimit: 150 },
-        { key: "summary",  label: "Kampanya Özeti",  icon: "📋", color: "#00f0ff", charLimit: undefined },
+        { key: "summary",  label: "Kampagnenübersicht",  icon: "📋", color: "#00f0ff", charLimit: undefined },
     ];
 
     for (const p of platforms) {
@@ -35,7 +35,7 @@ function parseCampaignSections(raw: string): PlatformSection[] {
     // Fallback: no headers found — show raw content in one block
     if (sections.length === 0) {
         sections.push({
-            key: "raw", label: "Kampanya İçeriği", icon: "📄", color: "#ff6b35",
+            key: "raw", label: "Kampagneninhalt", icon: "📄", color: "#ff6b35",
             content: raw, charLimit: undefined,
         });
     }
@@ -91,7 +91,7 @@ export const CmoStudio = ({ campaign }: Props) => {
                         <p className="font-mono text-[11px] text-white/75 truncate max-w-[400px]">{campaign.reportTitle}</p>
                     </div>
                     <div className="ml-auto font-mono text-[8px] text-white/25">
-                        {approvedCount}/{sections.length} onaylandı
+                        {approvedCount}/{sections.length} genehmigt
                     </div>
                 </div>
             </div>
@@ -130,11 +130,11 @@ export const CmoStudio = ({ campaign }: Props) => {
                                 {/* Content / Rewrite input */}
                                 {isRewriting ? (
                                     <div className="p-4 space-y-2">
-                                        <p className="font-mono text-[8px] text-[#ffb000]/70 uppercase tracking-wider">Yeniden yaz notu:</p>
+                                        <p className="font-mono text-[8px] text-[#ffb000]/70 uppercase tracking-wider">Neuschreib-Hinweis:</p>
                                         <textarea
                                             value={rewriteNote}
                                             onChange={e => setRewriteNote(e.target.value)}
-                                            placeholder="Ne değişsin? (örn: daha kısa ve esprili yap)"
+                                            placeholder="Was soll geändert werden? (z.B.: kürzer und witziger)"
                                             rows={3}
                                             className="w-full bg-white/5 border border-white/12 rounded-lg px-3 py-2 font-mono text-[10px] text-white/70
                                                        placeholder:text-white/20 outline-none focus:border-[#ffb000]/30 resize-none"
@@ -144,13 +144,13 @@ export const CmoStudio = ({ campaign }: Props) => {
                                                 onClick={() => { setRewriteTarget(null); setRewriteNote(""); }}
                                                 className="px-3 py-1.5 rounded-md font-mono text-[8px] text-white/40 border border-white/10 hover:border-white/20 transition-colors"
                                             >
-                                                İptal
+                                                Abbrechen
                                             </button>
                                             <button
                                                 className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md font-mono text-[8px] font-bold
                                                            bg-[#ffb000]/10 border border-[#ffb000]/30 text-[#ffb000] hover:bg-[#ffb000]/20 transition-all"
                                             >
-                                                <RefreshCw size={8} /> CMO&apos;ya Gönder
+                                                <RefreshCw size={8} /> An CMO senden
                                             </button>
                                         </div>
                                     </div>
@@ -179,7 +179,7 @@ export const CmoStudio = ({ campaign }: Props) => {
                                                 }`}
                                         >
                                             <CheckCircle2 size={9} />
-                                            {isApproved ? "Onaylandı" : "Onayla"}
+                                            {isApproved ? "Genehmigt" : "Genehmigen"}
                                         </button>
                                         <button
                                             onClick={() => setRewriteTarget(sec.key)}
@@ -201,7 +201,7 @@ export const CmoStudio = ({ campaign }: Props) => {
                 <input
                     value={feedback}
                     onChange={e => setFeedback(e.target.value)}
-                    placeholder="Opsiyonel not..."
+                    placeholder="Optionale Anmerkung..."
                     className="w-full bg-white/3 border border-white/8 rounded-lg px-3 py-2 font-mono text-[10px] text-white/65
                                placeholder:text-white/20 outline-none focus:border-[#ff6b35]/25"
                 />
@@ -217,7 +217,7 @@ export const CmoStudio = ({ campaign }: Props) => {
                             } disabled:opacity-30 disabled:cursor-not-allowed`}
                     >
                         {submitting ? <Loader2 size={11} className="animate-spin" /> : <Rocket size={11} />}
-                        {approvedCount > 0 ? `${approvedCount} Platformu Yayınla` : "Tümünü Onayla → Yayınla"}
+                        {approvedCount > 0 ? `${approvedCount} Plattform(en) veröffentlichen` : "Alle genehmigen → Veröffentlichen"}
                     </motion.button>
                     <button
                         onClick={handleReject}

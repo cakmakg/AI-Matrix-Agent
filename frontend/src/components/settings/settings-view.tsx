@@ -26,7 +26,7 @@ interface TenantConfigResponse {
 
 const DEFAULT_FORM: TenantConfigData = {
     agentPersona: "",
-    tone: "Kibar, profesyonel, güven verici",
+    tone: "Formal, professionell, vertrauenswürdig",
     companyContext: "",
     supportInstructions: "",
     companyName: "",
@@ -59,7 +59,7 @@ export const SettingsView = () => {
                     }
                 }
             })
-            .catch(() => addAlert({ message: "Ayarlar yüklenemedi.", type: "error" }))
+            .catch(() => addAlert({ message: "Einstellungen konnten nicht geladen werden.", type: "error" }))
             .finally(() => setLoading(false));
     }, [addAlert]);
 
@@ -72,17 +72,17 @@ export const SettingsView = () => {
                 body: JSON.stringify(form),
             });
             if (res.ok) {
-                addAlert({ message: "Ayarlar başarıyla kaydedildi.", type: "success" });
+                addAlert({ message: "Einstellungen erfolgreich gespeichert.", type: "success" });
             } else {
-                addAlert({ message: "Kayıt sırasında hata oluştu.", type: "error" });
+                addAlert({ message: "Fehler beim Speichern.", type: "error" });
             }
         } catch {
-            addAlert({ message: "Kayıt sırasında hata oluştu.", type: "error" });
+            addAlert({ message: "Fehler beim Speichern.", type: "error" });
         }
         setSaving(false);
     };
 
-    if (loading) return <div className="p-8 text-white/50 font-mono text-sm">Yükleniyor...</div>;
+    if (loading) return <div className="p-8 text-white/50 font-mono text-sm">Wird geladen...</div>;
 
     return (
         <div className="flex-1 flex flex-col h-full bg-[#090e1a] overflow-hidden">
@@ -101,7 +101,7 @@ export const SettingsView = () => {
                     disabled={saving}
                     className="px-4 py-1.5 bg-neon-green/10 text-neon-green border border-neon-green/30 rounded font-mono text-[10px] hover:bg-neon-green hover:text-black transition-all disabled:opacity-50"
                 >
-                    {saving ? "KAYDEDİLİYOR..." : "KAYDET"}
+                    {saving ? "WIRD GESPEICHERT..." : "SPEICHERN"}
                 </button>
             </header>
 
@@ -110,73 +110,73 @@ export const SettingsView = () => {
                 <div className="max-w-3xl space-y-6">
                     {/* Company Name */}
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded border border-white/5 bg-white/[0.02]">
-                        <h2 className="font-mono text-xs text-white/80 mb-3">Şirket Adı</h2>
+                        <h2 className="font-mono text-xs text-white/80 mb-3">Firmenname</h2>
                         <input
                             type="text"
                             value={form.companyName}
                             onChange={(e) => setForm({ ...form, companyName: e.target.value })}
-                            placeholder="Örn: Agent Matrix A.Ş."
+                            placeholder="z.B.: Agent Matrix GmbH"
                             className="w-full bg-[#090e1a] border border-white/10 rounded p-3 font-mono text-[11px] text-white/70 focus:border-neon-blue outline-none"
                         />
                     </motion.div>
 
                     {/* Language */}
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="p-4 rounded border border-white/5 bg-white/[0.02]">
-                        <h2 className="font-mono text-xs text-white/80 mb-3">Yanıt Dili</h2>
+                        <h2 className="font-mono text-xs text-white/80 mb-3">Antwortsprache</h2>
                         <select
                             value={form.language}
                             onChange={(e) => setForm({ ...form, language: e.target.value })}
                             className="w-full bg-[#090e1a] border border-white/10 rounded px-3 py-2 font-mono text-[11px] text-white/70 focus:border-neon-blue outline-none"
                         >
-                            <option value="tr">Türkçe</option>
-                            <option value="de">Almanca</option>
-                            <option value="en">İngilizce</option>
+                            <option value="tr">Türkisch</option>
+                            <option value="de">Deutsch</option>
+                            <option value="en">Englisch</option>
                         </select>
                     </motion.div>
 
                     {/* Persona */}
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="p-4 rounded border border-white/5 bg-white/[0.02]">
-                        <h2 className="font-mono text-xs text-white/80 mb-3">AI Ajan Personası (System Prompt)</h2>
+                        <h2 className="font-mono text-xs text-white/80 mb-3">KI-Agenten-Persona (System Prompt)</h2>
                         <textarea
                             value={form.agentPersona}
                             onChange={(e) => setForm({ ...form, agentPersona: e.target.value })}
-                            placeholder="Sen Agent Matrix şirketinin dijital asistanısın..."
+                            placeholder="Du bist der digitale Assistent von Agent Matrix..."
                             className="w-full h-32 bg-[#090e1a] border border-white/10 rounded p-3 font-mono text-[11px] text-white/70 focus:border-neon-blue outline-none resize-none"
                         />
                     </motion.div>
 
                     {/* Tone */}
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="p-4 rounded border border-white/5 bg-white/[0.02]">
-                        <h2 className="font-mono text-xs text-white/80 mb-3">İletişim Tonu</h2>
+                        <h2 className="font-mono text-xs text-white/80 mb-3">Kommunikationston</h2>
                         <select
                             value={form.tone}
                             onChange={(e) => setForm({ ...form, tone: e.target.value })}
                             className="w-full bg-[#090e1a] border border-white/10 rounded px-3 py-2 font-mono text-[11px] text-white/70 focus:border-neon-blue outline-none"
                         >
-                            <option value="Kibar, profesyonel, güven verici">Formal & Profesyonel</option>
-                            <option value="Samimi, eğlenceli, enerjik">Samimi & Enerjik</option>
-                            <option value="Teknik, detaylı, analitik">Teknik & Analitik</option>
+                            <option value="Formal, professionell, vertrauenswürdig">Formal & Professionell</option>
+                            <option value="Freundlich, locker, energetisch">Freundlich & Energetisch</option>
+                            <option value="Technisch, detailliert, analytisch">Technisch & Analytisch</option>
                         </select>
                     </motion.div>
 
                     {/* Company Context */}
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="p-4 rounded border border-white/5 bg-white/[0.02]">
-                        <h2 className="font-mono text-xs text-white/80 mb-3">Şirket Hakkında Genel Bilgi</h2>
+                        <h2 className="font-mono text-xs text-white/80 mb-3">Allgemeine Unternehmensinformationen</h2>
                         <textarea
                             value={form.companyContext}
                             onChange={(e) => setForm({ ...form, companyContext: e.target.value })}
-                            placeholder="Örn: Merkez ofisimiz Kadıköy'de..."
+                            placeholder="z.B.: Unser Hauptbüro befindet sich in..."
                             className="w-full h-24 bg-[#090e1a] border border-white/10 rounded p-3 font-mono text-[11px] text-white/70 focus:border-neon-blue outline-none resize-none"
                         />
                     </motion.div>
 
                     {/* Support Instructions */}
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="p-4 rounded border border-white/5 bg-white/[0.02]">
-                        <h2 className="font-mono text-xs text-white/80 mb-3">Destek Şablonu Yönergeleri</h2>
+                        <h2 className="font-mono text-xs text-white/80 mb-3">Support-Vorlagen-Richtlinien</h2>
                         <textarea
                             value={form.supportInstructions}
                             onChange={(e) => setForm({ ...form, supportInstructions: e.target.value })}
-                            placeholder="Randevu için 0216 xxx'i yönlendir."
+                            placeholder="Für Termine an folgende Nummer weiterleiten..."
                             className="w-full h-24 bg-[#090e1a] border border-white/10 rounded p-3 font-mono text-[11px] text-white/70 focus:border-neon-blue outline-none resize-none"
                         />
                     </motion.div>
