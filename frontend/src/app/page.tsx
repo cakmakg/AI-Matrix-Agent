@@ -22,12 +22,12 @@ export default function Home() {
             {/* ── LEFT: Sidebar + Live Agent Radar ── */}
             <Sidebar />
 
-            {/* ── MISSION CONTROL ── */}
+            {/* ── MISSION CONTROL (relative for overlay drawer) ── */}
             {activeView === "control" && (
-                <>
+                <div className="flex-1 relative min-w-0 overflow-hidden flex">
                     <JobQueue />
                     <OperatingTable />
-                </>
+                </div>
             )}
 
             {/* ── FULL-PAGE SECONDARY VIEWS ── */}

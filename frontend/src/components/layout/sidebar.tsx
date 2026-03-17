@@ -2,82 +2,67 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import {
-    LayoutDashboard,
-    BarChart3,
-    BookOpen,
-    Settings,
-    Blocks,
-} from "lucide-react";
+import { LayoutDashboard, BarChart3, BookOpen, Settings, Blocks, Activity } from "lucide-react";
 import { useAgentStore } from "@/store/agent-store";
-import type { ActiveView, AgentId } from "@/store/agent-store";
+import type { ActiveView } from "@/store/agent-store";
 import { CronTimer } from "@/components/hud/cron-timer";
 
 const NAV_ITEMS: { view: ActiveView; label: string; icon: React.ReactNode }[] = [
-    { view: "control", label: "Mission Control", icon: <LayoutDashboard size={15} /> },
-    { view: "cfo", label: "CFO Dashboard", icon: <BarChart3 size={15} /> },
-    { view: "knowledge", label: "Knowledge Base", icon: <BookOpen size={15} /> },
-    { view: "skills", label: "Skill Store", icon: <Blocks size={15} /> },
-    { view: "settings", label: "Client Settings", icon: <Settings size={15} /> },
+    { view: "control",   label: "Genel Bakış",  icon: <LayoutDashboard size={16} /> },
+    { view: "cfo",       label: "CFO Paneli",    icon: <BarChart3 size={16} /> },
+    { view: "knowledge", label: "Bilgi Tabanı",  icon: <BookOpen size={16} /> },
+    { view: "skills",    label: "Skill Store",   icon: <Blocks size={16} /> },
+    { view: "settings",  label: "Ayarlar",       icon: <Settings size={16} /> },
 ];
 
-const STATUS_COLOR: Record<string, string> = {
-    IDLE: "bg-white/30",
-    THINKING: "bg-neon-blue animate-pulse",
-    ACTIVE: "bg-neon-green animate-pulse",
-    SUCCESS: "bg-neon-green",
-    ERROR: "bg-alert-red",
-};
-
-const SIDEBAR_AGENTS: AgentId[] = ["ceo", "cto", "scraper", "analyst", "writer", "qa", "hitl", "publisher", "radar", "cmo", "cfo"];
-
 export const Sidebar = () => {
-    const { activeView, setActiveView, agents, workflowPhase, supportTickets, campaignDrafts } = useAgentStore();
+    const { activeView, setActiveView, workflowPhase, supportTickets, campaignDrafts, threadId } = useAgentStore();
 
-    const pendingInboxCount =
-        supportTickets.filter((t) => t.category === "SUPPORT_PRICING" || t.category === "SUPPORT_BUG").length +
-        campaignDrafts.filter((c) => c.status === "AWAITING_APPROVAL").length +
-        (workflowPhase === "AWAITING_APPROVAL" ? 1 : 0);
+    const pendingCount =
+        (workflowPhase === "AWAITING_APPROVAL" ? 1 : 0) +
+        supportTickets.filter(t => t.category === "SUPPORT_PRICING" || t.category === "SUPPORT_BUG").length +
+        campaignDrafts.filter(c => c.status === "AWAITING_APPROVAL").length;
+
+    const isRunning = workflowPhase !== "IDLE" && workflowPhase !== "DELIVERED";
 
     return (
-        <aside className="w-[230px] shrink-0 flex flex-col h-screen border-r border-white/10 overflow-hidden"
-            style={{ background: "#0d1829" }}>
+        <aside
+            className="w-[200px] shrink-0 flex flex-col h-screen"
+            style={{ background: "#0d1829", borderRight: "1px solid rgba(255,255,255,0.07)" }}
+        >
             {/* Logo */}
-            <div className="px-4 py-4 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg border border-neon-blue/50 flex items-center justify-center text-neon-blue text-base font-bold bg-neon-blue/10">
+            <div className="px-5 py-5 border-b border-white/8">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg border border-[#00f0ff]/40 flex items-center justify-center text-[#00f0ff] text-sm font-bold bg-[#00f0ff]/8">
                         ◈
                     </div>
                     <div>
-                        <div className="font-mono text-[12px] font-bold text-white tracking-wider">AI Orchestra</div>
-                        <div className="font-mono text-[9px] text-white/50 tracking-widest uppercase">Command Center</div>
+                        <div className="text-[13px] font-bold text-white tracking-wide">AI Orchestra</div>
+                        <div className="text-[9px] text-white/40 tracking-widest uppercase">Agent Matrix</div>
                     </div>
                 </div>
             </div>
 
             {/* Nav */}
-            <nav className="flex flex-col gap-1 px-2 py-3 border-b border-white/10">
+            <nav className="flex flex-col gap-0.5 px-3 py-4 flex-1">
                 {NAV_ITEMS.map(({ view, label, icon }) => {
                     const isActive = activeView === view;
-                    const badge = view === "control" && pendingInboxCount > 0 ? pendingInboxCount : null;
-
+                    const badge = view === "control" && pendingCount > 0 ? pendingCount : null;
                     return (
                         <motion.button
                             key={view}
                             whileHover={{ x: 2 }}
                             onClick={() => setActiveView(view)}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 w-full
                                 ${isActive
-                                    ? "bg-neon-blue/15 border border-neon-blue/30 text-neon-blue shadow-[0_0_12px_rgba(56,189,248,0.15)]"
-                                    : "text-white/65 hover:text-white hover:bg-white/8 border border-transparent"
+                                    ? "bg-white/8 border border-white/10 text-white"
+                                    : "text-white/50 hover:text-white/80 hover:bg-white/4 border border-transparent"
                                 }`}
                         >
-                            <span className={isActive ? "text-neon-blue" : "text-white/50"}>
-                                {icon}
-                            </span>
-                            <span className="font-mono text-[11px] font-medium tracking-wide flex-1">{label}</span>
+                            <span className={isActive ? "text-[#00f0ff]" : "text-white/35"}>{icon}</span>
+                            <span className="text-sm font-medium flex-1">{label}</span>
                             {badge !== null && (
-                                <span className="min-w-[18px] h-5 px-1.5 rounded-full bg-alert-red flex items-center justify-center font-mono text-[9px] font-bold text-white">
+                                <span className="min-w-[18px] h-5 px-1.5 rounded-full bg-[#ff2d55] font-mono text-[9px] font-bold text-white flex items-center justify-center">
                                     {badge}
                                 </span>
                             )}
@@ -86,37 +71,21 @@ export const Sidebar = () => {
                 })}
             </nav>
 
-            {/* Agents */}
-            <div className="flex-1 overflow-y-auto px-2 py-3 scrollbar-hide">
-                <div className="font-mono text-[9px] text-white/45 uppercase tracking-widest px-2 mb-2 font-semibold">
-                    Live Agents
+            {/* System status + Cron */}
+            <div className="px-4 py-4 border-t border-white/8 space-y-2.5">
+                <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${
+                    isRunning ? "bg-[#39ff14]/5 border-[#39ff14]/20" : "bg-white/2 border-white/6"
+                }`}>
+                    <Activity size={12} className={isRunning ? "text-[#39ff14] animate-pulse" : "text-white/25"} />
+                    <div className="flex-1 min-w-0">
+                        <div className={`text-[11px] font-semibold ${isRunning ? "text-[#39ff14]/90" : "text-white/35"}`}>
+                            {isRunning ? "Çalışıyor" : "Sistem Hazır"}
+                        </div>
+                        {isRunning && threadId && (
+                            <div className="text-[9px] text-white/30 font-mono truncate">#{threadId.slice(0, 8)}</div>
+                        )}
+                    </div>
                 </div>
-                <div className="flex flex-col gap-0.5">
-                    {SIDEBAR_AGENTS.map((id) => {
-                        const agent = agents[id];
-                        return (
-                            <div key={id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
-                                <div className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLOR[agent.status]}`} />
-                                <span className="font-mono text-[11px] text-white/75 flex-1 truncate">
-                                    {agent.icon} {agent.shortLabel}
-                                </span>
-                                <span className={`font-mono text-[8px] uppercase tracking-wider font-semibold ${
-                                    agent.status === "ACTIVE" ? "text-neon-green" :
-                                    agent.status === "THINKING" ? "text-neon-blue" :
-                                    agent.status === "ERROR" ? "text-alert-red" :
-                                    agent.status === "SUCCESS" ? "text-neon-green/70" :
-                                    "text-white/30"
-                                }`}>
-                                    {agent.status}
-                                </span>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Cron Timer */}
-            <div className="p-2 border-t border-white/10">
                 <CronTimer />
             </div>
         </aside>

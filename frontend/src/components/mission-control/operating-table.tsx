@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     ChevronDown, ChevronRight, CheckCircle2, XCircle,
     Loader2, Eye, Edit3, FileText, Mail, AlertTriangle,
-    Database, Clock, Activity,
+    Database, Clock, Activity, X,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -525,85 +525,115 @@ function EmptyState() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   MAIN COMPONENT
+   MAIN COMPONENT — Right Overlay Drawer
 ═══════════════════════════════════════════════════════════════ */
 export const OperatingTable = () => {
-    const { drawerItem } = useAgentStore();
+    const { drawerItem, setDrawerItem } = useAgentStore();
+
+    const typeLabel = drawerItem?.type === "report"   ? "HITL Raporu" :
+                      drawerItem?.type === "support"  ? "Destek Talebi" :
+                      drawerItem?.type === "campaign" ? "CMO Studio" :
+                      "Görev Arşivi";
+
+    const typeAccent = drawerItem?.type === "report"   ? "#ff2d55" :
+                       drawerItem?.type === "support"  ? "#00f0ff" :
+                       drawerItem?.type === "campaign" ? "#ff6b35" :
+                       "rgba(255,255,255,0.3)";
 
     return (
-        <main
-            className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden"
-            style={{ background: "#070c14", borderLeft: "1px solid rgba(255,255,255,0.05)" }}
-        >
-            {/* Header bar */}
-            <div className="flex items-center gap-3 px-5 py-2.5 border-b border-white/5 shrink-0">
-                <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] opacity-60" />
-                    <span className="font-mono text-[8px] text-white/25 uppercase tracking-widest">Komuta Köprüsü</span>
-                </div>
-                {drawerItem && (
-                    <div className="ml-auto flex items-center gap-2">
-                        <span className={`font-mono text-[7px] uppercase tracking-widest px-2 py-1 rounded border
-                            ${drawerItem.type === "report"   ? "text-[#ff2d55]/60 border-[#ff2d55]/20 bg-[#ff2d55]/5" :
-                              drawerItem.type === "support"  ? "text-[#00f0ff]/60 border-[#00f0ff]/20 bg-[#00f0ff]/5" :
-                              drawerItem.type === "campaign" ? "text-[#ff6b35]/60 border-[#ff6b35]/20 bg-[#ff6b35]/5" :
-                              "text-white/30 border-white/12"
-                            }`}>
-                            {drawerItem.type === "report"   ? "HITL Report" :
-                             drawerItem.type === "support"  ? "Support Ticket" :
-                             drawerItem.type === "campaign" ? "CMO Studio" :
-                             "Mission Archive"}
-                        </span>
-                    </div>
-                )}
-            </div>
+        <AnimatePresence>
+            {drawerItem && (
+                <>
+                    {/* Backdrop */}
+                    <motion.div
+                        key="backdrop"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={() => setDrawerItem(null)}
+                        className="absolute inset-0 z-10"
+                        style={{ background: "rgba(0,0,0,0.35)" }}
+                    />
 
-            {/* Content */}
-            <div className="flex-1 overflow-hidden relative">
-                <AnimatePresence mode="wait">
-                    {!drawerItem ? (
-                        <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="absolute inset-0">
-                            <EmptyState />
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            key={`${drawerItem.type}-${drawerItem.type === "report" ? drawerItem.threadId : drawerItem.type === "support" ? drawerItem.ticket._id : drawerItem.type === "campaign" ? drawerItem.campaign._id : "mission"}`}
-                            initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute inset-0 flex flex-col"
-                        >
-                            {drawerItem.type === "report" && (
-                                <ReportPanel threadId={drawerItem.threadId} />
-                            )}
-                            {drawerItem.type === "support" && (
-                                <SupportPanel ticket={drawerItem.ticket} />
-                            )}
-                            {drawerItem.type === "campaign" && (
-                                <CmoStudio campaign={drawerItem.campaign} />
-                            )}
-                            {drawerItem.type === "mission" && (
-                                <div className="flex flex-col h-full">
-                                    <div className="px-5 py-3 border-b border-white/6 shrink-0">
-                                        <p className="font-mono text-[8px] text-white/30 uppercase tracking-widest mb-1">Arşiv — Geçmiş Görev</p>
-                                        <p className="font-mono text-[11px] text-white/70 truncate">{drawerItem.mission.task}</p>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto px-5 py-4 scrollbar-hide">
-                                        <div className="prose prose-invert prose-sm max-w-none
-                                            prose-headings:font-mono prose-headings:text-white/70 prose-headings:text-xs
-                                            prose-p:text-white/50 prose-p:text-[10px] prose-p:leading-relaxed
-                                            prose-strong:text-white/70 prose-li:text-white/50 prose-li:text-[10px]">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {drawerItem.mission.content ?? drawerItem.mission.contentPreview}
-                                            </ReactMarkdown>
+                    {/* Drawer */}
+                    <motion.aside
+                        key="drawer"
+                        initial={{ x: "100%" }}
+                        animate={{ x: 0 }}
+                        exit={{ x: "100%" }}
+                        transition={{ type: "spring", damping: 32, stiffness: 300 }}
+                        className="absolute right-0 top-0 h-full w-[520px] z-20 flex flex-col overflow-hidden"
+                        style={{ background: "#0b1220", borderLeft: "1px solid rgba(255,255,255,0.09)" }}
+                    >
+                        {/* Drawer header */}
+                        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-white/8 shrink-0">
+                            <span
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ background: typeAccent, opacity: 0.8 }}
+                            />
+                            <span className="text-sm font-semibold text-white/80 flex-1">{typeLabel}</span>
+                            <button
+                                onClick={() => setDrawerItem(null)}
+                                className="p-1.5 rounded-lg hover:bg-white/8 text-white/35 hover:text-white/70 transition-colors"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+
+                        {/* Drawer content */}
+                        <div className="flex-1 overflow-hidden relative">
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={`${drawerItem.type}-${
+                                        drawerItem.type === "report"   ? drawerItem.threadId :
+                                        drawerItem.type === "support"  ? drawerItem.ticket._id :
+                                        drawerItem.type === "campaign" ? drawerItem.campaign._id :
+                                        "mission"
+                                    }`}
+                                    initial={{ opacity: 0, x: 10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -8 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="absolute inset-0 flex flex-col"
+                                >
+                                    {drawerItem.type === "report" && (
+                                        <ReportPanel threadId={drawerItem.threadId} />
+                                    )}
+                                    {drawerItem.type === "support" && (
+                                        <SupportPanel ticket={drawerItem.ticket} />
+                                    )}
+                                    {drawerItem.type === "campaign" && (
+                                        <CmoStudio campaign={drawerItem.campaign} />
+                                    )}
+                                    {drawerItem.type === "mission" && (
+                                        <div className="flex flex-col h-full">
+                                            <div className="px-5 py-4 border-b border-white/6 shrink-0">
+                                                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5">
+                                                    Arşiv — Geçmiş Görev
+                                                </p>
+                                                <p className="text-sm font-semibold text-white/75 truncate">
+                                                    {drawerItem.mission.task}
+                                                </p>
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto px-5 py-4 scrollbar-hide">
+                                                <div className="prose prose-invert prose-sm max-w-none
+                                                    prose-headings:font-mono prose-headings:text-white/70 prose-headings:text-xs
+                                                    prose-p:text-white/50 prose-p:text-[11px] prose-p:leading-relaxed
+                                                    prose-strong:text-white/70 prose-li:text-white/50 prose-li:text-[11px]">
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                        {drawerItem.mission.content ?? drawerItem.mission.contentPreview}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
-                            )}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        </main>
+                                    )}
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+                    </motion.aside>
+                </>
+            )}
+        </AnimatePresence>
     );
 };
