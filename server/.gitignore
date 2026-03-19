@@ -6,6 +6,7 @@ node_modules/
 .env.local
 .env.development
 .env.production
+.env.example
 
 # Generated Output Files (Sistemin ürettiği raporlar repoda kalabalık yapmasın)
 output/

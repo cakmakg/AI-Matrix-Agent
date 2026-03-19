@@ -2,9 +2,33 @@ import { app } from "../workflows/graph.js";
 import { Report } from "../models/Report.js";
 import { runPublishWorkflow, runRevisionWorkflow } from "../workflows/runner.js";
 
+// 🛡️ MOAT: Feedback içindeki injection girişimlerini temizle
+const MAX_FEEDBACK_LENGTH = 5000;
+
+const FEEDBACK_INJECTION_PATTERNS = [
+    /ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context|rules?)/gi,
+    /forget\s+(everything|all|the\s+above|previous)/gi,
+    /\bSYSTEM\s*:\s*\w+/g,
+    /<\s*\/?\s*system\s*>/gi,
+    /\[END_(?:TASK|INPUT|PROMPT|CONTEXT)\]/gi,
+    /override\s+(?:your\s+)?(?:instructions?|directives?|rules?)/gi,
+];
+
+function sanitizeFeedback(text) {
+    if (!text || typeof text !== "string") return text;
+    let clean = text.slice(0, MAX_FEEDBACK_LENGTH);
+    for (const pattern of FEEDBACK_INJECTION_PATTERNS) {
+        clean = clean.replace(pattern, "[FİLTRELENDİ]");
+    }
+    return clean;
+}
+
 export const handleApproval = async (req, res) => {
     try {
-        const { threadId, isApproved, feedback, category } = req.body;
+        const { threadId, isApproved, category } = req.body;
+        // 🛡️ MOAT: Feedback'i sanitize et ve uzunluk sınırla
+        const feedback = sanitizeFeedback(req.body.feedback);
+
         if (!threadId) return res.status(400).json({ error: "Lütfen threadId belirtin." });
 
         if (category !== "SUPPORT_BUG" && category !== "SUPPORT_PRICING") {

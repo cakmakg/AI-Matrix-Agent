@@ -2,6 +2,7 @@ import { StateGraph, START, END, MemorySaver } from "@langchain/langgraph";
 import { StateAnnotation } from "../state/graphState.js";
 
 // Ajanları İçeri Aktarıyoruz
+import { guardrailNode } from "../agents/guardrailAgent.js";
 import { orchestratorNode } from "../agents/orchestrator.js";
 import { scraperNode } from "../agents/scraperAgent.js";
 import { analyzerNode } from "../agents/analyzerAgent.js";
@@ -20,6 +21,8 @@ export const humanNode = () => {
 
 // 1. LANGGRAPH İŞ AKIŞI VE HAFIZA KURULUMU
 const workflow = new StateGraph(StateAnnotation)
+    // 🛡️ MOAT Katman 1: Her şeyden önce guardrail
+    .addNode("guardrail", guardrailNode)
     .addNode("orchestrator", orchestratorNode)
     .addNode("scraper", scraperNode)
     .addNode("analyzer", analyzerNode)
@@ -30,7 +33,9 @@ const workflow = new StateGraph(StateAnnotation)
     .addNode("publisher", publisherNode)
     .addNode("human_approval", humanNode)
     .addNode("architect", architectNode)
-    .addEdge(START, "orchestrator")
+    // Guardrail: giriş noktası — tehdit varsa END, yoksa orchestrator
+    .addEdge(START, "guardrail")
+    .addConditionalEdges("guardrail", (state) => state.nextAgent === "END" ? END : "orchestrator")
     .addEdge("scraper", "orchestrator")
     .addEdge("analyzer", "orchestrator")
     .addEdge("innovator", "orchestrator")

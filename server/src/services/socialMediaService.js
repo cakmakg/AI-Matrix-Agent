@@ -5,60 +5,63 @@
  */
 
 import axios from "axios";
+import { TwitterApi } from "twitter-api-v2";
 import { SocialAccount } from "../models/SocialAccount.js";
 
 // ─── Twitter / X v2 ────────────────────────────────────────────────────────
 
 /**
- * Post a tweet or thread.
- * For a thread, split content by "---" separator.
- * Uses OAuth 2.0 Bearer token (user auth).
+ * Build an OAuth 1.0a Twitter client from an account document.
+ */
+function getTwitterClient(accountDoc) {
+    return new TwitterApi({
+        appKey:       process.env.TWITTER_API_KEY,
+        appSecret:    process.env.TWITTER_API_SECRET,
+        accessToken:  accountDoc.accessToken,
+        accessSecret: accountDoc.accessTokenSecret,
+    });
+}
+
+/**
+ * Post a single tweet or a thread.
+ * Thread: split content by "\n---\n" — each part becomes a reply to the previous.
  */
 export async function postToTwitter(content, accountDoc) {
-    const { accessToken, accessTokenSecret } = accountDoc;
+    const client = getTwitterClient(accountDoc);
     const tweets = content.split("\n---\n").map((t) => t.trim()).filter(Boolean);
 
     let lastTweetId = null;
     const results = [];
 
     for (const tweetText of tweets) {
-        const body = { text: tweetText.slice(0, 280) };
-        if (lastTweetId) body.reply = { in_reply_to_tweet_id: lastTweetId };
+        const params = { text: tweetText.slice(0, 280) };
+        if (lastTweetId) params.reply = { in_reply_to_tweet_id: lastTweetId };
 
-        // Twitter v2: OAuth 1.0a user context
-        const res = await axios.post(
-            "https://api.twitter.com/2/tweets",
-            body,
-            {
-                headers: {
-                    Authorization: `OAuth oauth_consumer_key="${process.env.TWITTER_API_KEY}",oauth_token="${accessToken}",oauth_signature_method="HMAC-SHA1",oauth_timestamp="${Math.floor(Date.now() / 1000)}",oauth_nonce="${Math.random().toString(36).slice(2)}",oauth_version="1.0",oauth_signature="${accessTokenSecret}"`,
-                    "Content-Type": "application/json",
-                },
-            }
-        );
-
-        lastTweetId = res.data?.data?.id;
-        results.push(res.data);
+        const { data } = await client.v2.tweet(params);
+        lastTweetId = data.id;
+        results.push(data);
     }
 
-    return { platform: "twitter", tweetIds: results.map((r) => r.data?.id), count: results.length };
+    return { platform: "twitter", tweetIds: results.map((r) => r.id), count: results.length };
 }
 
 /**
- * Verify Twitter credentials and return account info.
+ * Verify Twitter credentials via OAuth 1.0a and return account info.
  */
 export async function verifyTwitterCredentials(accessToken, accessTokenSecret) {
-    // Use Twitter v2 /users/me
-    const res = await axios.get("https://api.twitter.com/2/users/me?user.fields=public_metrics,profile_image_url", {
-        headers: {
-            Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}`,
-        },
+    const client = new TwitterApi({
+        appKey:       process.env.TWITTER_API_KEY,
+        appSecret:    process.env.TWITTER_API_SECRET,
+        accessToken,
+        accessSecret: accessTokenSecret,
     });
+
+    const { data } = await client.v2.me({ "user.fields": ["public_metrics", "profile_image_url"] });
     return {
-        accountId: res.data?.data?.id,
-        username: res.data?.data?.username,
-        followerCount: res.data?.data?.public_metrics?.followers_count ?? 0,
-        profileImageUrl: res.data?.data?.profile_image_url ?? "",
+        accountId:       data.id,
+        username:        data.username,
+        followerCount:   data.public_metrics?.followers_count ?? 0,
+        profileImageUrl: data.profile_image_url ?? "",
     };
 }
 
@@ -66,21 +69,21 @@ export async function verifyTwitterCredentials(accessToken, accessTokenSecret) {
  * Get recent tweets and basic analytics for a Twitter account.
  */
 export async function getTwitterAnalytics(accountDoc) {
-    const { accountId } = accountDoc;
-    if (!accountId) return { posts: [], platform: "twitter" };
+    if (!accountDoc.accountId) return { posts: [], platform: "twitter" };
 
-    const res = await axios.get(
-        `https://api.twitter.com/2/users/${accountId}/tweets?max_results=10&tweet.fields=public_metrics,created_at`,
-        { headers: { Authorization: `Bearer ${process.env.TWITTER_BEARER_TOKEN}` } }
-    );
+    const client = getTwitterClient(accountDoc);
+    const timeline = await client.v2.userTimeline(accountDoc.accountId, {
+        max_results: 10,
+        "tweet.fields": ["public_metrics", "created_at"],
+    });
 
-    const posts = (res.data?.data ?? []).map((t) => ({
-        id: t.id,
-        content: t.text,
-        createdAt: t.created_at,
-        likes: t.public_metrics?.like_count ?? 0,
-        retweets: t.public_metrics?.retweet_count ?? 0,
-        replies: t.public_metrics?.reply_count ?? 0,
+    const posts = (timeline.data?.data ?? []).map((t) => ({
+        id:          t.id,
+        content:     t.text,
+        createdAt:   t.created_at,
+        likes:       t.public_metrics?.like_count ?? 0,
+        retweets:    t.public_metrics?.retweet_count ?? 0,
+        replies:     t.public_metrics?.reply_count ?? 0,
         impressions: t.public_metrics?.impression_count ?? 0,
     }));
 

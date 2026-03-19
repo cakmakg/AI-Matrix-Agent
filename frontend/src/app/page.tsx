@@ -10,6 +10,7 @@ import { KnowledgeView } from "@/components/knowledge/knowledge-view";
 import { SettingsView } from "@/components/settings/settings-view";
 import { SkillsView } from "@/components/skills/skills-view";
 import { SocialView } from "@/components/social/social-view";
+import { SecurityView } from "@/components/security/security-view";
 import { ApiKeyModal } from "@/components/auth/api-key-modal";
 
 export default function Home() {
@@ -37,6 +38,7 @@ export default function Home() {
             {activeView === "settings"  && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SettingsView /></main>}
             {activeView === "skills"    && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SkillsView /></main>}
             {activeView === "social"    && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SocialView /></main>}
+            {activeView === "security"  && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SecurityView /></main>}
         </div>
     );
 }

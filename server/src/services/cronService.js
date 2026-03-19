@@ -9,6 +9,7 @@ import { ScheduledPost } from "../models/ScheduledPost.js";
 import { publishScheduledPost } from "../services/socialMediaService.js";
 import { runHotLeadWorkflow } from "../workflows/runner.js";
 import { appendHotLead } from "../services/googleSheetsService.js";
+import { runDailyTwitterScheduler } from "../agents/twitterContentAgent.js";
 
 async function pollGmailInbox() {
     if (!process.env.GOOGLE_REFRESH_TOKEN) return;
@@ -100,6 +101,15 @@ async function pollGmailInbox() {
 }
 
 export const startCronJobs = () => {
+    // Twitter otomatik içerik üretimi — her gün TWITTER_POST_HOUR saatinde (varsayılan: 07:00)
+    const twitterHour = parseInt(process.env.TWITTER_POST_HOUR ?? "7", 10);
+    cron.schedule(`0 ${twitterHour} * * *`, () => {
+        console.log(`\n🐦 [TWITTER CRON] Günlük tweet üretimi başlatıldı (${twitterHour}:00)...`);
+        runDailyTwitterScheduler().catch((err) =>
+            console.error("❌ Twitter daily scheduler hatası:", err.message)
+        );
+    });
+
     cron.schedule("0 8 * * *", () => {
         const threadId = "RND-" + Date.now();
         console.log(`\n⏰ [AR-GE ALARMI ÇALDI] Teknoloji Radarı uyandı! threadId: ${threadId}`);

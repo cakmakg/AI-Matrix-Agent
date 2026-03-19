@@ -19,5 +19,9 @@ export const StateAnnotation = Annotation.Root({
     fileSaved: Annotation({ reducer: (x, y) => y ?? x, default: () => false }),
     humanApproval: Annotation({ reducer: (x, y) => y !== undefined ? y : x, default: () => null }),
     humanFeedback: Annotation({ reducer: (x, y) => y ?? x, default: () => "" }),
-    isPublished: Annotation({ reducer: (x, y) => y ?? x, default: () => false })
+    isPublished: Annotation({ reducer: (x, y) => y ?? x, default: () => false }),
+
+    // 🛡️ MOAT Güvenlik Alanları
+    threatScore: Annotation({ reducer: (x, y) => y !== undefined ? y : x, default: () => 0 }),
+    blockedReason: Annotation({ reducer: (x, y) => y !== undefined ? y : x, default: () => "" }),
 });

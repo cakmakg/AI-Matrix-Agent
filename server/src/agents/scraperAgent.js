@@ -1,6 +1,33 @@
 import { ChatBedrockConverse } from "@langchain/aws";
 import { z } from "zod";
 
+// ─── MOAT Katman 1b: Web İçeriği Sanitizasyonu ───────────────────────────────
+const MAX_CONTENT_PER_SOURCE = 2000;   // karakter
+const MAX_TOTAL_SCRAPED      = 8000;   // karakter
+
+// Web kaynaklarından gelen içerikteki injection girişimlerini temizler
+function sanitizeWebContent(text) {
+    if (!text || typeof text !== "string") return "";
+
+    return text
+        // HTML tag ve script temizleme
+        .replace(/<script[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[\s\S]*?<\/style>/gi, "")
+        .replace(/<[^>]{0,500}>/g, " ")
+        // Prompt injection desenleri
+        .replace(/ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?)/gi, "[FİLTRELENDİ]")
+        .replace(/\bSYSTEM\s*:\s*/g, "[FİLTRELENDİ]: ")
+        .replace(/<\s*\/?\s*system\s*>/gi, "")
+        .replace(/\[END_(?:TASK|INPUT|PROMPT|CONTEXT)\]/gi, "")
+        .replace(/forget\s+(everything|all|the\s+above)/gi, "[FİLTRELENDİ]")
+        .replace(/override\s+(?:your\s+)?(?:instructions?|directives?)/gi, "[FİLTRELENDİ]")
+        // Whitespace normalleştirme
+        .replace(/\s{3,}/g, "  ")
+        .trim()
+        // Kaynak başına uzunluk sınırı
+        .slice(0, MAX_CONTENT_PER_SOURCE);
+}
+
 // Ajan 1: Otonom Araştırmacı (Bağımsız Native Fetch Mimarisi)
 const llm = new ChatBedrockConverse({
     model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
@@ -59,11 +86,21 @@ export async function scraperNode(state) {
 
         const data = await response.json();
         
-        // Gelen veriyi Analiz Ajanı (Ajan 2) için güzelce formatlıyoruz
-        searchResults = `Tavily AI Yapay Zeka Özeti:\n${data.answer || ''}\n\nDetaylı Kaynaklar:\n`;
+        // 🛡️ MOAT: Web içeriğini sanitize ederek formatlıyoruz
+        const cleanAnswer = sanitizeWebContent(data.answer || "");
+        searchResults = `Tavily AI Yapay Zeka Özeti:\n${cleanAnswer}\n\nDetaylı Kaynaklar:\n`;
         data.results.forEach((res, index) => {
-            searchResults += `\n[${index + 1}] Kaynak: ${res.url}\nİçerik: ${res.content}\n`;
+            const cleanContent = sanitizeWebContent(res.content || "");
+            // URL'yi de doğrula (sadece http/https)
+            const safeUrl = /^https?:\/\//i.test(res.url) ? res.url : "[geçersiz-url]";
+            searchResults += `\n[${index + 1}] Kaynak: ${safeUrl}\nİçerik: ${cleanContent}\n`;
         });
+
+        // Toplam uzunluk sınırı
+        if (searchResults.length > MAX_TOTAL_SCRAPED) {
+            searchResults = searchResults.slice(0, MAX_TOTAL_SCRAPED) + "\n[...kırpıldı]";
+            console.warn("   ⚠️  Scraper: İçerik toplam sınırı aşıldı, kırpıldı.");
+        }
 
         console.log("✅ Web taraması tamamlandı! Canlı veriler başarıyla çekildi.");
     } catch (error) {

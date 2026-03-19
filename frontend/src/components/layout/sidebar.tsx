@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { LayoutDashboard, BarChart3, BookOpen, Settings, Blocks, Activity, Share2 } from "lucide-react";
+import { LayoutDashboard, BarChart3, BookOpen, Settings, Blocks, Activity, Share2, ShieldAlert } from "lucide-react";
 import { useAgentStore } from "@/store/agent-store";
 import type { ActiveView } from "@/store/agent-store";
 import { CronTimer } from "@/components/hud/cron-timer";

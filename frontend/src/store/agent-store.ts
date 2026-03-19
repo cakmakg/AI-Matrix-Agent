@@ -135,7 +135,39 @@ export interface SocialSummary {
     publishedThisWeek: number;
 }
 
-export type ActiveView = "control" | "cfo" | "knowledge" | "settings" | "skills" | "social";
+export type ActiveView = "control" | "cfo" | "knowledge" | "settings" | "skills" | "social" | "security";
+
+// 🛡️ MOAT Security types
+export type SecurityEventType =
+    | "THREAT_BLOCKED"
+    | "THREAT_SANITIZED"
+    | "ACTION_REJECTED"
+    | "RATE_LIMIT_HIT"
+    | "INVALID_API_KEY";
+
+export type SecuritySeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type SystemSecurityStatus = "NORMAL" | "ELEVATED" | "WARNING" | "CRITICAL";
+
+export interface SecurityEventItem {
+    id: string;
+    eventType: SecurityEventType;
+    severity: SecuritySeverity;
+    threadId: string;
+    agentId: string;
+    threatScore: number;
+    details: string;
+    rawInput: string;
+    createdAt: string;
+}
+
+export interface SecurityStatus {
+    systemStatus: SystemSecurityStatus;
+    maxThreatScore: number;
+    eventCounts: Record<SecurityEventType, number>;
+    severityCounts: Record<SecuritySeverity, number>;
+    queue: { PENDING: number; PROCESSING: number; SUCCESS: number; FAILED: number; REJECTED: number };
+    recentEvents: SecurityEventItem[];
+}
 
 export type DrawerItem =
     | { type: "report"; threadId: string }

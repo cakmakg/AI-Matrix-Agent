@@ -5,15 +5,27 @@ import helmet from "helmet";
 import mongoose from "mongoose";
 
 import { tenantMiddleware } from "./middleware/tenant.js";
+import { globalLimiter, workflowLimiter, approveLimiter, socialLimiter, knowledgeLimiter } from "./middleware/rateLimiter.js";
 import routes from "./routes/index.js";
 import { startCronJobs } from "./services/cronService.js";
 import { startTelegramBot } from "./services/telegramBotService.js";
+import { startActionWorker } from "./services/actionWorkerService.js";
 
 const server = express();
 server.use(helmet());
 server.use(cors());
-server.use(express.json());
+server.use(express.json({ limit: "2mb" }));  // 🛡️ MOAT: request body boyut sınırı
+
+// 🛡️ MOAT Katman 3: Rate Limiting — global önce, sonra tenant auth
+server.use("/api", globalLimiter);
 server.use(tenantMiddleware);
+
+// Hassas endpoint'lere özel limitler
+server.use("/api/analyze", workflowLimiter);
+server.use("/api/rnd",     workflowLimiter);
+server.use("/api/approve", approveLimiter);
+server.use("/api/social",  socialLimiter);
+server.use("/api/knowledge", knowledgeLimiter);
 
 mongoose.connect(process.env.MONGODB)
     .then(() => console.log("📦 MongoDB Atlas Bağlantısı Başarılı!"))
@@ -30,3 +42,4 @@ server.listen(PORT, () => {
 
 startCronJobs();
 startTelegramBot();
+startActionWorker(); // 🛡️ MOAT Katman 4: Ajan izolasyon worker'ı
