@@ -40,6 +40,16 @@ export async function tenantMiddleware(req, res, next) {
             }
         }
 
+        // 🛡️ MOAT: Askıya alınmış tenant → erişim engelle
+        if (client.status === "suspended") {
+            console.warn(`🚫 Askıya alınmış tenant reddedildi: ${client.slug} — ${req.method} ${req.path}`);
+            return res.status(403).json({
+                error: "TENANT_SUSPENDED",
+                reason: client.suspendReason || "Hesabınız askıya alınmıştır.",
+                suspendedAt: client.suspendedAt,
+            });
+        }
+
         // Müşteri bulundu, konfigürasyonunu (TenantConfig) al
         let config = await TenantConfig.findOne({ clientId: client._id });
 

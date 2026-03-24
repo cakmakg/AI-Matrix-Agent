@@ -11,6 +11,40 @@ interface Props {
     threadId: string;
 }
 
+interface ReportMeta {
+    confidenceScore: number;
+    estimatedCostUsd: number;
+}
+
+function ConfidenceBar({ score }: { score: number }) {
+    const color =
+        score >= 80 ? "#39ff14" :
+        score >= 60 ? "#ffb000" : "#ff2d55";
+    const label =
+        score >= 80 ? "HIGH" :
+        score >= 60 ? "MEDIUM" : "LOW";
+    return (
+        <div className="px-4 py-2.5 border-b border-white/5 shrink-0">
+            <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono text-[8px] text-white/30 uppercase tracking-widest">AI Confidence</span>
+                <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-[8px] tracking-wider" style={{ color }}>{label}</span>
+                    <span className="font-mono text-[12px] font-bold" style={{ color }}>{score}%</span>
+                </div>
+            </div>
+            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${score}%` }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                    className="h-full rounded-full"
+                    style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}55` }}
+                />
+            </div>
+        </div>
+    );
+}
+
 export const ReportViewer = ({ threadId }: Props) => {
     const { pendingContent, threadId: storeThreadId, approveMission, rejectMission, workflowPhase, setDrawerItem, apiKey } = useAgentStore();
     const [feedback, setFeedback] = useState("");
@@ -18,6 +52,12 @@ export const ReportViewer = ({ threadId }: Props) => {
     const [submitting, setSubmitting] = useState(false);
     const [fetchedContent, setFetchedContent] = useState<string | null>(null);
     const [fetching, setFetching] = useState(false);
+    const [meta, setMeta] = useState<ReportMeta | null>(null);
+    const [reportStatus, setReportStatus] = useState<string | null>(null);
+    const [feedbackDone, setFeedbackDone] = useState<"up" | "down" | null>(null);
+    const [showReasonBox, setShowReasonBox] = useState(false);
+    const [feedbackReason, setFeedbackReason] = useState("");
+    const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
     // Sync store threadId when viewing a DB report (so Authorize uses correct threadId)
     useEffect(() => {
@@ -30,32 +70,39 @@ export const ReportViewer = ({ threadId }: Props) => {
         }
     }, [threadId, storeThreadId]);
 
-    // Auto-fetch content from MongoDB when pendingContent is empty for this thread
+    // Fetch from DB — always captures metadata (score + cost), content only if pendingContent is empty
     useEffect(() => {
-        if (pendingContent?.trim()) {
-            setFetchedContent(null);
-            return;
-        }
-        setFetching(true);
-        setFetchedContent(null);
         const headers: Record<string, string> = {};
         if (apiKey) headers["x-api-key"] = apiKey;
+        if (!pendingContent?.trim()) {
+            setFetching(true);
+            setFetchedContent(null);
+        }
         fetch("/api/artifact/" + threadId, { headers })
             .then((r) => r.json())
             .then((data) => {
-                const text = (data.content || "").trim();
-                setFetchedContent(text || "*(Icerik bulunamadi)*");
-                if (text) {
-                    useAgentStore.setState({ pendingContent: text, workflowPhase: "AWAITING_APPROVAL" });
+                if (data.confidenceScore !== undefined) {
+                    setMeta({ confidenceScore: data.confidenceScore, estimatedCostUsd: data.estimatedCostUsd || 0 });
+                }
+                if (data.status) setReportStatus(data.status);
+                if (!pendingContent?.trim()) {
+                    const text = (data.content || "").trim();
+                    setFetchedContent(text || "*(Icerik bulunamadi)*");
+                    if (text) {
+                        useAgentStore.setState({ pendingContent: text, workflowPhase: "AWAITING_APPROVAL" });
+                    }
                 }
             })
-            .catch(() => setFetchedContent("*(Icerik yuklenemedi)*"))
+            .catch(() => { if (!pendingContent?.trim()) setFetchedContent("*(Icerik yuklenemedi)*"); })
             .finally(() => setFetching(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [threadId]);
 
     const content = (pendingContent || "").trim() || fetchedContent || "";
-    const isPublishing = workflowPhase === "PUBLISHING" || workflowPhase === "DELIVERED";
+    const isActivelyPublishing = workflowPhase === "PUBLISHING";
+    const showFeedback = workflowPhase === "DELIVERED"
+        || reportStatus === "PUBLISHED"
+        || reportStatus === "APPROVED";
 
     const handleApprove = async () => {
         setSubmitting(true);
@@ -74,6 +121,41 @@ export const ReportViewer = ({ threadId }: Props) => {
         setDrawerItem(null);
     };
 
+    const formatCost = (usd: number) =>
+        usd === 0 ? "–" :
+        usd < 0.01 ? `$${(usd * 100).toFixed(3)}¢` :
+        `$${usd.toFixed(4)}`;
+
+    const handleFeedback = async (vote: "up" | "down") => {
+        if (vote === "down") { setShowReasonBox(true); return; }
+        setSubmittingFeedback(true);
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (apiKey) headers["x-api-key"] = apiKey;
+        await fetch("/api/feedback", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ threadId, vote: "up", agentName: "WRITER" }),
+        }).catch(() => {});
+        setFeedbackDone("up");
+        setSubmittingFeedback(false);
+    };
+
+    const handleFeedbackSubmit = async () => {
+        if (!feedbackReason.trim()) return;
+        setSubmittingFeedback(true);
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (apiKey) headers["x-api-key"] = apiKey;
+        await fetch("/api/feedback", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ threadId, vote: "down", reason: feedbackReason.trim(), agentName: "WRITER" }),
+        }).catch(() => {});
+        setFeedbackDone("down");
+        setShowReasonBox(false);
+        setFeedbackReason("");
+        setSubmittingFeedback(false);
+    };
+
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
@@ -85,7 +167,16 @@ export const ReportViewer = ({ threadId }: Props) => {
                         Thread: {threadId.slice(0, 16)}...
                     </p>
                 </div>
+                {meta && (
+                    <div className="text-right shrink-0">
+                        <p className="font-mono text-[7px] text-white/20 uppercase tracking-wider">AI Cost</p>
+                        <p className="font-mono text-[10px] text-white/40">{formatCost(meta.estimatedCostUsd)}</p>
+                    </div>
+                )}
             </div>
+
+            {/* Confidence Score Bar */}
+            {meta && meta.confidenceScore > 0 && <ConfidenceBar score={meta.confidenceScore} />}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 py-3 scrollbar-hide">
@@ -115,7 +206,7 @@ export const ReportViewer = ({ threadId }: Props) => {
             </div>
 
             {/* Actions */}
-            {!isPublishing && (
+            {!isActivelyPublishing && !showFeedback && (
                 <div className="px-4 py-3 border-t border-white/5 shrink-0 space-y-2">
                     {rejectMode ? (
                         <>
@@ -182,10 +273,77 @@ export const ReportViewer = ({ threadId }: Props) => {
                 </div>
             )}
 
-            {isPublishing && (
+            {isActivelyPublishing && (
                 <div className="px-4 py-4 border-t border-white/5 shrink-0 flex items-center justify-center gap-2">
                     <Loader2 size={12} className="animate-spin text-neon-blue" />
                     <span className="font-mono text-[10px] text-neon-blue">Publishing payload...</span>
+                </div>
+            )}
+
+
+            {/* Feedback -- shown after delivery or for already-published reports */}
+            {showFeedback && (
+                <div className="px-4 py-3 border-t border-white/5 shrink-0">
+                    {feedbackDone ? (
+                        <div className="flex items-center justify-center gap-2 py-2">
+                            <span
+                                className="font-mono text-[9px]"
+                                style={{ color: feedbackDone === "up" ? "#39ff14" : "#ff2d55" }}
+                            >
+                                {feedbackDone === "up"
+                                    ? "Positive Bewertung gespeichert"
+                                    : "Feedback gespeichert — KI lernt daraus"}
+                            </span>
+                        </div>
+                    ) : showReasonBox ? (
+                        <>
+                            <textarea
+                                value={feedbackReason}
+                                onChange={(e) => setFeedbackReason(e.target.value)}
+                                placeholder="Was war falsch? (z.B. Zu technisch, falscher Ton...)"
+                                className="w-full bg-white/4 border border-white/10 rounded px-3 py-2 font-mono text-[10px] text-white/70 placeholder:text-white/20 outline-none focus:border-alert-red/40 resize-none mb-2"
+                                rows={3}
+                            />
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleFeedbackSubmit}
+                                    disabled={!feedbackReason.trim() || submittingFeedback}
+                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded font-mono text-[9px] font-bold uppercase tracking-wider bg-alert-red/10 border border-alert-red/40 text-alert-red hover:bg-alert-red/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >
+                                    {submittingFeedback ? <Loader2 size={10} className="animate-spin" /> : null}
+                                    Senden
+                                </button>
+                                <button
+                                    onClick={() => { setShowReasonBox(false); setFeedbackReason(""); }}
+                                    className="px-4 py-2 rounded font-mono text-[9px] text-white/40 border border-white/10 hover:border-white/20 transition-colors"
+                                >
+                                    Abbrechen
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <p className="font-mono text-[8px] text-white/30 uppercase tracking-widest mb-2">
+                                War dieser Bericht hilfreich?
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => handleFeedback("up")}
+                                    disabled={submittingFeedback}
+                                    className="flex-1 py-2 rounded font-mono text-[13px] border border-neon-green/30 text-neon-green/60 hover:bg-neon-green/8 hover:border-neon-green/50 transition-all disabled:opacity-30"
+                                >
+                                    👍
+                                </button>
+                                <button
+                                    onClick={() => handleFeedback("down")}
+                                    disabled={submittingFeedback}
+                                    className="flex-1 py-2 rounded font-mono text-[13px] border border-alert-red/30 text-alert-red/60 hover:bg-alert-red/8 hover:border-alert-red/50 transition-all disabled:opacity-30"
+                                >
+                                    👎
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
         </div>

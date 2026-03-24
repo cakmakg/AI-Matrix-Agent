@@ -24,14 +24,21 @@ export const getFinanceSummary = async (req, res) => {
         const totalExpenses = expensesByAgent.reduce((s, e) => s + e.total, 0);
         const totalRevenue = revenueAgg[0]?.total || 0;
 
+        const periodLabel = startOfMonth.toLocaleString("de-DE", { month: "long", year: "numeric" });
+        const allTimeCost = allTimeExpenses[0]?.total || 0;
+
         res.json({
-            period: startOfMonth.toISOString().slice(0, 10),
-            totalExpensesUSD: totalExpenses.toFixed(6),
-            totalRevenueUSD: totalRevenue.toFixed(2),
-            netPnLUSD: (totalRevenue - totalExpenses).toFixed(6),
-            allTimeExpensesUSD: (allTimeExpenses[0]?.total || 0).toFixed(6),
-            expensesByAgent,
-            revenueCount: revenueAgg[0]?.count || 0,
+            // Field names match the frontend FinanceSummary interface
+            periodLabel,
+            totalExpenses,
+            totalRevenue,
+            netPnl: totalRevenue - totalExpenses,
+            allTimeExpenses: allTimeCost,
+            agentBreakdown: expensesByAgent.map(e => ({
+                agentName: e._id,
+                totalCost: e.total,
+                callCount: e.calls,
+            })),
         });
     } catch (err) {
         console.error("❌ /api/finance/summary hatasi:", err.message);

@@ -19,7 +19,8 @@ import {
  */
 export async function getAccounts(req, res) {
     try {
-        const accounts = await SocialAccount.find().lean();
+        const clientId = req.clientId || "default";
+        const accounts = await SocialAccount.find({ clientId }).lean();
         const safe = accounts.map(({ accessToken: _a, accessTokenSecret: _b, refreshToken: _c, ...rest }) => rest);
         res.json({ success: true, accounts: safe });
     } catch (err) {
@@ -34,6 +35,7 @@ export async function getAccounts(req, res) {
  */
 export async function connectAccount(req, res) {
     try {
+        const clientId = req.clientId || "default";
         const { platform, label, accessToken, accessTokenSecret, refreshToken, pageId, customerId } = req.body;
         if (!platform || !accessToken) {
             return res.status(400).json({ success: false, error: "platform ve accessToken gerekli." });
@@ -52,10 +54,11 @@ export async function connectAccount(req, res) {
             // Continue — save with unverified status
         }
 
-        // Upsert by platform
+        // Upsert by clientId + platform (tenant-scoped)
         const doc = await SocialAccount.findOneAndUpdate(
-            { platform },
+            { clientId, platform },
             {
+                clientId,
                 platform,
                 label: label || info.username || platform,
                 accessToken,
@@ -86,7 +89,9 @@ export async function connectAccount(req, res) {
  */
 export async function disconnectAccount(req, res) {
     try {
-        await SocialAccount.findByIdAndDelete(req.params.id);
+        const clientId = req.clientId || "default";
+        const deleted = await SocialAccount.findOneAndDelete({ _id: req.params.id, clientId });
+        if (!deleted) return res.status(404).json({ success: false, error: "Hesap bulunamadı." });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -99,6 +104,9 @@ export async function disconnectAccount(req, res) {
  */
 export async function syncAccount(req, res) {
     try {
+        const clientId = req.clientId || "default";
+        const existing = await SocialAccount.findOne({ _id: req.params.id, clientId });
+        if (!existing) return res.status(404).json({ success: false, error: "Hesap bulunamadı." });
         const account = await syncAccountInfo(req.params.id);
         const { accessToken: _a, accessTokenSecret: _b, refreshToken: _c, ...safe } = account.toObject();
         res.json({ success: true, account: safe });
@@ -113,7 +121,8 @@ export async function syncAccount(req, res) {
  */
 export async function getAnalytics(req, res) {
     try {
-        const account = await SocialAccount.findById(req.params.id).lean();
+        const clientId = req.clientId || "default";
+        const account = await SocialAccount.findOne({ _id: req.params.id, clientId }).lean();
         if (!account) return res.status(404).json({ success: false, error: "Hesap bulunamadı." });
         const analytics = await getAccountAnalytics(account);
         res.json({ success: true, ...analytics });
@@ -131,8 +140,11 @@ export async function getAnalytics(req, res) {
  */
 export async function getPosts(req, res) {
     try {
+        const clientId = req.clientId || "default";
         const { status, limit = 50 } = req.query;
-        const filter = status ? { status } : { status: { $in: ["PENDING", "PUBLISHED", "FAILED"] } };
+        const filter = status
+            ? { clientId, status }
+            : { clientId, status: { $in: ["PENDING", "PUBLISHED", "FAILED"] } };
         const posts = await ScheduledPost.find(filter)
             .sort({ scheduledAt: -1 })
             .limit(Number(limit))
@@ -150,12 +162,14 @@ export async function getPosts(req, res) {
  */
 export async function createPost(req, res) {
     try {
+        const clientId = req.clientId || "default";
         const { platforms, content, scheduledAt, mediaUrls, title, threadId, campaignId } = req.body;
         if (!platforms?.length || !content || !scheduledAt) {
             return res.status(400).json({ success: false, error: "platforms, content ve scheduledAt gerekli." });
         }
 
         const post = await ScheduledPost.create({
+            clientId,
             platforms,
             content,
             mediaUrls: mediaUrls ?? [],
@@ -178,7 +192,8 @@ export async function createPost(req, res) {
  */
 export async function cancelPost(req, res) {
     try {
-        const post = await ScheduledPost.findById(req.params.id);
+        const clientId = req.clientId || "default";
+        const post = await ScheduledPost.findOne({ _id: req.params.id, clientId });
         if (!post) return res.status(404).json({ success: false, error: "Post bulunamadı." });
         if (post.status !== "PENDING") {
             return res.status(400).json({ success: false, error: "Sadece PENDING postlar iptal edilebilir." });
@@ -197,7 +212,8 @@ export async function cancelPost(req, res) {
  */
 export async function publishNow(req, res) {
     try {
-        const post = await ScheduledPost.findById(req.params.id);
+        const clientId = req.clientId || "default";
+        const post = await ScheduledPost.findOne({ _id: req.params.id, clientId });
         if (!post) return res.status(404).json({ success: false, error: "Post bulunamadı." });
         if (post.status === "PUBLISHED") {
             return res.status(400).json({ success: false, error: "Post zaten yayınlandı." });
@@ -229,10 +245,12 @@ export async function publishNow(req, res) {
  */
 export async function getSummary(req, res) {
     try {
+        const clientId = req.clientId || "default";
         const [connectedCount, pendingCount, publishedThisWeek] = await Promise.all([
-            SocialAccount.countDocuments({ isConnected: true }),
-            ScheduledPost.countDocuments({ status: "PENDING" }),
+            SocialAccount.countDocuments({ clientId, isConnected: true }),
+            ScheduledPost.countDocuments({ clientId, status: "PENDING" }),
             ScheduledPost.countDocuments({
+                clientId,
                 status: "PUBLISHED",
                 publishedAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
             }),

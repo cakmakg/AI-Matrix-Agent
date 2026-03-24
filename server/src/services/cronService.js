@@ -81,7 +81,8 @@ async function pollGmailInbox() {
 
             if (analysis.category === "HOT_LEAD") {
                 const threadId = uuidv4();
-                runHotLeadWorkflow(threadId, analysis.orchestratorTask, tenantConfig).catch(err =>
+                const clientPlanForLead = "pro"; // Gmail leads always get at minimum pro-level workflow
+                runHotLeadWorkflow(threadId, analysis.orchestratorTask, tenantConfig, clientId, clientPlanForLead).catch(err =>
                     console.error("Gmail HOT_LEAD hatasi:", err.message)
                 );
                 appendHotLead({
@@ -117,7 +118,7 @@ export const startCronJobs = () => {
 
         const rndTask = "INNOVATION_RADAR: Recherchiere die allerneuesten Updates von Anthropic (Claude) und OpenAI für Entwickler von heute. Erstelle basierend auf diesen neuen Technologien einen Master Blueprint (.md), der erklärt, wie wir diese neuen KI-Features in unsere bestehende Architektur integrieren können.";
 
-        runHotLeadWorkflow(threadId, rndTask).catch((err) =>
+        runHotLeadWorkflow(threadId, rndTask, null, "default", "enterprise").catch((err) =>
             console.error("❌ R&D Cron Hatası:", err.message)
         );
     });

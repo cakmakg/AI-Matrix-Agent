@@ -14,6 +14,15 @@ const TenantConfigSchema = new mongoose.Schema(
         supportInstructions: { type: String, default: "" },
         enabledSkills: { type: [String], default: [] },
         skillConfigs: { type: Object, default: {} },
+
+        // Per-tenant integration endpoints (Adım 3: n8n + bildirim yönlendirmesi)
+        integrations: {
+            n8nWebhookUrl:    { type: String, default: "" },
+            n8nWebhookSecret: { type: String, default: "" },
+            telegramBotToken: { type: String, default: "" },
+            telegramChatId:   { type: String, default: "" },
+            discordWebhookUrl:{ type: String, default: "" },
+        },
     },
     { timestamps: true }
 );

@@ -4,23 +4,25 @@ import { ActionQueue } from "../models/ActionQueue.js";
 export const getSecurityStatus = async (req, res) => {
     try {
         const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const clientId = req.clientId || "default";
 
         // Son 24 saatteki olaylar (paralel sorgular)
         const [events, queueStats, maxThreat] = await Promise.all([
             // Son 50 güvenlik olayı
-            SecurityEvent.find({ createdAt: { $gte: since24h } })
+            SecurityEvent.find({ clientId, createdAt: { $gte: since24h } })
                 .sort({ createdAt: -1 })
                 .limit(50)
                 .lean(),
 
-            // ActionQueue durum sayımları (tüm zaman)
+            // ActionQueue durum sayımları (bu tenant)
             ActionQueue.aggregate([
-                { $group: { _id: "$status", count: { $sum: 1 } } }
+                { $match: { clientId } },
+                { $group: { _id: "$status", count: { $sum: 1 } } },
             ]),
 
             // Son 24h maksimum tehdit skoru
             SecurityEvent.findOne(
-                { createdAt: { $gte: since24h }, eventType: { $in: ["THREAT_BLOCKED", "THREAT_SANITIZED"] } },
+                { clientId, createdAt: { $gte: since24h }, eventType: { $in: ["THREAT_BLOCKED", "THREAT_SANITIZED"] } },
                 { threatScore: 1 }
             ).sort({ threatScore: -1 }).lean(),
         ]);

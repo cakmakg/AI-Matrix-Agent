@@ -12,6 +12,9 @@ import { criticNode } from "../agents/criticAgent.js";
 import { fileNode } from "../agents/fileAgent.js";
 import { publisherNode } from "../agents/publisherAgent.js";
 import { architectNode } from "../agents/architectAgent.js";
+import { salesRepNode } from "../agents/salesAgent.js";
+import { auditorNode } from "../agents/auditorAgent.js";
+import { supplyChainNode } from "../agents/supplyChainAgent.js";
 
 // 🎯 Yargıç Gölge Düğümü
 export const humanNode = () => {
@@ -33,6 +36,9 @@ const workflow = new StateGraph(StateAnnotation)
     .addNode("publisher", publisherNode)
     .addNode("human_approval", humanNode)
     .addNode("architect", architectNode)
+    .addNode("salesRep", salesRepNode)
+    .addNode("auditor", auditorNode)
+    .addNode("supplyChain", supplyChainNode)
     // Guardrail: giriş noktası — tehdit varsa END, yoksa orchestrator
     .addEdge(START, "guardrail")
     .addConditionalEdges("guardrail", (state) => state.nextAgent === "END" ? END : "orchestrator")
@@ -45,6 +51,9 @@ const workflow = new StateGraph(StateAnnotation)
     .addEdge("publisher", "orchestrator")
     .addEdge("human_approval", "orchestrator")
     .addEdge("architect", "orchestrator")
+    .addEdge("salesRep", "orchestrator")
+    .addEdge("auditor", "orchestrator")
+    .addEdge("supplyChain", "orchestrator")
     .addConditionalEdges("orchestrator", (state) => state.nextAgent === "END" ? END : state.nextAgent);
 
 const checkpointer = new MemorySaver();

@@ -1,5 +1,18 @@
 import { ChatBedrockConverse } from "@langchain/aws";
 import { trackLLMCost } from "../services/costTracker.js";
+import Feedback from "../models/Feedback.js";
+import { getPrompt } from "../services/promptRepository.js";
+
+async function getRecentNegativeFeedbacks(clientId, limit = 3) {
+    try {
+        return await Feedback.find({ clientId, vote: "down" })
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .select("reason");
+    } catch {
+        return [];
+    }
+}
 
 // Ajan 3'ün Beyni (Kalite için Sonnet kullanıyoruz)
 const llm = new ChatBedrockConverse({
@@ -13,10 +26,21 @@ const llm = new ChatBedrockConverse({
 
 export async function writerNode(state, config) {
     const tenantConfig = config?.configurable?.tenantConfig;
-    const persona = tenantConfig?.agentPersona || "Sie sind ein erfahrener Senior IT Consultant und Pre-Sales Architect in Deutschland.";
+    const clientIdForPrompt = config?.configurable?.tenantConfig?.clientId || "default";
+    const writerPromptOverride = await getPrompt("WRITER", clientIdForPrompt);
+    const persona = writerPromptOverride || tenantConfig?.agentPersona || "Sie sind ein erfahrener Senior IT Consultant und Pre-Sales Architect in Deutschland.";
     const tone = tenantConfig?.tone || "professionelles B2B Business-Deutsch";
 
     let prompt = "";
+
+    // 📚 Feedback Loop: son negatif geri bildirimleri öğrenme kuralı olarak enjekte et
+    const clientId = config?.configurable?.tenantConfig?.clientId || "default";
+    const negativeFeedbacks = await getRecentNegativeFeedbacks(clientId);
+    let learningPrefix = "";
+    if (negativeFeedbacks.length > 0) {
+        const rules = negativeFeedbacks.map((f, i) => `${i + 1}. "${f.reason}"`).join("\n");
+        learningPrefix = `⚠️ KRITISCHE LERNREGEL — Benutzer hat frühere Fehler korrigiert:\n${rules}\n\nBitte beachte diese Regeln unbedingt.\n\n---\n\n`;
+    }
 
     // 🎯 Hangi geri bildirimi kullanacağız? Yargıcınki mi, Eleştirmeninki mi?
     const activeFeedback = state.humanFeedback || state.criticFeedback;
@@ -159,10 +183,20 @@ export async function writerNode(state, config) {
         3. Nutzen Sie Markdown-Formatierungen (Überschriften # und ##, Aufzählungen, fette Texte), um das Lesen zu erleichtern.
         4. Fügen Sie eine formelle Begrüßung (z.B. "Sehr geehrte Damen und Herren,") und eine professionelle Verabschiedung (z.B. "Mit freundlichen Grüßen,") hinzu.
         5. Geben Sie NUR den endgültigen Bericht aus. Keine einleitenden Sätze oder Erklärungen.
+        6. WICHTIG — Berechnen Sie am Ende einen KI-Konfidenzwert (0-100) nach dieser Logik:
+           - Basis: 50 Punkte
+           - Recherche-Daten vorhanden und umfangreich (>500 Zeichen): +20
+           - Klare strategische Empfehlungen mit konkreten Maßnahmen: +15
+           - Keine wesentlichen Datenlücken oder Unsicherheiten im Analysebericht: +15
+           Geben Sie diesen Wert in der ALLERLETZTEN Zeile aus, exakt so (keine Erklärung, nur diese Zeile):
+           CONFIDENCE_SCORE:XX
 
         Hier ist der Analysebericht:
         ${state.analysisReport}${innovatorSection}`;
     }
+
+    // 📚 Öğrenme kurallarını prompt başına ekle
+    if (learningPrefix) prompt = learningPrefix + prompt;
 
     // AWS Bedrock'a metni yazdırıyoruz
     const response = await llm.invoke(prompt);
@@ -174,19 +208,25 @@ export async function writerNode(state, config) {
         "WRITER", state.threadId || "SYSTEM", config?.configurable?.tenantConfig?.clientId || "default"
     ).catch(() => { });
 
-    const logMsg = isSocialMediaTask ? "Social Media Content hazır!" : "Deutscher IT-Pitch ist fertig! (Almanca IT Teklifi hazır!)";
-    console.log(`✅ İçerik Üretici: ${logMsg}`);
+    // 🎯 Güven Skoru: CONFIDENCE_SCORE:XX satırını response'dan çıkar ve temizle
+    const rawContent = String(response.content);
+    const scoreMatch = rawContent.match(/CONFIDENCE_SCORE:(\d{1,3})/);
+    const confidenceScore = scoreMatch
+        ? Math.min(100, Math.max(0, parseInt(scoreMatch[1], 10)))
+        : 75;
+    const finalContent = rawContent.replace(/\n?CONFIDENCE_SCORE:\d{1,3}\s*$/m, "").trimEnd();
 
-    // YENİ DÖNGÜ KURALI: Tüm onayları ve eleştirileri sıfırlıyoruz!
-    // YENİ DÖNGÜ KURALI: 
+    const logMsg = isSocialMediaTask ? "Social Media Content hazır!" : "Deutscher IT-Pitch ist fertig! (Almanca IT Teklifi hazır!)";
+    console.log(`✅ İçerik Üretici: ${logMsg} | Güven Skoru: ${confidenceScore}/100`);
+
     return {
-        finalContent: response.content,
+        finalContent,
+        confidenceScore,
         criticFeedback: null,
         humanFeedback: null,
         isApproved: false,
         fileSaved: false,
         humanApproval: null,
-        // Yazar hata düzeltiyorsa sayacı 1 artırır
         revisionCount: activeFeedback ? 1 : 0
     };
 }

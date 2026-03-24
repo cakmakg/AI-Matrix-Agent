@@ -3,21 +3,15 @@
  *
  * Bu servis tamamen LLM BARINDIRMAZ. Aptal ama güvenlidir.
  *
- * İş akışı:
- *  1. Her 5 saniyede ActionQueue'yu yoklar (status: PENDING)
- *  2. Her action'ı WHITELIST schema'ya göre doğrular
- *  3. Geçerliyse → çalıştırır ve SUCCESS/FAILED günceller
- *  4. Geçersizse → REJECTED olarak işaretler, loglar, dokunmaz
- *
- * Prensip: Ajan "Yayınla" kararı verir. Worker "Ne yayınlanabileceğine" karar verir.
+ * SaaS Adım 3: Executor'lar action.clientId üzerinden TenantConfig.integrations
+ * tablosunu okur ve per-tenant webhook URL'lerini kullanır.
+ * Tenant'a özel URL yoksa global env vars'a düşer (backward compat).
  */
 
 import { ActionQueue } from "../models/ActionQueue.js";
 import { SecurityEvent } from "../models/SecurityEvent.js";
 
 // ─── İzin Verilen Action Şemaları (Whitelist) ────────────────────────────────
-// Worker yalnızca bu şemaya uyan payload'ları işler.
-// Fazladan alan? → REJECTED. Eksik alan? → REJECTED. Tip yanlış? → REJECTED.
 
 const PAYLOAD_VALIDATORS = {
     WEBHOOK_N8N: (p) => {
@@ -26,7 +20,7 @@ const PAYLOAD_VALIDATORS = {
         if (typeof p.task      !== "string") return "task string olmalı";
         if (p.content.length   > 50_000)     return "content 50k char sınırını aşıyor";
         if (p.task.length      > 3_000)      return "task 3k char sınırını aşıyor";
-        return null; // geçerli
+        return null;
     },
 
     TELEGRAM: (p) => {
@@ -85,31 +79,62 @@ const PAYLOAD_VALIDATORS = {
     },
 };
 
-// ─── Executor'lar (Doğrulanan payload'ı yürüten fonksiyonlar) ───────────────
+// ─── Per-tenant integration config yardımcısı ────────────────────────────────
+// clientId (slug) ile TenantConfig.integrations'ı lazy yükler.
+
+async function getTenantIntegrations(clientId) {
+    if (!clientId || clientId === "default") return null;
+    try {
+        const { Client }       = await import("../models/Client.js");
+        const { TenantConfig } = await import("../models/TenantConfig.js");
+        const client = await Client.findOne({ slug: clientId }).lean();
+        if (!client) return null;
+        const config = await TenantConfig.findOne({ clientId: client._id }).lean();
+        return config?.integrations || null;
+    } catch {
+        return null;
+    }
+}
+
+// ─── Executor'lar ─────────────────────────────────────────────────────────────
 
 async function executeWebhookN8n(payload, action) {
-    const webhookUrl = process.env.N8N_PUBLISH_WEBHOOK;
-    if (!webhookUrl) throw new Error("N8N_PUBLISH_WEBHOOK env tanımsız");
+    const integrations = await getTenantIntegrations(action.clientId);
+
+    // Per-tenant URL öncelikli, yoksa global env
+    const webhookUrl = integrations?.n8nWebhookUrl || process.env.N8N_PUBLISH_WEBHOOK;
+    if (!webhookUrl) {
+        console.warn(`   ⚠️ n8n webhook URL bulunamadı (clientId: ${action.clientId}) — atlanıyor`);
+        return "n8n webhook URL tanımsız — atlandı";
+    }
+
+    const secret = integrations?.n8nWebhookSecret || process.env.N8N_WEBHOOK_SECRET || "";
 
     const res = await fetch(webhookUrl, {
         method:  "POST",
         headers: {
             "Content-Type":     "application/json",
-            "X-Webhook-Secret": process.env.N8N_WEBHOOK_SECRET || "",
+            "X-Webhook-Secret": secret,
             "X-Source":         "ai-orchestra-worker",
             "X-Thread-Id":      action.threadId,
+            "X-Client-Id":      action.clientId || "default",
         },
-        body: JSON.stringify({ type: "publish", ...payload }),
+        body: JSON.stringify({ type: "publish", clientId: action.clientId, ...payload }),
         signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) throw new Error(`n8n HTTP ${res.status}: ${await res.text()}`);
     return "n8n webhook tetiklendi";
 }
 
-async function executeTelegram(payload) {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId   = process.env.TELEGRAM_CHAT_ID;
-    if (!botToken || !chatId) throw new Error("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID env tanımsız");
+async function executeTelegram(payload, action) {
+    const integrations = await getTenantIntegrations(action.clientId);
+
+    const botToken = integrations?.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN;
+    const chatId   = integrations?.telegramChatId   || process.env.TELEGRAM_CHAT_ID;
+    if (!botToken || !chatId) {
+        console.warn(`   ⚠️ Telegram config bulunamadı (clientId: ${action.clientId}) — atlanıyor`);
+        return "Telegram config tanımsız — atlandı";
+    }
 
     const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method:  "POST",
@@ -121,9 +146,14 @@ async function executeTelegram(payload) {
     return "Telegram mesajı gönderildi";
 }
 
-async function executeDiscord(payload) {
-    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-    if (!webhookUrl) throw new Error("DISCORD_WEBHOOK_URL env tanımsız");
+async function executeDiscord(payload, action) {
+    const integrations = await getTenantIntegrations(action.clientId);
+
+    const webhookUrl = integrations?.discordWebhookUrl || process.env.DISCORD_WEBHOOK_URL;
+    if (!webhookUrl) {
+        console.warn(`   ⚠️ Discord webhook URL bulunamadı (clientId: ${action.clientId}) — atlanıyor`);
+        return "Discord webhook URL tanımsız — atlandı";
+    }
 
     const res = await fetch(webhookUrl, {
         method:  "POST",
@@ -136,7 +166,6 @@ async function executeDiscord(payload) {
 }
 
 // Twitter / LinkedIn / Instagram / Facebook / Google Ads executor'ları
-// SocialAccount token'larını DB'den okuyarak socialMediaService'i çağırır
 async function executeSocialPlatform(actionType, payload) {
     const { SocialAccount } = await import("../models/SocialAccount.js");
     const account = await SocialAccount.findById(payload.accountId).lean();
@@ -158,16 +187,15 @@ async function executeSocialPlatform(actionType, payload) {
 // ─── Ana İşleme Döngüsü ─────────────────────────────────────────────────────
 
 async function processNextAction() {
-    // Atomik: PENDING → PROCESSING (race condition'a karşı findOneAndUpdate)
     const action = await ActionQueue.findOneAndUpdate(
         { status: "PENDING" },
         { $set: { status: "PROCESSING", processedAt: new Date() }, $inc: { attempts: 1 } },
         { sort: { createdAt: 1 }, new: true }
     );
 
-    if (!action) return; // Kuyruk boş
+    if (!action) return;
 
-    console.log(`⚙️  ActionWorker: [${action.actionType}] işleniyor — threadId: ${action.threadId}`);
+    console.log(`⚙️  ActionWorker: [${action.actionType}] işleniyor — threadId: ${action.threadId}, clientId: ${action.clientId || "default"}`);
 
     // 1. Whitelist doğrulama
     const validator = PAYLOAD_VALIDATORS[action.actionType];
@@ -192,9 +220,9 @@ async function processNextAction() {
     try {
         let result;
         switch (action.actionType) {
-            case "WEBHOOK_N8N": result = await executeWebhookN8n(action.payload, action);  break;
-            case "TELEGRAM":    result = await executeTelegram(action.payload);            break;
-            case "DISCORD":     result = await executeDiscord(action.payload);             break;
+            case "WEBHOOK_N8N": result = await executeWebhookN8n(action.payload, action); break;
+            case "TELEGRAM":    result = await executeTelegram(action.payload, action);   break;
+            case "DISCORD":     result = await executeDiscord(action.payload, action);    break;
             default:            result = await executeSocialPlatform(action.actionType, action.payload);
         }
 
@@ -202,7 +230,6 @@ async function processNextAction() {
         console.log(`✅ ActionWorker SUCCESS [${action.actionType}] — ${result}`);
 
     } catch (err) {
-        // Maksimum 3 deneme sonrası FAILED
         const newStatus = action.attempts >= 3 ? "FAILED" : "PENDING";
         await ActionQueue.findByIdAndUpdate(action._id, {
             status:       newStatus,
@@ -238,14 +265,14 @@ export function stopActionWorker() {
 
 /**
  * Ajan tarafından kullanılan tek yazma noktası.
- * Ajan bu fonksiyonu çağırır — doğrudan hiçbir API'ye erişemez.
+ * SaaS Adım 3: clientId parametresi eklendi — ActionQueue kaydına yazılır.
  */
-export async function enqueueAction({ threadId, agentId, actionType, payload }) {
+export async function enqueueAction({ threadId, clientId = "default", agentId, actionType, payload }) {
     const allowed = Object.keys(PAYLOAD_VALIDATORS);
     if (!allowed.includes(actionType)) {
         throw new Error(`İzin verilmeyen actionType: '${actionType}'. İzinliler: ${allowed.join(", ")}`);
     }
-    const item = await ActionQueue.create({ threadId, agentId, actionType, payload });
-    console.log(`📥 ActionQueue: [${actionType}] kuyruğa eklendi — id: ${item._id}`);
+    const item = await ActionQueue.create({ threadId, clientId, agentId, actionType, payload });
+    console.log(`📥 ActionQueue: [${actionType}] kuyruğa eklendi — id: ${item._id}, client: ${clientId}`);
     return item._id;
 }

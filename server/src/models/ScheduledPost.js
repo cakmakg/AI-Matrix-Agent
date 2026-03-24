@@ -55,6 +55,11 @@ const ScheduledPostSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
+        clientId: {
+            type: String,
+            default: "default",
+            index: true,
+        },
     },
     { timestamps: true }
 );

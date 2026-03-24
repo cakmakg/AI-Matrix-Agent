@@ -13,6 +13,11 @@ import knowledgeRoutes from "./knowledgeRoutes.js";
 import skillRoutes from "./skillRoutes.js";
 import socialRoutes from "./socialRoutes.js";
 import securityRoutes from "./securityRoutes.js";
+import feedbackRoutes from "./feedbackRoutes.js";
+import promptRoutes from "./promptRoutes.js";
+import auditorRoutes from "./auditorRoutes.js";
+import supplyChainRoutes from "./supplyChainRoutes.js";
+import adminRoutes from "./adminRoutes.js";
 import { classifyEmail } from "../controllers/classifyController.js";
 import { webhookAuth } from "../middleware/webhook.js";
 
@@ -31,6 +36,11 @@ router.use("/knowledge", knowledgeRoutes);
 router.use("/skills", skillRoutes);
 router.use("/social", socialRoutes);
 router.use("/security", securityRoutes);
+router.use("/feedback", feedbackRoutes);
+router.use("/prompts", promptRoutes);
+router.use("/auditor", auditorRoutes);
+router.use("/supply", supplyChainRoutes);
+router.use("/admin", adminRoutes);
 router.post("/classify-email", webhookAuth, classifyEmail);
 
 export default router;

@@ -28,6 +28,11 @@ const CampaignDraftSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+        clientId: {
+            type: String,
+            default: "default",
+            index: true,
+        },
     },
     {
         timestamps: true,

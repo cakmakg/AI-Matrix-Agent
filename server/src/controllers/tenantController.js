@@ -1,5 +1,29 @@
 import { TenantConfig } from "../models/TenantConfig.js";
 
+// PUT /api/tenant/integrations — per-tenant webhook URL'leri güncelle (Adım 3)
+export const updateTenantIntegrations = async (req, res) => {
+    try {
+        if (!req.tenant?.client) return res.status(401).json({ error: "Unauthorized" });
+        const { n8nWebhookUrl, n8nWebhookSecret, telegramBotToken, telegramChatId, discordWebhookUrl } = req.body;
+
+        const updateObj = {};
+        if (n8nWebhookUrl     !== undefined) updateObj["integrations.n8nWebhookUrl"]     = n8nWebhookUrl;
+        if (n8nWebhookSecret  !== undefined) updateObj["integrations.n8nWebhookSecret"]  = n8nWebhookSecret;
+        if (telegramBotToken  !== undefined) updateObj["integrations.telegramBotToken"]  = telegramBotToken;
+        if (telegramChatId    !== undefined) updateObj["integrations.telegramChatId"]    = telegramChatId;
+        if (discordWebhookUrl !== undefined) updateObj["integrations.discordWebhookUrl"] = discordWebhookUrl;
+
+        const config = await TenantConfig.findOneAndUpdate(
+            { clientId: req.tenant.client._id },
+            { $set: updateObj },
+            { new: true, upsert: true }
+        );
+        res.json({ success: true, integrations: config.integrations });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 export const getTenantConfig = async (req, res) => {
     res.json({ success: true, client: req.tenant?.client, config: req.tenant?.config });
 };

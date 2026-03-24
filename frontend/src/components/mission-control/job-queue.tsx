@@ -1,13 +1,176 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Send, RefreshCw, Zap, Download, Bug, Megaphone, FileText,
-    Clock, ChevronRight, AlertTriangle, Users, Radio,
+    Clock, ChevronRight, AlertTriangle, Users, Radio, Link, Upload,
 } from "lucide-react";
 import { useAgentStore } from "@/store/agent-store";
-import type { DrawerItem, SupportTicketSummary, CampaignDraftSummary, MissionSummary, AgentId } from "@/store/agent-store";
+import type { DrawerItem, SupportTicketSummary, CampaignDraftSummary, MissionSummary, AgentId, SaaSProduct } from "@/store/agent-store";
+
+// ── Ürün başına input konfigürasyonu ──────────────────────────
+const PRODUCT_INPUT: Record<SaaSProduct, {
+    type: "text" | "url" | "file";
+    label: string;
+    placeholder: string;
+    taskPrefix: string;
+}> = {
+    rfp_responder:    { type: "file", label: "İhale Dosyası",    placeholder: "PDF/Word sürükleyin veya tıklayın",               taskPrefix: "RFP_RESPONSE: "      },
+    b2b_outreach:     { type: "url",  label: "Hedef Şirket URL", placeholder: "Hedef şirketin web sitesini girin (örn: stripe.com)", taskPrefix: "COLD_OUTREACH: "   },
+    competitor_radar: { type: "text", label: "Araştırma Hedefi", placeholder: "Rakip araştırması veya sektör analizi girin...",    taskPrefix: "INNOVATION_RADAR: " },
+    cto_service:      { type: "text", label: "Proje Tanımı",     placeholder: "Proje gereksinimlerini yazın (Next.js, Blueprint, App...)...", taskPrefix: "" },
+    social_engine:    { type: "text", label: "İçerik Görevi",    placeholder: "TWITTER veya LINKEDIN ile başlayan konu girin...", taskPrefix: ""                    },
+    support_desk:     { type: "text", label: "Destek Görevi",    placeholder: "Müşteri sorusu veya destek görevi girin...",       taskPrefix: ""                    },
+    finance_audit:    { type: "text", label: "Fatura Görevi",    placeholder: "INVOICE_PROCESSING: Tedarikçi adı ve tutar...",   taskPrefix: "INVOICE_PROCESSING: " },
+    supply_chain:     { type: "text", label: "Stok Görevi",      placeholder: "STOCK_CHECK: Ürün kodu ve mevcut stok...",        taskPrefix: "STOCK_CHECK: "        },
+    general:              { type: "text", label: "Görev",                 placeholder: "Herhangi bir görev girin... (Enter ile gönder)",                    taskPrefix: ""                       },
+    holding:              { type: "text", label: "Holding Görevi",       placeholder: "Tüm 14 ajan hazır — departman görevi veya herhangi bir görev girin...", taskPrefix: ""                       },
+    business_stress_test: { type: "file", label: "Pitch Deck",           placeholder: "İş Planınızı (Pitch Deck) Yükleyin (PDF/Word)",                       taskPrefix: "BUSINESS_STRESS_TEST: " },
+    trend_radar:          { type: "text", label: "Sektör / Trend Hedefi",placeholder: "Sektör adı girin (örn: Giyilebilir Teknoloji, Vegan Gıda)...",        taskPrefix: "TREND_RADAR: "          },
+};
+
+/* ── ProductInput Component ────────────────────────────────────────────────
+   Ürün tipine göre farklı input render eder:
+   - "text"  → standart textarea
+   - "url"   → URL girdi alanı (b2b_outreach)
+   - "file"  → dosya yükleme alanı (rfp_responder)
+   TaskPrefix ile girdi otomatik etiketlenerek gönderilir.
+═══════════════════════════════════════════════════════════════════════════ */
+function ProductInput({ product, sending, onSend, onRdScan, onPullArtifact }: {
+    product: SaaSProduct;
+    sending: boolean;
+    onSend: (msg: string) => void;
+    onRdScan: () => void;
+    onPullArtifact: () => void;
+}) {
+    const cfg = PRODUCT_INPUT[product] ?? PRODUCT_INPUT.general;
+    const [input, setInput] = useState("");
+    const [dragOver, setDragOver] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
+
+    const handleSend = () => {
+        if (!input.trim()) return;
+        onSend(cfg.taskPrefix + input.trim());
+        setInput("");
+    };
+
+    const handleFile = (file: File) => {
+        const name = file.name.replace(/.[^.]+$/, "");
+        onSend(`RFP_RESPONSE: ${name} — ${file.name}`);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setDragOver(false);
+        const file = e.dataTransfer.files[0];
+        if (file) handleFile(file);
+    };
+
+    return (
+        <div>
+            <h3 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
+                {cfg.label}
+                <span className="font-mono text-[8px] text-white/20 bg-white/5 px-2 py-0.5 rounded border border-white/8 normal-case tracking-normal">
+                    {product.replace(/_/g, " ")}
+                </span>
+            </h3>
+
+            {/* FILE input */}
+            {cfg.type === "file" && (
+                <>
+                    <div
+                        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                        onDragLeave={() => setDragOver(false)}
+                        onDrop={handleDrop}
+                        onClick={() => fileRef.current?.click()}
+                        className={`flex flex-col items-center justify-center gap-2 py-6 rounded-xl border-2 border-dashed cursor-pointer transition-all
+                            ${dragOver
+                                ? "border-[#00f0ff]/60 bg-[#00f0ff]/8"
+                                : "border-white/12 bg-white/2 hover:border-[#00f0ff]/35 hover:bg-[#00f0ff]/4"}`}
+                    >
+                        <Upload size={20} className="text-white/25" />
+                        <p className="text-xs text-white/35 text-center leading-relaxed">{cfg.placeholder}</p>
+                        <p className="text-[9px] text-white/18 font-mono">.pdf · .docx · .doc</p>
+                    </div>
+                    <input ref={fileRef} type="file" accept=".pdf,.docx,.doc" className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                </>
+            )}
+
+            {/* URL input */}
+            {cfg.type === "url" && (
+                <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                        <Link size={13} className="text-[#00f0ff]/40" />
+                    </div>
+                    <input
+                        type="url"
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleSend(); } }}
+                        placeholder={cfg.placeholder}
+                        className="w-full bg-white/4 border border-white/10 rounded-xl pl-9 pr-10 py-3 text-sm text-white/80
+                                   placeholder:text-white/20 outline-none focus:border-[#00f0ff]/35 focus:bg-white/5 transition-colors"
+                    />
+                    <button
+                        onClick={handleSend}
+                        disabled={!input.trim() || sending}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-[#00f0ff]/12 border border-[#00f0ff]/25
+                                   text-[#00f0ff]/70 hover:bg-[#00f0ff]/20 hover:border-[#00f0ff]/50
+                                   disabled:opacity-25 disabled:cursor-not-allowed transition-all"
+                    >
+                        <Send size={12} className={sending ? "animate-pulse" : ""} />
+                    </button>
+                </div>
+            )}
+
+            {/* TEXT textarea (default) */}
+            {cfg.type === "text" && (
+                <div className="relative">
+                    <textarea
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                        placeholder={cfg.placeholder}
+                        rows={3}
+                        className="w-full bg-white/4 border border-white/10 rounded-xl px-4 py-3 pr-10 text-sm text-white/80
+                                   placeholder:text-white/20 outline-none focus:border-[#00f0ff]/35 focus:bg-white/5
+                                   resize-none transition-colors leading-relaxed"
+                    />
+                    <button
+                        onClick={handleSend}
+                        disabled={!input.trim() || sending}
+                        className="absolute bottom-3 right-3 p-1.5 rounded-lg bg-[#00f0ff]/12 border border-[#00f0ff]/25
+                                   text-[#00f0ff]/70 hover:bg-[#00f0ff]/20 hover:border-[#00f0ff]/50
+                                   disabled:opacity-25 disabled:cursor-not-allowed transition-all"
+                    >
+                        <Send size={12} className={sending ? "animate-pulse" : ""} />
+                    </button>
+                </div>
+            )}
+
+            <div className="flex gap-2 mt-3">
+                <button
+                    onClick={onRdScan}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold
+                               uppercase tracking-wider border border-[#39ff14]/20 text-[#39ff14]/60
+                               hover:bg-[#39ff14]/8 hover:border-[#39ff14]/40 hover:text-[#39ff14] transition-all"
+                >
+                    <Zap size={11} /> F&E-Radar
+                </button>
+                <button
+                    onClick={onPullArtifact}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold
+                               uppercase tracking-wider border border-white/12 text-white/40
+                               hover:bg-white/5 hover:border-white/20 hover:text-white/60 transition-all"
+                >
+                    <Download size={11} /> Letzter Bericht
+                </button>
+            </div>
+        </div>
+    );
+}
 
 type FilterTab = "all" | "hitl" | "support" | "campaign";
 
@@ -260,11 +423,11 @@ export const JobQueue = () => {
     const {
         workflowPhase, threadId, missionMessage, pendingContent,
         missions, supportTickets, campaignDrafts, logs, agents, cronSecondsLeft,
+        clientProduct,
         fetchSupportTickets, fetchCampaignDrafts, fetchMissions,
         setDrawerItem, sendMission, forceRdScan, pullLatestArtifact,
     } = useAgentStore();
 
-    const [input, setInput]       = useState("");
     const [activeTab, setActiveTab] = useState<FilterTab>("all");
     const [loading, setLoading]   = useState(false);
     const [sending, setSending]   = useState(false);
@@ -290,10 +453,8 @@ export const JobQueue = () => {
 
     useEffect(() => { refresh(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleSend = async () => {
-        if (!input.trim() || sending) return;
-        const msg = input.trim();
-        setInput("");
+    const handleSend = async (msg: string) => {
+        if (!msg || sending) return;
         setSending(true);
         await sendMission(msg);
         setSending(false);
@@ -431,52 +592,15 @@ export const JobQueue = () => {
                     className="w-[380px] shrink-0 flex flex-col overflow-hidden"
                     style={{ background: "#0b1220" }}
                 >
-                    {/* Mission Input */}
+                    {/* Mission Input — ürüne göre dinamik form */}
                     <div className="px-5 py-4 border-b border-white/6 shrink-0">
-                        <h3 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">
-                            Neue Aufgabe senden
-                        </h3>
-                        <div className="relative">
-                            <textarea
-                                value={input}
-                                onChange={e => setInput(e.target.value)}
-                                onKeyDown={e => {
-                                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
-                                }}
-                                placeholder="Aufgabenbeschreibung eingeben... (Enter zum Senden)"
-                                rows={3}
-                                className="w-full bg-white/4 border border-white/10 rounded-xl px-4 py-3 pr-10 text-sm text-white/80
-                                           placeholder:text-white/20 outline-none focus:border-[#00f0ff]/35 focus:bg-white/5
-                                           resize-none transition-colors leading-relaxed"
-                            />
-                            <button
-                                onClick={handleSend}
-                                disabled={!input.trim() || sending}
-                                className="absolute bottom-3 right-3 p-1.5 rounded-lg bg-[#00f0ff]/12 border border-[#00f0ff]/25
-                                           text-[#00f0ff]/70 hover:bg-[#00f0ff]/20 hover:border-[#00f0ff]/50
-                                           disabled:opacity-25 disabled:cursor-not-allowed transition-all"
-                            >
-                                <Send size={12} className={sending ? "animate-pulse" : ""} />
-                            </button>
-                        </div>
-                        <div className="flex gap-2 mt-3">
-                            <button
-                                onClick={forceRdScan}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold
-                                           uppercase tracking-wider border border-[#39ff14]/20 text-[#39ff14]/60
-                                           hover:bg-[#39ff14]/8 hover:border-[#39ff14]/40 hover:text-[#39ff14] transition-all"
-                            >
-                                <Zap size={11} /> F&E-Radar
-                            </button>
-                            <button
-                                onClick={pullLatestArtifact}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold
-                                           uppercase tracking-wider border border-white/12 text-white/40
-                                           hover:bg-white/5 hover:border-white/20 hover:text-white/60 transition-all"
-                            >
-                                <Download size={11} /> Letzter Bericht
-                            </button>
-                        </div>
+                        <ProductInput
+                            product={clientProduct ?? "general"}
+                            sending={sending}
+                            onSend={handleSend}
+                            onRdScan={forceRdScan}
+                            onPullArtifact={pullLatestArtifact}
+                        />
                     </div>
 
                     {/* Tabs */}

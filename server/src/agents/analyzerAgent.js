@@ -1,5 +1,6 @@
 import { ChatBedrockConverse } from "@langchain/aws";
 import { trackLLMCost } from "../services/costTracker.js";
+import { getPrompt, DEFAULT_PROMPTS } from "../services/promptRepository.js";
 
 // Ajan 2'nin Beyni (Yine Claude veya ileride değiştirebileceğimiz bir model)
 const llm = new ChatBedrockConverse({
@@ -11,13 +12,15 @@ const llm = new ChatBedrockConverse({
     }
 });
 
-export async function analyzerNode(state) {
+export async function analyzerNode(state, config) {
     console.log("🧠 Analiz Motoru (Ajan 2) devrede. Gelen veri işleniyor...");
 
+    const clientId = config?.configurable?.tenantConfig?.clientId || "default";
+    const customPrompt = await getPrompt("ANALYZER", clientId);
+
     // Analiz için Prompt (Sistem Yönergesi)
-    const prompt = `Du bist ein erfahrener Senior-Strategie-Analyst.
-    Unten stehen Rohdaten, die aus dem Internet gesammelt wurden. Lies sie und erstelle daraus einen kurzen, strategischen 3-Punkte-Aktionsplan für das Management.
-    Antworte ausschliesslich auf Deutsch.
+    const systemInstruction = customPrompt || DEFAULT_PROMPTS.ANALYZER;
+    const prompt = `${systemInstruction}
 
     Rohdaten:
     ${state.scrapedData}

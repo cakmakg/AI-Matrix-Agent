@@ -9,8 +9,15 @@ import { generateCampaign } from "../agents/cmoAgent.js";
 export const agentEventBus = new EventEmitter();
 agentEventBus.setMaxListeners(50);
 
+// 🛰️ System Event Bus — Admin God Mode: tüm tenant event'lerini global yayınlar
+export const systemEventBus = new EventEmitter();
+systemEventBus.setMaxListeners(30);
+
 // 🗄️ Event Buffer — SSE bağlantısı kurulmadan önce gelen eventleri saklar
 export const eventBuffers = new Map(); // threadId → event[]
+
+// 🗄️ Aktif workflow takibi — Admin Fleet Radar için
+export const activeWorkflows = new Map(); // threadId → { clientId, tenantSlug, startedAt, lastAgent }
 
 export function emitToThread(threadId, event) {
     if (agentEventBus.listenerCount(threadId) === 0) {
@@ -20,6 +27,17 @@ export function emitToThread(threadId, event) {
         agentEventBus.emit(threadId, event);
     }
     setTimeout(() => eventBuffers.delete(threadId), 5 * 60 * 1000);
+
+    // 🛰️ Admin God Mode: Global event yayını
+    const workflow = activeWorkflows.get(threadId);
+    systemEventBus.emit("global", {
+        threadId,
+        clientId: workflow?.clientId || event.clientId || "unknown",
+        tenantSlug: workflow?.tenantSlug || event.tenantSlug || "unknown",
+        type: event.type,
+        agent: event.agent,
+        timestamp: Date.now(),
+    });
 }
 
 // Backend node adı → Frontend agent ID eşlemesi
@@ -38,9 +56,17 @@ export const AGENT_UI_MAP = {
 };
 
 // 🔄 HOT_LEAD workflow'unu arka planda çalıştır ve SSE ile olayları yay
-export async function runHotLeadWorkflow(threadId, task, tenantConfig) {
-    const config = { configurable: { thread_id: threadId, tenantConfig: tenantConfig }, recursionLimit: 100 };
+export async function runHotLeadWorkflow(threadId, task, tenantConfig, clientId = "default", plan = "free") {
+    const config = { configurable: { thread_id: threadId, tenantConfig: tenantConfig, clientId, plan }, recursionLimit: 100 };
     let interruptDetected = false;
+
+    // 🛰️ Admin Fleet Radar: workflow başlangıcını kaydet
+    activeWorkflows.set(threadId, {
+        clientId,
+        tenantSlug: tenantConfig?.clientSlug || clientId,
+        startedAt: Date.now(),
+        lastAgent: null,
+    });
 
     try {
         for await (const chunk of await app.stream({ task }, config)) {
@@ -49,6 +75,9 @@ export async function runHotLeadWorkflow(threadId, task, tenantConfig) {
             console.log(`   📡 SSE → node: ${nodeName}, agentId: ${agentId ?? "none"}`);
             if (agentId) {
                 emitToThread(threadId, { type: "agent_active", agent: agentId });
+                // 🛰️ Fleet Radar: son aktif ajanı güncelle
+                const wf = activeWorkflows.get(threadId);
+                if (wf) wf.lastAgent = agentId;
             }
             if (nodeName === "__interrupt__") {
                 console.log(`   🛑 INTERRUPT detected — breaking stream loop`);
@@ -96,13 +125,14 @@ export async function runHotLeadWorkflow(threadId, task, tenantConfig) {
                     { threadId },
                     {
                         threadId,
+                        clientId,
                         task: currentState.values?.task || task,
                         content: pendingContent,
                         status: "AWAITING_APPROVAL",
                     },
                     { upsert: true, new: true }
                 );
-                console.log(`   💾 MongoDB upsert OK — threadId: ${threadId}`);
+                console.log(`   💾 MongoDB upsert OK — threadId: ${threadId}, clientId: ${clientId}`);
             } catch (dbErr) {
                 console.warn("   ⚠️ MongoDB upsert başarısız:", dbErr.message);
             }
@@ -115,10 +145,12 @@ export async function runHotLeadWorkflow(threadId, task, tenantConfig) {
             console.log(`   ✅ workflow_complete emitted (${pendingContent.length} chars)`);
         } else {
             console.log(`   ℹ️ Workflow tamamlandı (HITL değil)`);
+            activeWorkflows.delete(threadId);
         }
     } catch (err) {
         console.error("❌ runHotLeadWorkflow hatası:", err.message);
         emitToThread(threadId, { type: "error", message: err.message });
+        activeWorkflows.delete(threadId);
     }
 }
 

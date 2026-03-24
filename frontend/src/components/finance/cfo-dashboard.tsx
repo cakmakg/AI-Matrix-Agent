@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, DollarSign, RefreshCw, BarChart3 } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, RefreshCw, BarChart3, Cpu } from "lucide-react";
 
 interface AgentCost {
     agentName: string;
@@ -14,6 +14,7 @@ interface FinanceSummary {
     totalExpenses: number | null;
     totalRevenue: number | null;
     netPnl: number | null;
+    allTimeExpenses: number | null;
     agentBreakdown: AgentCost[];
     periodLabel: string;
 }
@@ -106,16 +107,16 @@ export const CfoDashboard = () => {
             {data && (
                 <div className="flex-1 overflow-y-auto px-5 py-4 scrollbar-hide space-y-5">
                     {/* Summary cards */}
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                         <SummaryCard
-                            label="Total Expenses"
+                            label="Monthly Expenses"
                             value={formatUSD(data.totalExpenses)}
                             icon={<TrendingDown size={13} />}
                             color="text-alert-red"
                             bg="bg-alert-red/6 border-alert-red/15"
                         />
                         <SummaryCard
-                            label="Revenue"
+                            label="Monthly Revenue"
                             value={formatUSD(data.totalRevenue)}
                             icon={<TrendingUp size={13} />}
                             color="text-neon-green"
@@ -127,6 +128,13 @@ export const CfoDashboard = () => {
                             icon={<DollarSign size={13} />}
                             color={(data.netPnl ?? 0) >= 0 ? "text-neon-green" : "text-alert-red"}
                             bg={(data.netPnl ?? 0) >= 0 ? "bg-neon-green/6 border-neon-green/15" : "bg-alert-red/6 border-alert-red/15"}
+                        />
+                        <SummaryCard
+                            label="All-Time AI Cost"
+                            value={formatUSD(data.allTimeExpenses)}
+                            icon={<Cpu size={13} />}
+                            color="text-[#00f0ff]"
+                            bg="bg-[#00f0ff]/6 border-[#00f0ff]/15"
                         />
                     </div>
 

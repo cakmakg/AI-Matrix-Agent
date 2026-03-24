@@ -43,7 +43,9 @@ export const handleInbox = async (req, res) => {
         if (source === "operator") {
             console.log(`\n🎯 OPERATOR KOMUTU (UI): "${messageText.substring(0, 80)}"`);
             const threadId = uuidv4();
-            runHotLeadWorkflow(threadId, messageText, req.tenant?.config).catch((err) =>
+            const clientId = req.clientId || "default";
+            const clientPlan = req.tenant?.client?.plan || "free";
+            runHotLeadWorkflow(threadId, messageText, req.tenant?.config, clientId, clientPlan).catch((err) =>
                 console.error("❌ HOT_LEAD workflow başlatma hatası:", err.message)
             );
             appendHotLead({
@@ -109,7 +111,8 @@ export const handleInbox = async (req, res) => {
             if (internalCategory === "HOT_LEAD") {
                 const threadId = uuidv4();
                 const task = `HOT_LEAD [${platform}${author ? ` / ${author}` : ""}]: ${messageText}`;
-                runHotLeadWorkflow(threadId, task, req.tenant?.config).catch((err) =>
+                const clientPlanN8n = req.tenant?.client?.plan || "free";
+                runHotLeadWorkflow(threadId, task, req.tenant?.config, req.clientId || "default", clientPlanN8n).catch((err) =>
                     console.error("❌ n8n HOT_LEAD workflow hatası:", err.message)
                 );
                 appendHotLead({
@@ -159,7 +162,8 @@ export const handleInbox = async (req, res) => {
 
         if (leadAnalysis.category === "HOT_LEAD") {
             const threadId = uuidv4();
-            runHotLeadWorkflow(threadId, leadAnalysis.orchestratorTask, req.tenant?.config).catch((err) =>
+            const clientPlanLegacy = req.tenant?.client?.plan || "free";
+            runHotLeadWorkflow(threadId, leadAnalysis.orchestratorTask, req.tenant?.config, req.clientId || "default", clientPlanLegacy).catch((err) =>
                 console.error("❌ HOT_LEAD workflow başlatma hatası:", err.message)
             );
             appendHotLead({

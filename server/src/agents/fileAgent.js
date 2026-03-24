@@ -2,16 +2,19 @@ import { Report } from "../models/Report.js";
 
 export async function fileNode(state, config) {
     const threadId = config?.configurable?.thread_id;
-    console.log(`💾 Dosya Ajanı (Ajan 4) devrede. İçerik MongoDB'ye kaydediliyor... (threadId: ${threadId})`);
+    const clientId = config?.configurable?.clientId || "default";
+    console.log(`💾 Dosya Ajanı (Ajan 4) devrede. İçerik MongoDB'ye kaydediliyor... (threadId: ${threadId}, clientId: ${clientId})`);
 
     try {
         await Report.findOneAndUpdate(
             { threadId },
             {
                 threadId,
+                clientId,
                 task: state.task,
                 content: state.finalContent,
                 status: "AWAITING_APPROVAL",
+                confidenceScore: state.confidenceScore || 0,
             },
             { upsert: true, new: true }
         );

@@ -78,7 +78,7 @@ export const approveTicket = async (req, res) => {
             if (ticket.category === "SUPPORT_BUG") {
                 const bugThreadId = uuidv4();
                 const bugTask = `BUG_REPORT [${ticket.platform}]: Gönderen: ${ticket.from}. Konu: ${ticket.subject}. Detay: ${ticket.body.slice(0, 500)}`;
-                runHotLeadWorkflow(bugThreadId, bugTask, req.tenant?.config).catch(err =>
+                runHotLeadWorkflow(bugThreadId, bugTask, req.tenant?.config, req.clientId || "default", req.tenant?.client?.plan || "enterprise").catch(err =>
                     console.error("Bug escalation hatası:", err.message)
                 );
                 await SupportTicket.findByIdAndUpdate(ticketId, {

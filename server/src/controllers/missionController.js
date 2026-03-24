@@ -6,7 +6,8 @@ export const listMissions = async (req, res) => {
         const limit = parseInt(req.query.limit || "50");
         const status = req.query.status;
 
-        const filter = {};
+        const clientId = req.clientId || "default";
+        const filter = { clientId };
         if (status) filter.status = status;
 
         const reports = await Report
@@ -35,7 +36,8 @@ export const listMissions = async (req, res) => {
 
 export const getMissionDetails = async (req, res) => {
     try {
-        const report = await Report.findOne({ threadId: req.params.threadId });
+        const clientId = req.clientId || "default";
+        const report = await Report.findOne({ threadId: req.params.threadId, clientId });
         if (!report) return res.status(404).json({ error: "Mission not found or access denied" });
         res.json({
             threadId: report.threadId,

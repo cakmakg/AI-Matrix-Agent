@@ -12,6 +12,7 @@ const ActionQueueSchema = new mongoose.Schema({
     // Kimin tetiklediği
     threadId:   { type: String, required: true, index: true },
     agentId:    { type: String, required: true },           // "publisher", "cmo", vb.
+    clientId:   { type: String, default: "default", index: true },
 
     // Ne yapılacak — sadece whitelist değerler geçer
     actionType: {

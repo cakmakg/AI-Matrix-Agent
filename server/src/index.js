@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import { tenantMiddleware } from "./middleware/tenant.js";
 import { globalLimiter, workflowLimiter, approveLimiter, socialLimiter, knowledgeLimiter } from "./middleware/rateLimiter.js";
 import routes from "./routes/index.js";
+import authRoutes from "./routes/authRoutes.js";
 import { startCronJobs } from "./services/cronService.js";
 import { startTelegramBot } from "./services/telegramBotService.js";
 import { startActionWorker } from "./services/actionWorkerService.js";
@@ -18,6 +19,10 @@ server.use(express.json({ limit: "2mb" }));  // 🛡️ MOAT: request body boyut
 
 // 🛡️ MOAT Katman 3: Rate Limiting — global önce, sonra tenant auth
 server.use("/api", globalLimiter);
+
+// Auth endpoint'leri tenantMiddleware'den ÖNCE — API key gerektirmez
+server.use("/api/auth", authRoutes);
+
 server.use(tenantMiddleware);
 
 // Hassas endpoint'lere özel limitler

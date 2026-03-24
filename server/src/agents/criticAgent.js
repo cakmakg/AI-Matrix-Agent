@@ -1,6 +1,7 @@
 import { ChatBedrockConverse } from "@langchain/aws";
 import { z } from "zod";
 import { trackLLMCostFromStrings } from "../services/costTracker.js";
+import { getPrompt, DEFAULT_PROMPTS } from "../services/promptRepository.js";
 
 // Eleştirmen Ajan (Ajan 5) için daha zeki bir model kullanıyoruz (Sonnet veya Opus mantıklı olur)
 const llm = new ChatBedrockConverse({
@@ -26,17 +27,10 @@ export async function criticNode(state, config) {
     console.log("🧐 Eleştirmen Ajan (Ajan 5) devrede. Metin denetleniyor...");
 
     // Acımasız Alman Kalite Kontrolcü Promptu
-    const prompt = `Sie sind ein strenger und detailorientierter Quality Assurance Manager (Qualitätsprüfer) für ein deutsches Technologieunternehmen.
-    Ihre Aufgabe ist es, den von unserem Copywriter erstellten strategischen Bericht zu prüfen, bevor er an die Geschäftsführung gesendet wird.
-
-    Prüfen Sie den folgenden Text nach diesen strikten Kriterien:
-    1. Ist die Sprache ein makelloses, professionelles Business-Deutsch (formelle Anrede "Sie", korrekte Grammatik und Rechtschreibung)?
-    2. Wurde das Markdown-Format (.md) korrekt verwendet (Überschriften, Listen, fette Texte)?
-    3. Gibt es eine formelle Begrüßung (z.B. "Sehr geehrte Geschäftsführung") und eine professionelle Verabschiedung?
-    4. Ist der Tonfall sachlich, strategisch und für Top-Manager angemessen?
-
-    Wenn ALLE Kriterien perfekt erfüllt sind, geben Sie isApproved: true zurück.
-    Wenn AUCH NUR EIN Kriterium nicht erfüllt ist (z.B. ein Grammatikfehler, ein falscher Tonfall oder ein fehlendes Markdown-Element), geben Sie isApproved: false zurück UND schreiben Sie in 'criticFeedback' exakt, was der Copywriter korrigieren muss (auf Deutsch). Seien Sie kritisch!
+    const clientIdC = config?.configurable?.tenantConfig?.clientId || "default";
+    const customPrompt = await getPrompt("CRITIC", clientIdC);
+    const systemInstruction = customPrompt || DEFAULT_PROMPTS.CRITIC;
+    const prompt = `${systemInstruction}
 
     Hier ist der zu prüfende Text:
     ---

@@ -25,6 +25,15 @@ const ReportSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
+        clientId: {
+            type: String,
+            default: "default",
+            index: true,
+        },
+        confidenceScore: {
+            type: Number,
+            default: 0,
+        },
     },
     {
         timestamps: true, // createdAt, updatedAt otomatik eklenir

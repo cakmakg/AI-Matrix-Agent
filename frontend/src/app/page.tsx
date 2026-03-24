@@ -11,7 +11,10 @@ import { SettingsView } from "@/components/settings/settings-view";
 import { SkillsView } from "@/components/skills/skills-view";
 import { SocialView } from "@/components/social/social-view";
 import { SecurityView } from "@/components/security/security-view";
+import { AuditorDashboard } from "@/components/finance/auditor-dashboard";
+import { SupplyChainDashboard } from "@/components/supply/supply-chain-dashboard";
 import { ApiKeyModal } from "@/components/auth/api-key-modal";
+import { AdminLayout } from "@/components/admin/admin-layout";
 
 export default function Home() {
     const activeView = useAgentStore((s) => s.activeView);
@@ -39,6 +42,9 @@ export default function Home() {
             {activeView === "skills"    && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SkillsView /></main>}
             {activeView === "social"    && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SocialView /></main>}
             {activeView === "security"  && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SecurityView /></main>}
+            {activeView === "auditor"   && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><AuditorDashboard /></main>}
+            {activeView === "supply"    && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SupplyChainDashboard /></main>}
+            {activeView === "admin"     && <AdminLayout />}
         </div>
     );
 }

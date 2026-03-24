@@ -26,6 +26,7 @@ const SecurityEventSchema = new mongoose.Schema({
         index: true,
     },
 
+    clientId:   { type: String, default: "default", index: true },
     threadId:   { type: String, default: "" },
     agentId:    { type: String, default: "" },       // hangi ajan tetikledi
     sourceIp:   { type: String, default: "" },       // rate limit / auth için

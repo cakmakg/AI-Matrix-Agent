@@ -55,8 +55,16 @@ const SocialAccountSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+        clientId: {
+            type: String,
+            default: "default",
+            index: true,
+        },
     },
     { timestamps: true }
 );
+
+// Her tenant kendi platform hesabına sahip olabilir
+SocialAccountSchema.index({ clientId: 1, platform: 1 }, { unique: true });
 
 export const SocialAccount = mongoose.model("SocialAccount", SocialAccountSchema);
