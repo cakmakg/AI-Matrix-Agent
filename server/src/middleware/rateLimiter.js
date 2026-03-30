@@ -17,6 +17,7 @@
  */
 
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
+import { bannedIPCache } from "../services/bannedIPCacheService.js";
 
 // ─── Key Üretici ────────────────────────────────────────────────────────────
 // Önce tenant (API key) bazlı, yoksa IPv6-safe IP bazlı
@@ -37,6 +38,17 @@ function limitReachedHandler(limitName) {
             limitName,
         });
     };
+}
+
+// ─── 🛡️ Banned IP Middleware ────────────────────────────────────────────────
+// In-memory Set kontrolü — O(1), her istekte rate limiter'dan ÖNCE çalışır
+export function bannedIPMiddleware(req, res, next) {
+    const clientIP = ipKeyGenerator(req);
+    if (bannedIPCache.has(clientIP)) {
+        console.warn(`🚫 BANNED IP bloklandı: ${clientIP} — ${req.method} ${req.path}`);
+        return res.status(403).json({ error: "Erişim engellendi." });
+    }
+    next();
 }
 
 // ─── 1. Global Limiter (tüm /api/*) ─────────────────────────────────────────

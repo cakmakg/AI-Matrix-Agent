@@ -126,6 +126,7 @@ export interface WorkflowSlice {
     pendingContent: string | null;
     missionMessage: string | null;
     missionCategory: "HOT_LEAD" | "CTO" | "SUPPORT" | null;
+    _workflowSSE: EventSource | null;
     setWorkflowPhase: (phase: WorkflowPhase) => void;
     sendMission: (message: string) => Promise<void>;
     approveMission: (feedback?: string) => Promise<void>;
@@ -221,6 +222,61 @@ export interface AdminLogEntry {
     details: Record<string, unknown>; createdAt: string;
 }
 
+export interface BannedIPEntry {
+    _id: string; ip: string; reason: string;
+    source: "MANUAL" | "AUTO_PROMPT_INJECTION" | "AUTO_DDOS" | "AUTO_ABUSE";
+    clientId: string | null; expiresAt: string | null;
+    isActive: boolean; createdAt: string;
+}
+
+
+// -- Zaman Makinesi (Time Machine) --
+export interface WorkflowSnapshotEntry {
+    _id: string;
+    threadId: string;
+    step: number;
+    nodeName: string;
+    clientId: string;
+    tenantSlug: string;
+    output: Record<string, unknown>;
+    keyState: {
+        nextAgent: string;
+        revisionCount: number;
+        confidenceScore: number;
+        threatScore: number;
+        fileSaved: boolean;
+    };
+    createdAt: string;
+}
+
+export interface RecentWorkflow {
+    threadId: string;
+    clientId: string;
+    tenantSlug: string;
+    stepCount: number | null;
+    lastNode: string | null;
+    startedAt: string;
+    lastActivity: string;
+    isActive: boolean;
+}
+export interface CostEvent {
+    type: "cost_tick";
+    clientId: string;
+    agentName: string;
+    threadId: string;
+    cost: number;
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+    timestamp: number;
+}
+
+export interface BurnRatePoint {
+    timestamp: number;
+    cost: number;
+    cumulative: number;
+}
+
 export interface AdminSlice {
     adminTenants: TenantSummary[];
     selectedTenantSlug: string | null;
@@ -231,23 +287,41 @@ export interface AdminSlice {
     tenantPnL: TenantPnL[];
     financeAlerts: MarginAlert[];
     adminLogs: AdminLogEntry[];
+    bannedIPs: BannedIPEntry[];
+    burnRateHistory: BurnRatePoint[];
     _adminSSE: EventSource | null;
     _ghostSSE: EventSource | null;
+    _financeSSE: EventSource | null;
     fetchAdminTenants: () => Promise<void>;
     fetchTenantDetail: (slug: string) => Promise<TenantDetail | null>;
     haltTenant: (slug: string, reason: string) => Promise<boolean>;
     resumeTenant: (slug: string) => Promise<boolean>;
     changeTenantPlan: (slug: string, plan: string) => Promise<boolean>;
+    throttleTenant: (slug: string, throttle: boolean) => Promise<boolean>;
     fetchGlobalSecurity: () => Promise<void>;
     fetchGlobalFinance: () => Promise<void>;
     fetchTenantPnL: () => Promise<void>;
     fetchFinanceAlerts: () => Promise<void>;
     fetchAdminLogs: () => Promise<void>;
+    fetchBannedIPs: () => Promise<void>;
+    banIP: (ip: string, reason: string, durationHours?: number) => Promise<boolean>;
+    unbanIP: (ip: string) => Promise<boolean>;
     connectGlobalSSE: () => void;
     disconnectGlobalSSE: () => void;
     connectGhostSSE: (slug: string) => void;
     disconnectGhostSSE: () => void;
+    connectFinanceSSE: () => void;
+    disconnectFinanceSSE: () => void;
     setSelectedTenant: (slug: string | null) => void;
+    // Time Machine
+    recentWorkflows: RecentWorkflow[];
+    workflowSnapshots: WorkflowSnapshotEntry[];
+    timeMachineThreadId: string | null;
+    selectedSnapshotStep: number | null;
+    fetchRecentWorkflows: () => Promise<void>;
+    fetchWorkflowSnapshots: (threadId: string) => Promise<void>;
+    setTimeMachineThread: (threadId: string | null) => void;
+    setSelectedSnapshotStep: (step: number | null) => void;
 }
 
 // Combined store type

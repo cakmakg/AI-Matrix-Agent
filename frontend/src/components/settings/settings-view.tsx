@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useAgentStore } from "@/store/agent-store";
+import { buildHeaders } from "@/store/utils";
 import { Webhook, Bot, MessageSquare } from "lucide-react";
 
 type ActiveTab = "agent" | "integrations" | "prompts";
@@ -50,7 +51,7 @@ const DEFAULT_INT: IntegrationsData = {
 };
 
 export const SettingsView = () => {
-    const addAlert = useAgentStore((s) => s.addAlert);
+    const { addAlert, apiKey } = useAgentStore((s) => ({ addAlert: s.addAlert, apiKey: s.apiKey }));
     const [activeTab, setActiveTab] = useState<ActiveTab>("agent");
     const [client, setClient]       = useState<ClientData | null>(null);
     const [loading, setLoading]     = useState(false);
@@ -62,8 +63,9 @@ export const SettingsView = () => {
 
     useEffect(() => {
         setLoading(true);
-        fetch("/api/prompts").then(r => r.json()).then(d => { if (d.success) setPrompts(d.prompts); }).catch(() => {});
-        fetch("/api/tenant/config")
+        fetch("/api/prompts", { headers: buildHeaders(apiKey) })
+            .then(r => r.json()).then(d => { if (d.success) setPrompts(d.prompts); }).catch(() => {});
+        fetch("/api/tenant/config", { headers: buildHeaders(apiKey) })
             .then(r => r.json())
             .then((data) => {
                 if (data.success) {
@@ -91,14 +93,14 @@ export const SettingsView = () => {
             })
             .catch(() => addAlert({ message: "Einstellungen konnten nicht geladen werden.", type: "error" }))
             .finally(() => setLoading(false));
-    }, [addAlert]);
+    }, [addAlert, apiKey]);
 
     const handleSaveAgent = async () => {
         setSaving(true);
         try {
             const res = await fetch("/api/tenant/config", {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: buildHeaders(apiKey, true),
                 body: JSON.stringify(form),
             });
             if (res.ok) addAlert({ message: "Einstellungen erfolgreich gespeichert.", type: "success" });
@@ -115,7 +117,7 @@ export const SettingsView = () => {
         try {
             const res = await fetch(`/api/prompts/${agentName}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: buildHeaders(apiKey, true),
                 body: JSON.stringify({ promptText: text }),
             });
             if (res.ok) {
@@ -133,7 +135,7 @@ export const SettingsView = () => {
     const handleResetPrompt = async (agentName: string) => {
         setPromptSaving(agentName);
         try {
-            const res = await fetch(`/api/prompts/${agentName}`, { method: "DELETE" });
+            const res = await fetch(`/api/prompts/${agentName}`, { method: "DELETE", headers: buildHeaders(apiKey) });
             if (res.ok) {
                 const data = await res.json();
                 setPrompts(prev => ({ ...prev, [agentName]: { current: data.default, isCustom: false, default: data.default } }));
@@ -150,7 +152,7 @@ export const SettingsView = () => {
         try {
             const res = await fetch("/api/tenant/integrations", {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: buildHeaders(apiKey, true),
                 body: JSON.stringify(intForm),
             });
             if (res.ok) addAlert({ message: "Integrations gespeichert.", type: "success" });

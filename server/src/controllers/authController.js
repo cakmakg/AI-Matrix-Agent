@@ -109,7 +109,7 @@ export const login = async (req, res) => {
         return res.json({
             success: true,
             apiKey: client.apiKey,
-            client: { name: client.name, slug: client.slug, email: client.email, plan: client.plan, product: client.product },
+            client: { name: client.name, slug: client.slug, email: client.email, plan: client.plan, product: client.product, isAdmin: client.isAdmin || false },
         });
 
     } catch (err) {

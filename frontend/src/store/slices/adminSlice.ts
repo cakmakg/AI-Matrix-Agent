@@ -2,9 +2,13 @@ import { StateCreator } from "zustand";
 import type {
     AgentStore, AdminSlice, TenantSummary, TenantDetail,
     AdminGlobalEvent, GlobalSecurityData, GlobalFinanceData,
-    TenantPnL, MarginAlert, AdminLogEntry,
+    TenantPnL, MarginAlert, AdminLogEntry, BannedIPEntry,
+    CostEvent, BurnRatePoint, WorkflowSnapshotEntry, RecentWorkflow,
 } from "../types";
 import { BACKEND_SSE, apiFetch, buildHeaders } from "../utils";
+
+// Debounce timer for live snapshot refetch (module-level, shared across SSE reconnects)
+let _snapshotRefetchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const API = "/api/admin";
 
@@ -19,8 +23,15 @@ export const createAdminSlice: StateCreator<AgentStore, [], [], AdminSlice> = (s
     tenantPnL: [],
     financeAlerts: [],
     adminLogs: [],
+    bannedIPs: [],
+    burnRateHistory: [],
+    recentWorkflows: [],
+    workflowSnapshots: [],
+    timeMachineThreadId: null,
+    selectedSnapshotStep: null,
     _adminSSE: null,
     _ghostSSE: null,
+    _financeSSE: null,
 
     // ── Fleet Radar ──
     fetchAdminTenants: async () => {
@@ -136,6 +147,38 @@ export const createAdminSlice: StateCreator<AgentStore, [], [], AdminSlice> = (s
         }
     },
 
+    // ── IP Ban ──
+    fetchBannedIPs: async () => {
+        try {
+            const data = await apiFetch.get<{ ips: BannedIPEntry[] }>(`${API}/security/banned-ips`, get().apiKey);
+            set({ bannedIPs: data.ips });
+        } catch (err) {
+            console.error("Banned IPs fetch failed:", err);
+        }
+    },
+
+    banIP: async (ip: string, reason: string, durationHours?: number) => {
+        try {
+            await apiFetch.post(`${API}/security/ban-ip`, { ip, reason, durationHours }, get().apiKey);
+            await get().fetchBannedIPs();
+            return true;
+        } catch (err) {
+            console.error("Ban IP failed:", err);
+            return false;
+        }
+    },
+
+    unbanIP: async (ip: string) => {
+        try {
+            await apiFetch.post(`${API}/security/unban-ip`, { ip }, get().apiKey);
+            await get().fetchBannedIPs();
+            return true;
+        } catch (err) {
+            console.error("Unban IP failed:", err);
+            return false;
+        }
+    },
+
     // ── SSE: Global Event Stream ──
     connectGlobalSSE: () => {
         const existing = get()._adminSSE;
@@ -152,15 +195,39 @@ export const createAdminSlice: StateCreator<AgentStore, [], [], AdminSlice> = (s
                 const event: AdminGlobalEvent = JSON.parse(e.data);
                 if (event.type === "connected" || event.type === "active_workflows") return;
 
-                set((s) => ({
-                    globalEvents: [event, ...s.globalEvents].slice(0, 200),
-                    // Canlı tenant durumunu güncelle
-                    adminTenants: s.adminTenants.map((t) =>
-                        t.slug === event.tenantSlug
-                            ? { ...t, liveStatus: event.type === "error" ? "error" : "active", lastAgent: event.agent }
-                            : t
-                    ),
-                }));
+                set((s) => {
+                    // Live-update recentWorkflows entry when a new snapshot arrives
+                    const updatedRecent = event.type === "snapshot_saved"
+                        ? s.recentWorkflows.map((wf) =>
+                            wf.threadId === event.threadId
+                                ? { ...wf, lastNode: event.agent ?? wf.lastNode, lastActivity: new Date(event.timestamp).toISOString(), isActive: true }
+                                : wf
+                          )
+                        : s.recentWorkflows;
+
+                    return {
+                        globalEvents: [event, ...s.globalEvents].slice(0, 200),
+                        recentWorkflows: updatedRecent,
+                        // Canlı tenant durumunu güncelle
+                        adminTenants: s.adminTenants.map((t) =>
+                            t.slug === event.tenantSlug
+                                ? { ...t, liveStatus: event.type === "error" ? "error" : "active", lastAgent: event.agent }
+                                : t
+                        ),
+                    };
+                });
+
+                // Live Time Machine: debounced snapshot refetch when watched thread gets a new snapshot
+                if (event.type === "snapshot_saved") {
+                    const tmId = get().timeMachineThreadId;
+                    if (tmId && tmId === event.threadId) {
+                        if (_snapshotRefetchTimer) clearTimeout(_snapshotRefetchTimer);
+                        _snapshotRefetchTimer = setTimeout(() => {
+                            get().fetchWorkflowSnapshots(tmId);
+                            _snapshotRefetchTimer = null;
+                        }, 700);
+                    }
+                }
             } catch { /* parse error, ignore */ }
         };
 
@@ -208,6 +275,102 @@ export const createAdminSlice: StateCreator<AgentStore, [], [], AdminSlice> = (s
         if (es) {
             es.close();
             set({ _ghostSSE: null, ghostMode: false, selectedTenantSlug: null });
+        }
+    },
+
+    // ── Zaman Makinesi (Time Machine) ──
+    fetchRecentWorkflows: async () => {
+        try {
+            const data = await apiFetch.get<{ workflows: RecentWorkflow[] }>(`${API}/workflows/recent`, get().apiKey);
+            set({ recentWorkflows: data.workflows });
+        } catch (err) {
+            console.error("Recent workflows fetch failed:", err);
+        }
+    },
+
+    fetchWorkflowSnapshots: async (threadId: string) => {
+        try {
+            const data = await apiFetch.get<{ snapshots: WorkflowSnapshotEntry[] }>(
+                `${API}/workflows/${threadId}/snapshots`,
+                get().apiKey
+            );
+            set({ workflowSnapshots: data.snapshots, selectedSnapshotStep: null });
+        } catch (err) {
+            console.error("Workflow snapshots fetch failed:", err);
+        }
+    },
+
+    setTimeMachineThread: (threadId: string | null) => {
+        set({ timeMachineThreadId: threadId, workflowSnapshots: [], selectedSnapshotStep: null });
+        if (threadId) {
+            get().fetchWorkflowSnapshots(threadId);
+        }
+    },
+
+    setSelectedSnapshotStep: (step: number | null) => {
+        set({ selectedSnapshotStep: step });
+    },
+
+    // ── FinOps: Throttle ──
+    throttleTenant: async (slug: string, throttle: boolean) => {
+        try {
+            await apiFetch.post(`${API}/tenants/${slug}/throttle`, { throttle }, get().apiKey);
+            await get().fetchAdminTenants();
+            return true;
+        } catch (err) {
+            console.error("Throttle tenant failed:", err);
+            return false;
+        }
+    },
+
+    // ── SSE: Finance Burn Rate ──
+    connectFinanceSSE: () => {
+        const existing = get()._financeSSE;
+        if (existing) existing.close();
+
+        const apiKey = get().apiKey;
+        const url = `${BACKEND_SSE}${API}/finance/live`;
+        const es = new EventSource(`${url}${url.includes("?") ? "&" : "?"}apiKey=${apiKey}`);
+
+        es.onopen = () => console.log("[FINANCE SSE] Burn Rate stream connected");
+
+        es.onmessage = (e) => {
+            try {
+                const event: CostEvent = JSON.parse(e.data);
+                if (event.type !== "cost_tick") return;
+
+                set((s) => {
+                    const last = s.burnRateHistory[s.burnRateHistory.length - 1];
+                    const cumulative = (last?.cumulative || 0) + event.cost;
+                    const point: BurnRatePoint = {
+                        timestamp: event.timestamp,
+                        cost: event.cost,
+                        cumulative,
+                    };
+                    return {
+                        burnRateHistory: [...s.burnRateHistory, point].slice(-60),
+                        // Canlı globalFinance güncelle
+                        globalFinance: s.globalFinance ? {
+                            ...s.globalFinance,
+                            totalExpense: (s.globalFinance.totalExpense || 0) + event.cost,
+                            totalLLMCalls: (s.globalFinance.totalLLMCalls || 0) + 1,
+                            netPnl: (s.globalFinance.netPnl || 0) - event.cost,
+                        } : s.globalFinance,
+                    };
+                });
+            } catch { /* ignore parse errors */ }
+        };
+
+        es.onerror = () => console.warn("[FINANCE SSE] Error — will reconnect...");
+
+        set({ _financeSSE: es });
+    },
+
+    disconnectFinanceSSE: () => {
+        const es = get()._financeSSE;
+        if (es) {
+            es.close();
+            set({ _financeSSE: null });
         }
     },
 });

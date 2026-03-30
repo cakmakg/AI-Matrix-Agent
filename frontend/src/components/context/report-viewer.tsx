@@ -131,13 +131,19 @@ export const ReportViewer = ({ threadId }: Props) => {
         setSubmittingFeedback(true);
         const headers: Record<string, string> = { "Content-Type": "application/json" };
         if (apiKey) headers["x-api-key"] = apiKey;
-        await fetch("/api/feedback", {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ threadId, vote: "up", agentName: "WRITER" }),
-        }).catch(() => {});
-        setFeedbackDone("up");
-        setSubmittingFeedback(false);
+        try {
+            const res = await fetch("/api/feedback", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ threadId, vote: "up", agentName: "WRITER" }),
+            });
+            if (!res.ok) throw new Error();
+            setFeedbackDone("up");
+        } catch {
+            console.warn("Feedback submission failed");
+        } finally {
+            setSubmittingFeedback(false);
+        }
     };
 
     const handleFeedbackSubmit = async () => {
@@ -145,15 +151,21 @@ export const ReportViewer = ({ threadId }: Props) => {
         setSubmittingFeedback(true);
         const headers: Record<string, string> = { "Content-Type": "application/json" };
         if (apiKey) headers["x-api-key"] = apiKey;
-        await fetch("/api/feedback", {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ threadId, vote: "down", reason: feedbackReason.trim(), agentName: "WRITER" }),
-        }).catch(() => {});
-        setFeedbackDone("down");
-        setShowReasonBox(false);
-        setFeedbackReason("");
-        setSubmittingFeedback(false);
+        try {
+            const res = await fetch("/api/feedback", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ threadId, vote: "down", reason: feedbackReason.trim(), agentName: "WRITER" }),
+            });
+            if (!res.ok) throw new Error();
+            setFeedbackDone("down");
+            setShowReasonBox(false);
+            setFeedbackReason("");
+        } catch {
+            console.warn("Feedback submission failed");
+        } finally {
+            setSubmittingFeedback(false);
+        }
     };
 
     return (

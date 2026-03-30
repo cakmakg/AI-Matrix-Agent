@@ -7,7 +7,7 @@ export async function fileNode(state, config) {
 
     try {
         await Report.findOneAndUpdate(
-            { threadId },
+            { threadId, clientId },
             {
                 threadId,
                 clientId,

@@ -25,6 +25,8 @@ export type {
     SocialPlatform, SocialAccount, ScheduledPost, SocialSummary, SaaSProduct,
     SecurityEventType, SecuritySeverity, SystemSecurityStatus, SecurityEventItem, SecurityStatus,
     TenantSummary, TenantDetail, GlobalSecurityData, GlobalFinanceData,
-    TenantPnL, MarginAlert, AdminGlobalEvent, AdminLogEntry, TenantLiveStatus, MarginAlertLevel,
+    TenantPnL, MarginAlert, AdminGlobalEvent, AdminLogEntry, TenantLiveStatus, MarginAlertLevel, BannedIPEntry,
+    CostEvent, BurnRatePoint,
+    WorkflowSnapshotEntry, RecentWorkflow,
     AgentStore,
 } from "./types";

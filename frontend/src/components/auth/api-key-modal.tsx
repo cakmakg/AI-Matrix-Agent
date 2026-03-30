@@ -34,7 +34,7 @@ export const ApiKeyModal = () => {
             });
             const data = await res.json();
             if (!res.ok) { setError(data.error || "Giriş başarısız."); return; }
-            setWorkspaceInfo({ name: data.client.name, slug: data.client.slug, email: data.client.email, apiKey: data.apiKey, plan: data.client.plan });
+            setWorkspaceInfo({ name: data.client.name, slug: data.client.slug, email: data.client.email, apiKey: data.apiKey, plan: data.client.plan, isAdmin: data.client.isAdmin });
         } catch {
             setError("Sunucuya ulaşılamadı.");
         } finally {
@@ -212,14 +212,16 @@ export const ApiKeyModal = () => {
                         </AnimatePresence>
                     </div>
 
-                    {/* Dev mode skip */}
-                    <div className="px-6 pb-5 border-t border-white/4 pt-3">
-                        <button onClick={handleSkip}
-                            className="w-full py-2 flex items-center justify-center gap-1.5 font-mono text-[10px] text-white/20 hover:text-white/45 transition-colors tracking-wider">
-                            <KeyRound size={10} />
-                            DEV MODE — Default Tenant olarak devam et
-                        </button>
-                    </div>
+                    {/* Dev mode skip — only visible in non-production builds */}
+                    {process.env.NODE_ENV !== "production" && (
+                        <div className="px-6 pb-5 border-t border-white/4 pt-3">
+                            <button onClick={handleSkip}
+                                className="w-full py-2 flex items-center justify-center gap-1.5 font-mono text-[10px] text-white/20 hover:text-white/45 transition-colors tracking-wider">
+                                <KeyRound size={10} />
+                                DEV MODE — Default Tenant olarak devam et
+                            </button>
+                        </div>
+                    )}
                 </motion.div>
             </div>
         </AnimatePresence>

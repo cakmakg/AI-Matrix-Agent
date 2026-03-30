@@ -5,19 +5,21 @@ import helmet from "helmet";
 import mongoose from "mongoose";
 
 import { tenantMiddleware } from "./middleware/tenant.js";
-import { globalLimiter, workflowLimiter, approveLimiter, socialLimiter, knowledgeLimiter } from "./middleware/rateLimiter.js";
+import { globalLimiter, workflowLimiter, approveLimiter, socialLimiter, knowledgeLimiter, bannedIPMiddleware } from "./middleware/rateLimiter.js";
 import routes from "./routes/index.js";
 import authRoutes from "./routes/authRoutes.js";
 import { startCronJobs } from "./services/cronService.js";
 import { startTelegramBot } from "./services/telegramBotService.js";
 import { startActionWorker } from "./services/actionWorkerService.js";
+import { loadBannedIPCache } from "./controllers/adminController.js";
 
 const server = express();
 server.use(helmet());
 server.use(cors());
 server.use(express.json({ limit: "2mb" }));  // 🛡️ MOAT: request body boyut sınırı
 
-// 🛡️ MOAT Katman 3: Rate Limiting — global önce, sonra tenant auth
+// 🛡️ MOAT Katman 3: Banned IP → Rate Limiting → Tenant Auth
+server.use("/api", bannedIPMiddleware);
 server.use("/api", globalLimiter);
 
 // Auth endpoint'leri tenantMiddleware'den ÖNCE — API key gerektirmez
@@ -33,7 +35,10 @@ server.use("/api/social",  socialLimiter);
 server.use("/api/knowledge", knowledgeLimiter);
 
 mongoose.connect(process.env.MONGODB)
-    .then(() => console.log("📦 MongoDB Atlas Bağlantısı Başarılı!"))
+    .then(async () => {
+        console.log("📦 MongoDB Atlas Bağlantısı Başarılı!");
+        await loadBannedIPCache();
+    })
     .catch(err => console.error("❌ MongoDB Hatası:", err));
 
 server.use("/api", routes);

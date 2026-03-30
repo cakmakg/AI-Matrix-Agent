@@ -3,7 +3,34 @@ import { v4 as uuidv4 } from "uuid";
 import { app } from "./graph.js";
 import { Report } from "../models/Report.js";
 import { CampaignDraft } from "../models/CampaignDraft.js";
+import { WorkflowSnapshot } from "../models/WorkflowSnapshot.js";
 import { generateCampaign } from "../agents/cmoAgent.js";
+
+// ─── Snapshot Yardımcıları ────────────────────────────────────────────────────
+/** Node output'undaki büyük string'leri kırp (MongoDB doc boyutunu sınırla) */
+function truncateSnapshot(obj, maxLen = 400) {
+    if (!obj || typeof obj !== "object") return obj;
+    const result = {};
+    for (const [k, v] of Object.entries(obj)) {
+        if (typeof v === "string" && v.length > maxLen) {
+            result[k] = v.slice(0, maxLen) + ` …[+${v.length - maxLen}]`;
+        } else {
+            result[k] = v;
+        }
+    }
+    return result;
+}
+
+/** Düğüm çıktısından kritik state alanlarını çıkar */
+function extractKeyState(output) {
+    return {
+        nextAgent:       output?.nextAgent       ?? "",
+        revisionCount:   output?.revisionCount   ?? 0,
+        confidenceScore: output?.confidenceScore ?? 0,
+        threatScore:     output?.threatScore     ?? 0,
+        fileSaved:       output?.fileSaved       ?? false,
+    };
+}
 
 // 📡 SSE Event Bus — her threadId için agent geçişlerini yayar
 export const agentEventBus = new EventEmitter();
@@ -61,12 +88,15 @@ export async function runHotLeadWorkflow(threadId, task, tenantConfig, clientId 
     let interruptDetected = false;
 
     // 🛰️ Admin Fleet Radar: workflow başlangıcını kaydet
+    const tenantSlug = clientId;
     activeWorkflows.set(threadId, {
         clientId,
-        tenantSlug: tenantConfig?.clientSlug || clientId,
+        tenantSlug,
         startedAt: Date.now(),
         lastAgent: null,
     });
+
+    let stepCounter = 0;
 
     try {
         for await (const chunk of await app.stream({ task }, config)) {
@@ -83,6 +113,32 @@ export async function runHotLeadWorkflow(threadId, task, tenantConfig, clientId 
                 console.log(`   🛑 INTERRUPT detected — breaking stream loop`);
                 interruptDetected = true;
                 break;
+            }
+
+            // ⚙️ Zaman Makinesi: node snapshot'ını kaydet (fire-and-forget)
+            if (nodeName !== "__interrupt__") {
+                const nodeOutput = chunk[nodeName] || {};
+                const snapshotStep = stepCounter++;
+                WorkflowSnapshot.create({
+                    threadId,
+                    step: snapshotStep,
+                    nodeName,
+                    clientId,
+                    tenantSlug,
+                    output: truncateSnapshot(nodeOutput),
+                    keyState: extractKeyState(nodeOutput),
+                }).catch(() => { /* snapshot hatası workflow'u durdurmasın */ });
+
+                // 🛰️ Admin God Mode: Zaman Makinesi canlı güncelleme sinyali
+                systemEventBus.emit("global", {
+                    threadId,
+                    clientId,
+                    tenantSlug,
+                    type: "snapshot_saved",
+                    agent: nodeName,
+                    step: snapshotStep,
+                    timestamp: Date.now(),
+                });
             }
         }
 
@@ -122,7 +178,7 @@ export async function runHotLeadWorkflow(threadId, task, tenantConfig, clientId 
 
             try {
                 await Report.findOneAndUpdate(
-                    { threadId },
+                    { threadId, clientId },
                     {
                         threadId,
                         clientId,
@@ -136,6 +192,9 @@ export async function runHotLeadWorkflow(threadId, task, tenantConfig, clientId 
             } catch (dbErr) {
                 console.warn("   ⚠️ MongoDB upsert başarısız:", dbErr.message);
             }
+
+            // Workflow is paused at HITL — no longer "active" in Fleet Radar
+            activeWorkflows.delete(threadId);
 
             emitToThread(threadId, {
                 type: "workflow_complete",
@@ -214,7 +273,7 @@ export async function runCMOWorkflow(threadId, reportContent, task, clientId = "
 }
 
 // ♻️ Revizyon workflow'u — OVERRIDE sonrası arka planda graph'ı devam ettirir
-export async function runRevisionWorkflow(threadId, tenantConfig) {
+export async function runRevisionWorkflow(threadId, tenantConfig, clientId = "default") {
     const config = { configurable: { thread_id: threadId, tenantConfig: tenantConfig }, recursionLimit: 100 };
     let interruptDetected = false;
 
@@ -249,7 +308,7 @@ export async function runRevisionWorkflow(threadId, tenantConfig) {
             if (!pendingContent) pendingContent = "*(Revizyon hazır — Pull Intel ile yükleyin)*";
 
             await Report.findOneAndUpdate(
-                { threadId },
+                { threadId, clientId },
                 { content: pendingContent, status: "AWAITING_APPROVAL" },
                 { upsert: true, new: true }
             );

@@ -5,6 +5,10 @@ import { SecurityEvent } from "../models/SecurityEvent.js";
 import Transaction from "../models/Transaction.js";
 import { Report } from "../models/Report.js";
 import { PLAN_LIMITS } from "../config/plans.js";
+import { BannedIP } from "../models/BannedIP.js";
+import { WorkflowSnapshot } from "../models/WorkflowSnapshot.js";
+import { bannedIPCache } from "../services/bannedIPCacheService.js";
+import { costEventBus } from "../services/costEventBus.js";
 import { systemEventBus, agentEventBus, eventBuffers, activeWorkflows } from "../workflows/runner.js";
 
 // ─────────────────────────────────────────────────────
@@ -405,7 +409,9 @@ export const getFinanceAlerts = async (req, res) => {
         for (const c of clients) {
             const revenue = planPrice[c.plan] || 0;
             const expense = expenseMap[c.slug] || 0;
-            const margin = revenue > 0 ? ((revenue - expense) / revenue) * 100 : 100;
+            const margin = revenue > 0
+                ? ((revenue - expense) / revenue) * 100
+                : expense > 0 ? -100 : 100;
 
             if (margin < 20) {
                 let severity = "warning";
@@ -551,4 +557,275 @@ export const getActiveWorkflows = (req, res) => {
         workflows.push({ threadId, ...wf });
     }
     res.json({ workflows, count: workflows.length });
+};
+
+// ═════════════════════════════════════════════════════
+// IP BAN YÖNETİMİ
+// ═════════════════════════════════════════════════════
+
+/**
+ * GET /api/admin/security/banned-ips
+ * Aktif banlı IP listesi
+ */
+export const listBannedIPs = async (req, res) => {
+    try {
+        const ips = await BannedIP.find({ isActive: true })
+            .sort({ createdAt: -1 })
+            .limit(200)
+            .lean();
+        res.json({ ips, count: ips.length });
+    } catch (err) {
+        console.error("❌ admin/banned-ips hatası:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * POST /api/admin/security/ban-ip
+ * IP adresini banla
+ * Body: { ip, reason, source?, clientId?, durationHours? }
+ */
+export const banIP = async (req, res) => {
+    try {
+        const { ip, reason, source, clientId, durationHours } = req.body;
+        if (!ip || !reason) return res.status(400).json({ error: "IP ve neden zorunludur." });
+
+        // IP format doğrulaması (basit)
+        const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$|^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
+        if (!ipRegex.test(ip)) return res.status(400).json({ error: "Geçersiz IP formatı." });
+
+        // Zaten banlı mı?
+        const existing = await BannedIP.findOne({ ip, isActive: true });
+        if (existing) return res.status(409).json({ error: "IP zaten banlı.", bannedAt: existing.createdAt });
+
+        const expiresAt = durationHours ? new Date(Date.now() + durationHours * 60 * 60 * 1000) : null;
+
+        const banned = await BannedIP.create({
+            ip,
+            reason,
+            source: source || "MANUAL",
+            clientId: clientId || null,
+            expiresAt,
+            bannedBy: req.tenant?.client?._id,
+        });
+
+        // In-memory cache'e ekle (rateLimiter'ın hızlı erişimi için)
+        bannedIPCache.add(ip, expiresAt);
+
+        await logAdminAction(req.tenant?.client?._id, "IP_BANNED", {
+            type: "ip",
+            id: ip,
+        }, { reason, source: source || "MANUAL", durationHours: durationHours || "permanent" });
+
+        console.log(`🚫 IP BANNED: ${ip} — Neden: ${reason}`);
+        res.json({ success: true, banned });
+    } catch (err) {
+        console.error("❌ admin/ban-ip hatası:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * POST /api/admin/security/unban-ip
+ * IP banını kaldır
+ * Body: { ip }
+ */
+export const unbanIP = async (req, res) => {
+    try {
+        const { ip } = req.body;
+        if (!ip) return res.status(400).json({ error: "IP zorunludur." });
+
+        const result = await BannedIP.updateMany(
+            { ip, isActive: true },
+            { isActive: false }
+        );
+
+        if (result.modifiedCount === 0) return res.status(404).json({ error: "Aktif ban bulunamadı." });
+
+        // In-memory cache'den çıkar
+        bannedIPCache.delete(ip);
+
+        await logAdminAction(req.tenant?.client?._id, "IP_UNBANNED", {
+            type: "ip",
+            id: ip,
+        }, {});
+
+        console.log(`✅ IP UNBANNED: ${ip}`);
+        res.json({ success: true, unbannedCount: result.modifiedCount });
+    } catch (err) {
+        console.error("❌ admin/unban-ip hatası:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Sunucu başlangıcında çağrılır — aktif banları in-memory cache'e yükler
+ */
+export async function loadBannedIPCache() {
+    try {
+        const bans = await BannedIP.find({ isActive: true }, { ip: 1, expiresAt: 1 }).lean();
+        for (const b of bans) bannedIPCache.add(b.ip, b.expiresAt || null);
+        console.log(`🛡️ BannedIP cache yüklendi: ${bannedIPCache.size} aktif ban`);
+    } catch (err) {
+        console.error("⚠️ BannedIP cache yükleme hatası:", err.message);
+    }
+}
+
+// ═════════════════════════════════════════════════════
+// FAZ 4 — FinOps: Burn Rate SSE + Throttle
+// ═════════════════════════════════════════════════════
+
+/**
+ * GET /api/admin/finance/live
+ * SSE — Gerçek zamanlı LLM maliyet akışı (Burn Rate)
+ * Her token işleminde cost_tick event'i yayınlar
+ */
+export const financeLiveStream = (req, res) => {
+    res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+    });
+    res.write(`data: ${JSON.stringify({ type: "connected", message: "Finance SSE active" })}\n\n`);
+
+    const handler = (event) => {
+        try {
+            res.write(`data: ${JSON.stringify(event)}\n\n`);
+        } catch { /* client disconnected */ }
+    };
+
+    costEventBus.on("cost", handler);
+
+    const heartbeat = setInterval(() => {
+        try { res.write(": heartbeat\n\n"); } catch { clearInterval(heartbeat); }
+    }, 15000);
+
+    req.on("close", () => {
+        costEventBus.off("cost", handler);
+        clearInterval(heartbeat);
+    });
+};
+
+/**
+ * POST /api/admin/tenants/:slug/throttle
+ * Tenant'ı throttle et — TenantConfig'e flag yazar
+ * Body: { throttle: boolean }
+ */
+export const throttleTenant = async (req, res) => {
+    try {
+        const { throttle } = req.body;
+        const isThrottled = throttle !== false;
+
+        const client = await Client.findOne({ slug: req.params.slug });
+        if (!client) return res.status(404).json({ error: "Tenant bulunamadı." });
+        if (client.isAdmin) return res.status(403).json({ error: "Admin throttle edilemez." });
+
+        await TenantConfig.findOneAndUpdate(
+            { clientId: client._id },
+            { $set: { "configObject.throttled": isThrottled } },
+            { upsert: true, new: true }
+        );
+
+        await logAdminAction(req.tenant.client._id,
+            isThrottled ? "TENANT_THROTTLED" : "TENANT_UNTHROTTLED",
+            { type: "tenant", id: client.slug },
+            {}
+        );
+
+        console.log(`⚡ THROTTLE: ${client.slug} — ${isThrottled ? "kısıtlandı" : "kaldırıldı"}`);
+        res.json({ success: true, throttled: isThrottled });
+    } catch (err) {
+        console.error("❌ admin/throttle hatası:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// ═════════════════════════════════════════════════════
+// FAZ 5 — Zaman Makinesi (Time Machine)
+// ═════════════════════════════════════════════════════
+
+/**
+ * GET /api/admin/workflows/recent
+ * Son N workflow'un özeti (threadId, tenant, adım sayısı, son ajan)
+ */
+export const getRecentWorkflows = async (req, res) => {
+    try {
+        const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+
+        // MongoDB'den tamamlanmış workflow snapshot grupları
+        const dbWorkflows = await WorkflowSnapshot.aggregate([
+            {
+                $group: {
+                    _id: "$threadId",
+                    clientId:     { $first: "$clientId" },
+                    tenantSlug:   { $first: "$tenantSlug" },
+                    stepCount:    { $sum: 1 },
+                    lastNode:     { $last: "$nodeName" },
+                    startedAt:    { $min: "$createdAt" },
+                    lastActivity: { $max: "$createdAt" },
+                },
+            },
+            { $sort: { lastActivity: -1 } },
+            { $limit: limit },
+        ]);
+
+        // In-memory aktif workflow'ları ile birleştir
+        const activeList = [];
+        for (const [threadId, wf] of activeWorkflows.entries()) {
+            activeList.push({
+                threadId,
+                clientId: wf.clientId,
+                tenantSlug: wf.tenantSlug,
+                stepCount: null, // henüz tamamlanmadı
+                lastNode: wf.lastAgent,
+                startedAt: new Date(wf.startedAt),
+                lastActivity: new Date(wf.startedAt),
+                isActive: true,
+            });
+        }
+
+        const dbList = dbWorkflows.map((w) => ({
+            threadId: w._id,
+            clientId: w.clientId,
+            tenantSlug: w.tenantSlug,
+            stepCount: w.stepCount,
+            lastNode: w.lastNode,
+            startedAt: w.startedAt,
+            lastActivity: w.lastActivity,
+            isActive: activeWorkflows.has(w._id),
+        }));
+
+        // Aktif olanları önce, DB listesiyle birleştir (tekrarları önle)
+        const activeThreadIds = new Set(activeList.map((w) => w.threadId));
+        const combined = [
+            ...activeList,
+            ...dbList.filter((w) => !activeThreadIds.has(w.threadId)),
+        ].slice(0, limit);
+
+        res.json({ workflows: combined, total: combined.length });
+    } catch (err) {
+        console.error("❌ admin/workflows/recent hatası:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * GET /api/admin/workflows/:threadId/snapshots
+ * Bir workflow'un tüm adım snapshot'larını döndür
+ */
+export const getWorkflowSnapshots = async (req, res) => {
+    try {
+        const snapshots = await WorkflowSnapshot.find(
+            { threadId: req.params.threadId },
+            { __v: 0 }
+        )
+            .sort({ step: 1 })
+            .lean();
+
+        res.json({ snapshots, stepCount: snapshots.length });
+    } catch (err) {
+        console.error("❌ admin/workflows/:threadId/snapshots hatası:", err.message);
+        res.status(500).json({ error: err.message });
+    }
 };

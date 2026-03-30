@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAgentStore } from "@/store/agent-store";
+import { IPManager } from "./ip-manager";
 
 const SEVERITY_COLORS: Record<string, string> = {
     LOW: "#00f0ff", MEDIUM: "#ffb000", HIGH: "#ff6b35", CRITICAL: "#ff2d55",
@@ -118,6 +119,9 @@ export const SocPanel = () => {
                     </select>
                 )}
             </div>
+
+            {/* IP Firewall */}
+            <IPManager />
 
             {/* Recent Events */}
             <div>

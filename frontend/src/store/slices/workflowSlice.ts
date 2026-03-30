@@ -32,13 +32,14 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
     // ── SSE handler factories ────────────────────────────────────────────────
 
     function openSSE(threadId: string, skipFirst: AgentId, labels: Record<string, string>) {
+        get()._workflowSSE?.close();
         let prev: AgentId | null = skipFirst;
         const es = new EventSource(`${BACKEND_SSE}/api/events/${threadId}`);
+        set({ _workflowSSE: es });
 
         es.onmessage = (e: MessageEvent) => {
-            const event = JSON.parse(e.data) as {
-                type: string; agent?: string; status?: string; pendingContent?: string; message?: string;
-            };
+            let event: { type: string; agent?: string; status?: string; pendingContent?: string; message?: string };
+            try { event = JSON.parse(e.data); } catch { return; }
 
             if (event.type === "agent_active" && event.agent) {
                 const agentId = event.agent as AgentId;
@@ -53,7 +54,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
             }
 
             if (event.type === "workflow_complete") {
-                es.close();
+                es.close(); set({ _workflowSSE: null });
                 if (event.status === "AWAITING_HUMAN_APPROVAL") {
                     if (prev && prev !== skipFirst) get().setAgentStatus(prev, "SUCCESS");
                     get().setAgentStatus("hitl", "ACTIVE");
@@ -74,12 +75,14 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
                         fetch(url, { headers: buildHeaders(get().apiKey) })
                             .then((r) => r.json())
                             .then((artifact) => {
+                                if (get().threadId !== currentThreadId) return; // stale response — new workflow started
                                 const fetched = artifact.content?.trim() || "*(İçerik hazır — yeniden yükleyin)*";
                                 set({ pendingContent: fetched, workflowPhase: "AWAITING_APPROVAL", drawerItem: { type: "report", threadId: currentThreadId! } });
                                 get().fetchMissions();
                                 get().addAlert({ message: "MISSION COMPLETE — AWAITING YOUR AUTHORIZATION", type: "warning" });
                             })
                             .catch(() => {
+                                if (get().threadId !== currentThreadId) return;
                                 set({ pendingContent: "*(Blueprint hazır — Pull Intel ile yükleyin)*", workflowPhase: "AWAITING_APPROVAL", drawerItem: { type: "report", threadId: currentThreadId! } });
                                 get().addAlert({ message: "MISSION COMPLETE — AWAITING YOUR AUTHORIZATION", type: "warning" });
                             });
@@ -88,7 +91,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
             }
 
             if (event.type === "error") {
-                es.close();
+                es.close(); set({ _workflowSSE: null });
                 get().setAgentStatus((prev ?? "ceo") as AgentId, "ERROR");
                 get().setWorkflowPhase("IDLE");
                 get().setActiveAgent(null);
@@ -98,7 +101,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
         };
 
         es.onerror = () => {
-            es.close();
+            es.close(); set({ _workflowSSE: null });
             get().setWorkflowPhase("IDLE");
             get().setActiveAgent(null);
             get().addLog({ timestamp: getTimestamp(), agent: "SYSTEM", message: "SSE connection lost.", level: "ERROR" });
@@ -107,11 +110,14 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
     }
 
     function openRevisionSSE(threadId: string) {
+        get()._workflowSSE?.close();
         let prev: AgentId | null = "ceo";
         const es = new EventSource(`${BACKEND_SSE}/api/events/${threadId}`);
+        set({ _workflowSSE: es });
 
         es.onmessage = (e: MessageEvent) => {
-            const event = JSON.parse(e.data) as { type: string; agent?: string; pendingContent?: string; message?: string };
+            let event: { type: string; agent?: string; pendingContent?: string; message?: string };
+            try { event = JSON.parse(e.data); } catch { return; }
 
             if (event.type === "agent_active" && event.agent) {
                 const agentId = event.agent as AgentId;
@@ -123,7 +129,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
             }
 
             if (event.type === "workflow_complete") {
-                es.close();
+                es.close(); set({ _workflowSSE: null });
                 if (prev) get().setAgentStatus(prev, "SUCCESS");
                 get().setAgentStatus("hitl", "ACTIVE");
                 get().setActiveAgent("hitl");
@@ -134,13 +140,13 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
             }
 
             if (event.type === "error") {
-                es.close();
+                es.close(); set({ _workflowSSE: null });
                 get().setWorkflowPhase("AWAITING_APPROVAL");
                 get().addAlert({ message: `REVISION ERROR: ${event.message}`, type: "error" });
             }
         };
 
-        es.onerror = () => { es.close(); get().setWorkflowPhase("AWAITING_APPROVAL"); };
+        es.onerror = () => { es.close(); set({ _workflowSSE: null }); get().setWorkflowPhase("AWAITING_APPROVAL"); };
     }
 
     // ── Slice ────────────────────────────────────────────────────────────────
@@ -151,6 +157,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
         pendingContent: null,
         missionMessage: null,
         missionCategory: null,
+        _workflowSSE: null,
 
         setWorkflowPhase: (phase) => set({ workflowPhase: phase }),
 
@@ -249,6 +256,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
                 }
             } catch (error) {
                 setAgentStatus("publisher", "ERROR");
+                setWorkflowPhase("AWAITING_APPROVAL");
                 const errMsg = error instanceof Error ? error.message : "Delivery failed";
                 addLog({ timestamp: getTimestamp(), agent: "SYSTEM", message: `PUBLISH ERROR: ${errMsg}`, level: "ERROR" });
                 addAlert({ message: `DELIVERY FAILED: ${errMsg}`, type: "error" });
@@ -346,11 +354,14 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
                 set({ threadId: data.threadId });
                 addLog({ timestamp: getTimestamp(), agent: "RADAR", message: `R&D workflow started — threadId: ${data.threadId}`, level: "INFO" });
 
+                get()._workflowSSE?.close();
                 let prev: AgentId | null = "radar";
                 const es = new EventSource(`${BACKEND_SSE}/api/events/${data.threadId}`);
+                set({ _workflowSSE: es });
 
                 es.onmessage = (e: MessageEvent) => {
-                    const event = JSON.parse(e.data) as { type: string; agent?: string; status?: string; pendingContent?: string; message?: string };
+                    let event: { type: string; agent?: string; status?: string; pendingContent?: string; message?: string };
+                    try { event = JSON.parse(e.data); } catch { return; }
 
                     if (event.type === "agent_active" && event.agent) {
                         const agentId = event.agent as AgentId;
@@ -363,7 +374,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
                     }
 
                     if (event.type === "workflow_complete" && event.status === "AWAITING_HUMAN_APPROVAL") {
-                        es.close();
+                        es.close(); set({ _workflowSSE: null });
                         if (prev && prev !== "radar") get().setAgentStatus(prev, "SUCCESS");
                         set({ pendingContent: event.pendingContent || "No R&D content available.", workflowPhase: "AWAITING_APPROVAL" });
                         get().setAgentStatus("hitl", "ACTIVE");
@@ -374,7 +385,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
                     }
 
                     if (event.type === "error") {
-                        es.close();
+                        es.close(); set({ _workflowSSE: null });
                         get().setAgentStatus("radar", "ERROR");
                         setWorkflowPhase("IDLE");
                         setActiveAgent(null);
@@ -384,7 +395,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
                 };
 
                 es.onerror = () => {
-                    es.close();
+                    es.close(); set({ _workflowSSE: null });
                     get().setAgentStatus("radar", "ERROR");
                     setWorkflowPhase("IDLE");
                     setActiveAgent(null);

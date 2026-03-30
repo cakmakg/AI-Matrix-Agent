@@ -59,11 +59,12 @@ export const handleApproval = async (req, res) => {
             );
             return res.json({ success: true, status: "PUBLISHED" });
         } else {
+            const clientId = req.clientId || "default";
             await Report.findOneAndUpdate(
-                { threadId },
+                { threadId, clientId },
                 { status: "REJECTED", humanFeedback: feedback || "" }
             );
-            runRevisionWorkflow(threadId, req.tenant?.config).catch(err =>
+            runRevisionWorkflow(threadId, req.tenant?.config, clientId).catch(err =>
                 console.error("❌ Revision background error:", err.message)
             );
             return res.json({ success: true, status: "REVISED" });

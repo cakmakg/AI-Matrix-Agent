@@ -1,4 +1,5 @@
 import Transaction from "../models/Transaction.js";
+import { costEventBus } from "./costEventBus.js";
 
 // AWS Bedrock fiyatları — 1 Milyon token başına USD
 const MODEL_PRICING = {
@@ -33,6 +34,19 @@ export async function trackLLMCost(inputTokens, outputTokens, agentName, threadI
         });
 
         console.log(`💰 CFO: ${agentName} — $${cost.toFixed(6)} (${inputTokens} in + ${outputTokens} out)`);
+
+        // 🛰️ Admin God Mode: Gerçek zamanlı maliyet yayını
+        costEventBus.emit("cost", {
+            type: "cost_tick",
+            clientId,
+            agentName,
+            threadId,
+            cost,
+            inputTokens,
+            outputTokens,
+            model: modelName,
+            timestamp: Date.now(),
+        });
     } catch (err) {
         console.error("⚠️ Maliyet kaydı hatası:", err.message);
     }

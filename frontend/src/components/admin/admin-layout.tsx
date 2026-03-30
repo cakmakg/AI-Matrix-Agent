@@ -6,12 +6,16 @@ import { FleetRadar } from "./fleet-radar";
 import { SocPanel } from "./soc-panel";
 import { FinopsPanel } from "./finops-panel";
 import { GhostViewer } from "./ghost-viewer";
+import { OperatingRoom } from "./operating-room";
 
 export const AdminLayout = () => {
     const {
         fetchAdminTenants, fetchGlobalSecurity, fetchGlobalFinance,
-        fetchTenantPnL, fetchFinanceAlerts, fetchAdminLogs,
-        connectGlobalSSE, disconnectGlobalSSE, selectedTenantSlug,
+        fetchTenantPnL, fetchFinanceAlerts, fetchAdminLogs, fetchBannedIPs,
+        fetchRecentWorkflows,
+        connectGlobalSSE, disconnectGlobalSSE,
+        connectFinanceSSE, disconnectFinanceSSE,
+        selectedTenantSlug,
     } = useAgentStore();
 
     useEffect(() => {
@@ -21,7 +25,10 @@ export const AdminLayout = () => {
         fetchTenantPnL();
         fetchFinanceAlerts();
         fetchAdminLogs();
+        fetchBannedIPs();
+        fetchRecentWorkflows();
         connectGlobalSSE();
+        connectFinanceSSE();
 
         // 30 saniyede bir yenile
         const interval = setInterval(() => {
@@ -29,11 +36,13 @@ export const AdminLayout = () => {
             fetchGlobalSecurity();
             fetchGlobalFinance();
             fetchFinanceAlerts();
+            fetchRecentWorkflows();
         }, 30000);
 
         return () => {
             clearInterval(interval);
             disconnectGlobalSSE();
+            disconnectFinanceSSE();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -72,13 +81,15 @@ export const AdminLayout = () => {
                 <div className="flex-1 min-w-0 flex flex-col">
                     {/* Ust: Orta (Ghost/Ameliyathane) + Sag (SOC) */}
                     <div className="flex-1 min-h-0 flex">
-                        {/* Orta Panel — Ghost Viewer / Placeholder */}
-                        <div className="flex-1 min-w-0 overflow-y-auto p-4"
+                        {/* Orta Panel — Ghost Viewer / Operating Room */}
+                        <div className="flex-1 min-w-0 overflow-hidden"
                             style={{ background: "linear-gradient(180deg, rgba(0,240,255,0.02) 0%, transparent 50%)" }}>
                             {selectedTenantSlug ? (
-                                <GhostViewer />
+                                <div className="h-full overflow-y-auto p-4">
+                                    <GhostViewer />
+                                </div>
                             ) : (
-                                <OperatingRoomPlaceholder />
+                                <OperatingRoom />
                             )}
                         </div>
 
@@ -116,11 +127,3 @@ const StatusIndicator = () => {
         </div>
     );
 };
-
-const OperatingRoomPlaceholder = () => (
-    <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-        <div className="text-4xl mb-3">&#128373;</div>
-        <div className="text-sm text-white/60 font-mono">Tenant auswahlen zum Ghost Mode</div>
-        <div className="text-[10px] text-white/30 mt-1">Fleet Radar'dan bir tenant'a tikla</div>
-    </div>
-);
