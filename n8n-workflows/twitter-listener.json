@@ -1,0 +1,126 @@
+{
+  "name": "🐦 Twitter/X Listener — AI Orchestra",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+        }
+      },
+      "id": "schedule_trigger",
+      "name": "Alle 5 Minuten",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.twitter.com/2/tweets/search/recent",
+        "requestMethod": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.TWITTER_BEARER_TOKEN}}" }
+          ]
+        },
+        "queryParameters": {
+          "parameters": [
+            { "name": "query",        "value": "@{{$env.TWITTER_HANDLE}} -is:retweet -from:{{$env.TWITTER_HANDLE}}" },
+            { "name": "max_results",  "value": "10" },
+            { "name": "tweet.fields", "value": "author_id,created_at,public_metrics,conversation_id" },
+            { "name": "expansions",   "value": "author_id" },
+            { "name": "user.fields",  "value": "username,name" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch_mentions",
+      "name": "Twitter Mentions abrufen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prüfen ob neue Mentions vorhanden sind\nconst data = items[0].json;\nif (!data.data || data.data.length === 0) {\n  console.log('[Twitter Listener] Keine neuen Mentions.');\n  return [];\n}\n\n// Autoren-Map aufbauen (authorId → username)\nconst userMap = {};\nif (data.includes && data.includes.users) {\n  for (const user of data.includes.users) {\n    userMap[user.id] = { username: user.username, name: user.name };\n  }\n}\n\n// Jede Mention als eigenes Item ausgeben\nconst results = [];\nfor (const tweet of data.data) {\n  const author = userMap[tweet.author_id] || {};\n  results.push({\n    json: {\n      platform:     'twitter',\n      platform_id:  tweet.id,\n      author:       '@' + (author.username || tweet.author_id),\n      author_name:  author.name || '',\n      author_email: '',\n      subject:      'Twitter Mention von @' + (author.username || tweet.author_id),\n      content:      tweet.text || '',\n      conversation_id: tweet.conversation_id || tweet.id,\n      timestamp:    tweet.created_at || new Date().toISOString()\n    }\n  });\n}\nreturn results;"
+      },
+      "id": "normalize_mentions",
+      "name": "Mentions normalisieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.AI_BRAIN_URL}}/api/inbox",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type",     "value": "application/json" },
+            { "name": "X-Api-Key",        "value": "={{$env.AI_BRAIN_API_KEY}}" },
+            { "name": "X-Webhook-Secret", "value": "={{$env.N8N_WEBHOOK_SECRET}}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "platform",      "value": "={{$json.platform}}" },
+            { "name": "platform_id",   "value": "={{$json.platform_id}}" },
+            { "name": "author",        "value": "={{$json.author}}" },
+            { "name": "author_email",  "value": "={{$json.author_email}}" },
+            { "name": "subject",       "value": "={{$json.subject}}" },
+            { "name": "content",       "value": "={{$json.content}}" }
+          ]
+        },
+        "options": { "timeout": 30000 }
+      },
+      "id": "send_to_ai_brain",
+      "name": "An AI Brain senden → /api/inbox",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1020, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Nur auf HOT_LEAD reagieren mit automatischem Tweet-Reply\nconst item = items[0].json;\nif (item.status !== 'PROCESSING' || !item.threadId) {\n  return [];\n}\n// Dieses Item wird von Optional Auto-Reply weiterverarbeitet\nreturn [{ json: item }];"
+      },
+      "id": "check_hot_lead",
+      "name": "Hot Lead prüfen (optional Reply)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {},
+      "id": "done",
+      "name": "Fertig",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1540, 300]
+    }
+  ],
+  "connections": {
+    "Alle 5 Minuten": {
+      "main": [[{ "node": "Twitter Mentions abrufen", "type": "main", "index": 0 }]]
+    },
+    "Twitter Mentions abrufen": {
+      "main": [[{ "node": "Mentions normalisieren", "type": "main", "index": 0 }]]
+    },
+    "Mentions normalisieren": {
+      "main": [[{ "node": "An AI Brain senden → /api/inbox", "type": "main", "index": 0 }]]
+    },
+    "An AI Brain senden → /api/inbox": {
+      "main": [[{ "node": "Hot Lead prüfen (optional Reply)", "type": "main", "index": 0 }]]
+    },
+    "Hot Lead prüfen (optional Reply)": {
+      "main": [[{ "node": "Fertig", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "notes": "Ruft alle 5 Minuten @Mentions vom Twitter/X API v2 ab. Normalisiert die Daten und sendet sie an AI Brain /api/inbox zur Klassifizierung. Idempotenz: platform_id=tweetId verhindert doppelte Verarbeitung. ENV: TWITTER_BEARER_TOKEN, TWITTER_HANDLE, AI_BRAIN_URL, AI_BRAIN_API_KEY, N8N_WEBHOOK_SECRET."
+}

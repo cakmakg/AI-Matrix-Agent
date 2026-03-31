@@ -113,7 +113,7 @@ export const KnowledgeView = () => {
 
 // ── RAG Knowledge Panel ───────────────────────────────────────────────────────
 
-const RagKnowledgePanel = ({ clientId }: { clientId: string }) => {
+export const RagKnowledgePanel = ({ clientId }: { clientId: string }) => {
     const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
     const [loading, setLoading] = useState(true);
     const [inputMode, setInputMode] = useState<"text" | "pdf" | "url">("text");

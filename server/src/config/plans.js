@@ -59,108 +59,152 @@ export function getPlanRules(plan) {
 //   "url"   → URL input alanı (hedef şirket sitesi)
 // ─────────────────────────────────────────────────────────────
 export const PRODUCT_CONFIGS = {
-    support_desk: {
-        label: "AI Support Desk",
-        description: "Müşteri destek biletlerini RAG ile otomatik yanıtlar. Satış potansiyeli varsa Closer devreye girer.",
+    // ──────────────────────────────────────────────────────────
+    // MEGA-DEPARTMAN 1: Customer Experience (CX)
+    // Eski: support_desk
+    // ──────────────────────────────────────────────────────────
+    cx: {
+        label: "Customer Experience",
+        description: "Müşteriyi elde tutar: Gelen tüm müşteri sorularını, destek taleplerini ve şikayetleri RAG hafızasıyla otonom yanıtlar.",
         requiredPlan: "free",
         allowedTaskTypes: ["SUPPORT_PRICING", "SUPPORT_BUG", "HOT_LEAD_FOLLOWUP"],
         inputType: "text",
         inputPlaceholder: "Müşteri sorusunu veya görevi girin...",
         inputLabel: "Destek Görevi",
     },
-    rfp_responder: {
-        label: "RFP & Tender Responder",
-        description: "Yüklenen ihale dosyalarını RAG bilgi tabanıyla eşleştirerek saniyeler içinde yanıtlar.",
+
+    // ──────────────────────────────────────────────────────────
+    // MEGA-DEPARTMAN 2: Growth & Revenue
+    // Eski: b2b_outreach + social_engine + rfp_responder
+    // ──────────────────────────────────────────────────────────
+    growth: {
+        label: "Growth & Revenue",
+        description: "Kasaya para sokar: Sosyal medyadan müşteri çeker (Inbound), B2B URL tarayarak soğuk mail atar (Outbound) ve gelen ihaleleri (RFP) anında yanıtlar.",
         requiredPlan: "pro",
-        allowedTaskTypes: ["RFP_RESPONSE", "TENDER_RESPONSE"],
-        inputType: "file",
-        inputPlaceholder: "İhale dosyasını sürükleyin veya tıklayın (PDF/Word)",
-        inputLabel: "İhale Dosyası",
+        allowedTaskTypes: ["COLD_OUTREACH", "TWITTER", "LINKEDIN", "RFP_RESPONSE", "TENDER_RESPONSE"],
+        subTabs: [
+            {
+                key: "social",
+                label: "Sosyal Medya",
+                icon: "📣",
+                inputType: "text",
+                inputPlaceholder: "İçerik konusu veya hedef platform yazın (örn: TWITTER: AI trendleri)...",
+                inputLabel: "İçerik Görevi",
+                taskPrefix: "",
+            },
+            {
+                key: "outreach",
+                label: "Soğuk Satış",
+                icon: "🎯",
+                inputType: "url",
+                inputPlaceholder: "Hedef şirketin web sitesini girin (örn: stripe.com)",
+                inputLabel: "Hedef Şirket URL",
+                taskPrefix: "COLD_OUTREACH: ",
+            },
+            {
+                key: "rfp",
+                label: "İhale Yanıtla",
+                icon: "📋",
+                inputType: "file",
+                inputPlaceholder: "İhale dosyasını sürükleyin veya tıklayın (PDF/Word)",
+                inputLabel: "İhale Dosyası",
+                taskPrefix: "RFP_RESPONSE: ",
+            },
+        ],
     },
-    competitor_radar: {
-        label: "Competitor Intelligence Radar",
-        description: "Rakiplerin sitelerini ve haberlerini günlük tarar; stratejik aksiyon raporu üretir.",
+
+    // ──────────────────────────────────────────────────────────
+    // MEGA-DEPARTMAN 3: Strategy & Innovation
+    // Eski: competitor_radar + trend_radar + business_stress_test
+    // ──────────────────────────────────────────────────────────
+    strategy: {
+        label: "Strategy & Innovation",
+        description: "Şirketin geleceğini çizer: Rakipleri izler, yeni pazar trendlerini avlar ve iş planlarını acımasızca test edip pivot fikirleri sunar.",
         requiredPlan: "pro",
-        allowedTaskTypes: ["INNOVATION_RADAR"],
-        inputType: "text",
-        inputPlaceholder: "Rakip araştırması veya sektör analizi isteği girin...",
-        inputLabel: "Araştırma Hedefi",
+        allowedTaskTypes: ["INNOVATION_RADAR", "TREND_RADAR", "BUSINESS_STRESS_TEST"],
+        subTabs: [
+            {
+                key: "competitor",
+                label: "Rakip Radar",
+                icon: "🔍",
+                inputType: "text",
+                inputPlaceholder: "Rakip araştırması veya sektör analizi isteği girin...",
+                inputLabel: "Araştırma Hedefi",
+                taskPrefix: "INNOVATION_RADAR: ",
+            },
+            {
+                key: "trend",
+                label: "Trend Radar",
+                icon: "📡",
+                inputType: "text",
+                inputPlaceholder: "Sektör adı girin (örn: Giyilebilir Teknoloji, Vegan Gıda)...",
+                inputLabel: "Sektör / Trend Hedefi",
+                taskPrefix: "TREND_RADAR: ",
+            },
+            {
+                key: "stress",
+                label: "Stres Testi",
+                icon: "🧪",
+                inputType: "file",
+                inputPlaceholder: "İş Planınızı (Pitch Deck) Yükleyin (PDF/Word)",
+                inputLabel: "Pitch Deck",
+                taskPrefix: "BUSINESS_STRESS_TEST: ",
+            },
+        ],
     },
-    b2b_outreach: {
-        label: "B2B Cold Outreach",
-        description: "Hedef şirketin sitesini analiz edip kişiye özel soğuk satış e-postası yazar.",
-        requiredPlan: "pro",
-        allowedTaskTypes: ["COLD_OUTREACH"],
-        inputType: "url",
-        inputPlaceholder: "Hedef şirketin web sitesini girin (örn: stripe.com)",
-        inputLabel: "Hedef Şirket URL",
+
+    // ──────────────────────────────────────────────────────────
+    // MEGA-DEPARTMAN 4: Finance & Operations (Back-Office)
+    // Eski: finance_audit + supply_chain
+    // ──────────────────────────────────────────────────────────
+    backoffice: {
+        label: "Finance & Operations",
+        description: "Şirketin para ve mal kaybetmesini önler: Faturalardaki kaçakları/anomalileri yakalar, stokları izleyip zamanında sipariş geçer.",
+        requiredPlan: "enterprise",
+        allowedTaskTypes: ["INVOICE_PROCESSING", "FATURA_DENETIM", "AUDIT_INVOICE", "STOCK_CHECK", "SUPPLY_ALERT", "INVENTORY_LOW"],
+        subTabs: [
+            {
+                key: "audit",
+                label: "Fatura Denetim",
+                icon: "🧾",
+                inputType: "text",
+                inputPlaceholder: "Fatura denetim görevi veya INVOICE_PROCESSING etiketiyle görev girin...",
+                inputLabel: "Fatura Görevi",
+                taskPrefix: "INVOICE_PROCESSING: ",
+            },
+            {
+                key: "supply",
+                label: "Tedarik Zinciri",
+                icon: "📦",
+                inputType: "text",
+                inputPlaceholder: "Stok kontrolü veya STOCK_CHECK etiketiyle görev girin...",
+                inputLabel: "Stok Görevi",
+                taskPrefix: "STOCK_CHECK: ",
+            },
+        ],
     },
-    cto_service: {
-        label: "CTO-as-a-Service",
-        description: "Proje isteklerini alır; tech stack, klasör yapısı ve kodlama kuralları içeren Blueprint üretir.",
+
+    // ──────────────────────────────────────────────────────────
+    // MEGA-DEPARTMAN 5: Engineering & IT
+    // Eski: cto_service
+    // ──────────────────────────────────────────────────────────
+    engineering: {
+        label: "Engineering & IT",
+        description: "Teknoloji inşa eder: Yazılım ekipleri için teknik mimari (Blueprint), API dokümantasyonu ve veritabanı şemaları tasarlar.",
         requiredPlan: "pro",
         allowedTaskTypes: ["Blueprint", "Software", "Code", "App", "Dashboard"],
         inputType: "text",
         inputPlaceholder: "Proje gereksinimlerini yazın (örn: Next.js ile pazar yeri uygulaması)...",
         inputLabel: "Proje Tanımı",
     },
-    social_engine: {
-        label: "Thought Leadership Engine",
-        description: "Güncel haberleri araştırır; Twitter thread, LinkedIn post ve viral içerik üretir.",
-        requiredPlan: "pro",
-        allowedTaskTypes: ["TWITTER", "LINKEDIN"],
-        inputType: "text",
-        inputPlaceholder: "İçerik konusu veya hedef platform yazın (örn: TWITTER: AI trendleri)...",
-        inputLabel: "İçerik Görevi",
-    },
-    finance_audit: {
-        label: "Finance & Invoice Auditor",
-        description: "PDF faturaları RAG ile eşleştirir; anomali tespiti yapar ve muhasebe onayı bekler.",
-        requiredPlan: "enterprise",
-        allowedTaskTypes: ["INVOICE_PROCESSING", "FATURA_DENETIM", "AUDIT_INVOICE"],
-        inputType: "text",
-        inputPlaceholder: "Fatura denetim görevi veya INVOICE_PROCESSING etiketiyle görev girin...",
-        inputLabel: "Fatura Görevi",
-    },
-    supply_chain: {
-        label: "Supply Chain Planner",
-        description: "Kritik stok seviyelerini izler; tedarikçiye sipariş e-postası hazırlar ve HITL onayı bekler.",
-        requiredPlan: "enterprise",
-        allowedTaskTypes: ["STOCK_CHECK", "SUPPLY_ALERT", "INVENTORY_LOW"],
-        inputType: "text",
-        inputPlaceholder: "Stok kontrolü veya STOCK_CHECK etiketiyle görev girin...",
-        inputLabel: "Stok Görevi",
-    },
-    business_stress_test: {
-        label: "Business Model Stress Test",
-        description: "Pitch deck'i yükle — Analyzer mantık hatalarını bulur, Innovator pivot önerir, Writer final raporu yazar.",
-        requiredPlan: "pro",
-        allowedTaskTypes: ["BUSINESS_STRESS_TEST"],
-        inputType: "file",
-        inputPlaceholder: "İş Planınızı (Pitch Deck) Yükleyin (PDF/Word)",
-        inputLabel: "Pitch Deck",
-    },
-    trend_radar: {
-        label: "Trend-to-Product Engine",
-        description: "Sektör adı gir — Reddit/Twitter/TechCrunch'ı tarar, meta-trend çıkarır, 3 yeni ürün konsepti tasarlar.",
-        requiredPlan: "pro",
-        allowedTaskTypes: ["TREND_RADAR"],
-        inputType: "text",
-        inputPlaceholder: "Sektör adı girin (örn: Giyilebilir Teknoloji, Vegan Gıda)...",
-        inputLabel: "Sektör / Trend Hedefi",
-    },
-    general: {
-        label: "AI Orchestra (Tam Erişim)",
-        description: "Tüm 14 ajan açık. Serbest görev girişi — orchestrator en uygun rotayı belirler.",
-        requiredPlan: "enterprise",
-        allowedTaskTypes: ["*"],
-        inputType: "text",
-        inputPlaceholder: "Herhangi bir görev girin...",
-        inputLabel: "Görev",
-    },
+
+    // ──────────────────────────────────────────────────────────
+    // MEGA-DEPARTMAN 6: The Holding (Otonom Merkez)
+    // Eski: general + holding
+    // ──────────────────────────────────────────────────────────
     holding: {
-        label: "AI Holding Brain",
-        description: "Tüm 6 departman tek çatı altında. Finans, Tedarik, Pazarlama, Satış, Destek ve Ar-Ge aynı anda çalışır.",
+        label: "The Holding",
+        description: "Tanrı Modu: Tüm departmanların sınırları kalkar. Orkestratör serbestçe tüm ajanları kullanır, departmanlar arası veri akışı başlar.",
         requiredPlan: "holding",
         allowedTaskTypes: ["*"],
         inputType: "text",
@@ -171,8 +215,8 @@ export const PRODUCT_CONFIGS = {
 
 /**
  * Verilen ürün için PRODUCT_CONFIGS kaydını döner.
- * Bilinmeyen ürün gelirse "general" döner.
+ * Bilinmeyen ürün gelirse "cx" (Customer Experience) döner.
  */
 export function getProductConfig(product) {
-    return PRODUCT_CONFIGS[product] ?? PRODUCT_CONFIGS.general;
+    return PRODUCT_CONFIGS[product] ?? PRODUCT_CONFIGS.cx;
 }

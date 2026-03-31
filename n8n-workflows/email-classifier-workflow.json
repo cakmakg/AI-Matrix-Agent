@@ -1,5 +1,5 @@
 {
-  "name": "📧 Email AI Sınıflandırıcı (Email Classifier)",
+  "name": "📧 E-Mail Klassifizierer — AI Orchestra",
   "nodes": [
     {
       "parameters": {
@@ -10,175 +10,156 @@
       "name": "Gmail Trigger",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
-      "position": [100, 100],
+      "position": [240, 300],
       "credentials": {
         "gmailOAuth2": "gmail_oauth"
       }
     },
     {
       "parameters": {
-        "functionCode": "return [\n  {\n    from: $json.from,\n    to: $json.to,\n    subject: $json.subject?.replace(/^(Re:|Fwd:)/i, '').trim() || 'No Subject',\n    body: $json.body?.substring(0, 2000) || '',\n    messageId: $json.id,\n    timestamp: new Date().toISOString()\n  }\n]"
+        "jsCode": "// E-Mail-Daten normalisieren und für AI Brain vorbereiten\nconst item = items[0].json;\nreturn [{\n  json: {\n    platform:      'gmail',\n    platform_id:   item.id || item.messageId || '',\n    author:        item.from || '',\n    author_email:  item.from || '',\n    subject:       (item.subject || 'Kein Betreff').replace(/^(Re:|Fwd:|AW:)/i, '').trim(),\n    content:       (item.body || item.snippet || '').substring(0, 3000),\n    gmailThreadId: item.threadId || '',\n    timestamp:     new Date().toISOString()\n  }\n}];"
       },
-      "id": "prepare_email_data",
-      "name": "Email Verisi Hazırla",
-      "type": "n8n-nodes-base.functionItem",
-      "typeVersion": 1,
-      "position": [300, 100]
+      "id": "normalize_email",
+      "name": "E-Mail normalisieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "model": "gpt-4o-mini",
-        "jsonMode": true,
-        "messages": [
-          {
-            "role": "system",
-            "content": "Você é um especialista em classificação de emails. Analise o email e retorne um JSON com: { \"category\": \"ACIL_DESTEK|TEKLIF_TALEBI|IHTIYAC_ANALIZI|FIYAT_SORUSTU|SIKAYET_IADE|GENEL_BILGI\", \"priority\": \"low|medium|high|critical\", \"sentiment\": \"negative|neutral|positive\", \"confidence\": 0.0-1.0, \"summary\": \"resumo em 1 linha\", \"topics\": [\"lista\", \"de\", \"palavras\"], \"sla_hours\": número }"
-          },
-          {
-            "role": "user",
-            "content": "De: {{$json.from}}\nAssunto: {{$json.subject}}\nCorpo: {{$json.body}}"
-          }
-        ]
+        "url": "={{$env.AI_BRAIN_URL}}/api/inbox",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type",     "value": "application/json" },
+            { "name": "X-Api-Key",        "value": "={{$env.AI_BRAIN_API_KEY}}" },
+            { "name": "X-Webhook-Secret", "value": "={{$env.N8N_WEBHOOK_SECRET}}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "platform",      "value": "={{$json.platform}}" },
+            { "name": "platform_id",   "value": "={{$json.platform_id}}" },
+            { "name": "author",        "value": "={{$json.author}}" },
+            { "name": "author_email",  "value": "={{$json.author_email}}" },
+            { "name": "subject",       "value": "={{$json.subject}}" },
+            { "name": "content",       "value": "={{$json.content}}" },
+            { "name": "gmailThreadId", "value": "={{$json.gmailThreadId}}" }
+          ]
+        },
+        "options": { "timeout": 30000 }
       },
-      "id": "ai_classify",
-      "name": "GPT-4o OpenAI Sınıflandırma",
-      "type": "n8n-nodes-base.openai",
+      "id": "send_to_ai_brain",
+      "name": "An AI Brain senden → /api/inbox",
+      "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
-      "position": [500, 100],
-      "credentials": {
-        "openaiApi": "openai_key"
-      }
+      "position": [760, 300]
     },
     {
       "parameters": {
-        "functionCode": "const aiResponse = JSON.parse($json.message.content);\nreturn [\n  {\n    ...($json),\n    category: aiResponse.category,\n    priority: aiResponse.priority,\n    sentiment: aiResponse.sentiment,\n    confidence: aiResponse.confidence,\n    summary: aiResponse.summary,\n    topics: aiResponse.topics,\n    sla_hours: aiResponse.sla_hours\n  }\n]"
+        "jsCode": "// AI Brain-Antwort auswerten\nconst item = items[0].json;\nconst status = item.status || 'UNKNOWN';\nreturn [{ json: { ...item, internal_status: status } }];"
       },
-      "id": "parse_category",
-      "name": "Kategori Analiz Sonucu Parse Et",
-      "type": "n8n-nodes-base.functionItem",
-      "typeVersion": 1,
-      "position": [700, 100]
+      "id": "parse_response",
+      "name": "Antwort auswerten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1020, 300]
     },
     {
       "parameters": {
         "conditions": {
           "boolean": [
-            {
-              "value1": "={{$json.category}}",
-              "operation": "equals",
-              "value2": "ACIL_DESTEK"
-            },
-            {
-              "value1": "={{$json.category}}",
-              "operation": "equals",
-              "value2": "TEKLIF_TALEBI"
-            },
-            {
-              "value1": "={{$json.category}}",
-              "operation": "equals",
-              "value2": "IHTIYAC_ANALIZI"
-            },
-            {
-              "value1": "={{$json.category}}",
-              "operation": "equals",
-              "value2": "FIYAT_SORUSTU"
-            },
-            {
-              "value1": "={{$json.category}}",
-              "operation": "equals",
-              "value2": "SIKAYET_IADE"
-            }
+            { "value1": "={{$json.internal_status}}", "operation": "equals", "value2": "AWAITING_HUMAN_APPROVAL_SUPPORT" },
+            { "value1": "={{$json.internal_status}}", "operation": "equals", "value2": "PROCESSING" },
+            { "value1": "={{$json.status}}",           "operation": "equals", "value2": "DUPLICATE" }
           ]
         }
       },
-      "id": "category_switch",
-      "name": "Kategori Branşı (6 Yol)",
+      "id": "status_switch",
+      "name": "Status-Verzweigung",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 1,
-      "position": [900, 100]
+      "position": [1280, 300]
     },
     {
       "parameters": {
-        "url": "http://localhost:5678/webhook/email-urgent-support",
+        "url": "https://api.telegram.org/bot{{$env.TELEGRAM_BOT_TOKEN}}/sendMessage",
         "requestMethod": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id",    "value": "={{$env.TELEGRAM_CHAT_ID}}" },
+            { "name": "text",       "value": "🎫 *Neues Support-Ticket* (Gmail)\n\n*Von:* {{$json.from}}\n*Kategorie:* {{$json.category}}\n*Priorität:* {{$json.priority}}\n*Ticket-ID:* {{$json.ticketId}}\n\nBitte im Dashboard prüfen und freigeben." },
+            { "name": "parse_mode", "value": "Markdown" }
+          ]
+        },
         "options": {}
       },
-      "id": "slack_urgent",
-      "name": "🔴 Slack #destek-acil",
+      "id": "notify_support_ticket",
+      "name": "📱 Telegram: Support-Ticket benachrichtigen",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
-      "position": [1100, 50]
+      "position": [1540, 180]
     },
     {
       "parameters": {
-        "url": "http://localhost:4000/api/inbox",
+        "url": "https://api.telegram.org/bot{{$env.TELEGRAM_BOT_TOKEN}}/sendMessage",
         "requestMethod": "POST",
+        "sendBody": true,
         "bodyParameters": {
-          "source": "gmail",
-          "category": "={{$json.category}}",
-          "priority": "={{$json.priority}}",
-          "ai_summary": "={{$json.summary}}",
-          "ai_sentiment": "={{$json.sentiment}}",
-          "ai_topics": "={{$json.topics}}",
-          "ai_confidence": "={{$json.confidence}}",
-          "sla_target": "{{$json.sla_hours}} saat",
-          "action_required": true,
-          "from": "={{$json.from}}",
-          "subject": "={{$json.subject}}",
-          "body": "={{$json.body}}"
-        }
+          "parameters": [
+            { "name": "chat_id",    "value": "={{$env.TELEGRAM_CHAT_ID}}" },
+            { "name": "text",       "value": "🔥 *Heißer Lead erkannt* (Gmail)\n\n*Von:* {{$json.from}}\n*Betreff:* {{$json.subject}}\n*Thread-ID:* {{$json.threadId}}\n\nAI Orchestra verarbeitet diesen Lead gerade..." },
+            { "name": "parse_mode", "value": "Markdown" }
+          ]
+        },
+        "options": {}
       },
-      "id": "ai_brain_inbox",
-      "name": "🧠 AI Beyin'e /api/inbox",
+      "id": "notify_hot_lead",
+      "name": "🔥 Telegram: Hot Lead benachrichtigen",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
-      "position": [1100, 150]
+      "position": [1540, 360]
     },
     {
-      "parameters": {
-        "from": "noreply@yourcompany.com",
-        "to": "={{$json.from}}",
-        "subject": "✅ E-mailiniz alınmıştır - {{$json.category}}",
-        "text": "Sayın {{$json.from}},\n\nE-mailiniz başarıyla alınmış ve {{$json.category}} olarak sınıflandırılmıştır.\nEn kısa zamanda size geri dönüş yapacağız.\n\nSLA Süresi: {{$json.sla_hours}} saat\n\nTeşekkür ederiz."
-      },
-      "id": "auto_reply_email",
-      "name": "📧 Otomatik Yanıt Maili",
-      "type": "n8n-nodes-base.emailSend",
+      "parameters": {},
+      "id": "ignore_duplicate",
+      "name": "Duplikat ignorieren",
+      "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1100, 250]
+      "position": [1540, 540]
     }
   ],
   "connections": {
-    "email_trigger": {
-      "main": [
-        [{"node": "prepare_email_data", "branch": 0}]
-      ]
+    "Gmail Trigger": {
+      "main": [[{ "node": "E-Mail normalisieren", "type": "main", "index": 0 }]]
     },
-    "prepare_email_data": {
-      "main": [
-        [{"node": "ai_classify", "branch": 0}]
-      ]
+    "E-Mail normalisieren": {
+      "main": [[{ "node": "An AI Brain senden → /api/inbox", "type": "main", "index": 0 }]]
     },
-    "ai_classify": {
-      "main": [
-        [{"node": "parse_category", "branch": 0}]
-      ]
+    "An AI Brain senden → /api/inbox": {
+      "main": [[{ "node": "Antwort auswerten", "type": "main", "index": 0 }]]
     },
-    "parse_category": {
-      "main": [
-        [{"node": "category_switch", "branch": 0}]
-      ]
+    "Antwort auswerten": {
+      "main": [[{ "node": "Status-Verzweigung", "type": "main", "index": 0 }]]
     },
-    "category_switch": {
+    "Status-Verzweigung": {
       "main": [
-        [
-          {"node": "slack_urgent", "branch": 0},
-          {"node": "ai_brain_inbox", "branch": 0},
-          {"node": "auto_reply_email", "branch": 0}
-        ]
+        [{ "node": "📱 Telegram: Support-Ticket benachrichtigen", "type": "main", "index": 0 }],
+        [{ "node": "🔥 Telegram: Hot Lead benachrichtigen",        "type": "main", "index": 0 }],
+        [{ "node": "Duplikat ignorieren",                          "type": "main", "index": 0 }]
       ]
     }
-  }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "notes": "Verarbeitet eingehende Gmail-E-Mails. Sendet normalisierte Daten an AI Brain (/api/inbox). AI Brain klassifiziert eigenständig (kein externer LLM in n8n benötigt). Benachrichtigungen per Telegram je nach Ergebnis."
 }

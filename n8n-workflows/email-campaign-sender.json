@@ -1,0 +1,172 @@
+{
+  "name": "📧 E-Mail Kampagnen-Sender — AI Orchestra",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "email-campaign",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook_trigger",
+      "name": "Kampagnen-Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "webhookId": "email-campaign"
+    },
+    {
+      "parameters": {
+        "jsCode": "// E-Mail-Kampagnen-Payload validieren\nconst body = items[0].json.body || items[0].json;\n\n// Pflichtfelder prüfen\nif (!body.content) {\n  return [{ json: { __error: true, message: 'content ist ein Pflichtfeld' } }];\n}\nif (!body.recipients && !body.recipientList && !body.segment) {\n  return [{ json: { __error: true, message: 'recipients, recipientList oder segment ist erforderlich' } }];\n}\n\n// Empfänger-Liste normalisieren\nlet recipients = [];\nif (Array.isArray(body.recipients)) {\n  recipients = body.recipients;\n} else if (typeof body.recipients === 'string') {\n  recipients = body.recipients.split(',').map(e => e.trim()).filter(Boolean);\n} else if (body.recipientList) {\n  recipients = Array.isArray(body.recipientList) ? body.recipientList : [body.recipientList];\n}\n\n// E-Mail-Inhalt aus AI-generierten Content parsen\n// Format: \"BETREFF: ...\n\nINHALT: ...\"\nlet subject = body.subject || 'Neuigkeiten von uns';\nlet htmlContent = body.content || '';\nlet textContent = body.content || '';\n\n// Einfaches Markdown → HTML (Grundversion)\nhtmlContent = htmlContent\n  .replace(/^# (.+)$/gm,   '<h1>$1</h1>')\n  .replace(/^## (.+)$/gm,  '<h2>$1</h2>')\n  .replace(/^### (.+)$/gm, '<h3>$1</h3>')\n  .replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>')\n  .replace(/\\*(.+?)\\*/g,   '<em>$1</em>')\n  .replace(/\\n/g, '<br>');\n\n// HTML-Template\nconst htmlEmail = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <style>\n    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; }\n    h1, h2, h3 { color: #1a1a1a; }\n    .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; }\n  </style>\n</head>\n<body>\n${htmlContent}\n<div class=\"footer\">\n  <p>Sie erhalten diese E-Mail, weil Sie sich für unseren Newsletter angemeldet haben.<br>\n  <a href=\"{{unsubscribeUrl}}\">Abmelden</a></p>\n</div>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    subject,\n    htmlEmail,\n    textContent,\n    recipients,\n    fromName:   body.fromName  || $env.EMAIL_FROM_NAME  || 'AI Orchestra',\n    fromEmail:  body.fromEmail || $env.EMAIL_FROM_ADDR  || 'noreply@example.com',\n    threadId:   body.threadId  || '',\n    clientId:   body.clientId  || 'default',\n    totalCount: recipients.length\n  }\n}];"
+      },
+      "id": "prepare_campaign",
+      "name": "Kampagne vorbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            { "value1": "={{$json.__error}}", "operation": "exists" }
+          ]
+        }
+      },
+      "id": "error_check",
+      "name": "Fehler-Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [760, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": false, \"error\": \"{{$json.message}}\"}",
+        "options": { "responseCode": 400 }
+      },
+      "id": "error_response",
+      "name": "Fehler-Antwort",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1020, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Empfänger-Liste in Batches aufteilen (50 pro Batch, Anti-Spam)\nconst item = items[0].json;\nconst BATCH_SIZE = 50;\nconst batches = [];\nfor (let i = 0; i < item.recipients.length; i += BATCH_SIZE) {\n  batches.push(item.recipients.slice(i, i + BATCH_SIZE));\n}\n\nreturn batches.map((batch, idx) => ({\n  json: {\n    ...item,\n    batchRecipients: batch,\n    batchIndex:      idx + 1,\n    totalBatches:    batches.length\n  }\n}));"
+      },
+      "id": "split_batches",
+      "name": "In Batches aufteilen (50/Batch)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1020, 560]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$json.fromEmail}}",
+        "toEmail":   "={{$json.batchRecipients.join(',')}}",
+        "subject":   "={{$json.subject}}",
+        "emailType": "html",
+        "message":   "={{$json.htmlEmail}}",
+        "options": {
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "id": "send_emails",
+      "name": "E-Mails versenden (SMTP)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1280, 560],
+      "credentials": {
+        "smtp": "smtp_credentials"
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kurze Pause zwischen Batches um Spam-Filter zu vermeiden\nawait new Promise(resolve => setTimeout(resolve, 2000));\nreturn items;"
+      },
+      "id": "batch_delay",
+      "name": "Pause zwischen Batches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 560]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kampagnen-Ergebnis zusammenfassen\nconst allItems = items;\nconst success = allItems.filter(i => !i.json.__error).length;\nconst failed  = allItems.filter(i => i.json.__error).length;\n\nreturn [{\n  json: {\n    success:     true,\n    sent:        success,\n    failed:      failed,\n    totalBatches: $('In Batches aufteilen (50/Batch)').all().length,\n    subject:     $('Kampagne vorbereiten').item.json.subject,\n    threadId:    $('Kampagne vorbereiten').item.json.threadId,\n    timestamp:   new Date().toISOString()\n  }\n}];"
+      },
+      "id": "build_summary",
+      "name": "Ergebniszusammenfassung",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 560]
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot{{$env.TELEGRAM_BOT_TOKEN}}/sendMessage",
+        "requestMethod": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id",    "value": "={{$env.TELEGRAM_CHAT_ID}}" },
+            { "name": "text",       "value": "📧 *E-Mail-Kampagne abgeschlossen*\n\n*Betreff:* {{$json.subject}}\n*Gesendet:* {{$json.sent}} E-Mails\n*Fehlgeschlagen:* {{$json.failed}}\n*Thread:* {{$json.threadId}}" },
+            { "name": "parse_mode", "value": "Markdown" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify_telegram",
+      "name": "📱 Telegram: Ergebnis melden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [2060, 480]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify($json)}}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "success_response",
+      "name": "Erfolg antworten",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2060, 640]
+    }
+  ],
+  "connections": {
+    "Kampagnen-Webhook": {
+      "main": [[{ "node": "Kampagne vorbereiten", "type": "main", "index": 0 }]]
+    },
+    "Kampagne vorbereiten": {
+      "main": [[{ "node": "Fehler-Check", "type": "main", "index": 0 }]]
+    },
+    "Fehler-Check": {
+      "main": [
+        [{ "node": "Fehler-Antwort",                    "type": "main", "index": 0 }],
+        [{ "node": "In Batches aufteilen (50/Batch)",    "type": "main", "index": 0 }]
+      ]
+    },
+    "In Batches aufteilen (50/Batch)": {
+      "main": [[{ "node": "E-Mails versenden (SMTP)", "type": "main", "index": 0 }]]
+    },
+    "E-Mails versenden (SMTP)": {
+      "main": [[{ "node": "Pause zwischen Batches", "type": "main", "index": 0 }]]
+    },
+    "Pause zwischen Batches": {
+      "main": [[{ "node": "Ergebniszusammenfassung", "type": "main", "index": 0 }]]
+    },
+    "Ergebniszusammenfassung": {
+      "main": [
+        [{ "node": "📱 Telegram: Ergebnis melden", "type": "main", "index": 0 }],
+        [{ "node": "Erfolg antworten",              "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "notes": "Empfängt E-Mail-Kampagnen-Content vom AI Brain (EMAIL_CAMPAIGN: Prefix) und versendet an Empfänger-Liste per SMTP. Batching: 50 Empfänger/Batch mit 2s Pause (Anti-Spam). Markdown → HTML Konvertierung integriert. ENV: EMAIL_FROM_NAME, EMAIL_FROM_ADDR, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, N8N_WEBHOOK_SECRET. Credentials: smtp_credentials in n8n konfigurieren."
+}

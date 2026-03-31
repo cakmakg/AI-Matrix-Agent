@@ -192,7 +192,7 @@ export async function orchestratorNode(state, config) {
     // ==========================================
     const taskText = state.task || "";
     const isInnovationRadar = /INNOVATION_RADAR/i.test(taskText);
-    const isSocialMedia    = /TWITTER|LINKEDIN/i.test(taskText);
+    const isSocialMedia    = /TWITTER|LINKEDIN|INSTAGRAM|YOUTUBE|TIKTOK|EMAIL_CAMPAIGN/i.test(taskText);
     const isCodingProject  = /\b(Code|Dashboard|Software|App|Blueprint|Next\.js)\b/i.test(taskText);
     const isRfpTrack         = /RFP_RESPONSE|IHALE_CEVAP|TENDER_RESPONSE/i.test(taskText);
     const isOutreachTrack    = /COLD_OUTREACH|B2B_OUTREACH|SOGUK_SATIS/i.test(taskText);
@@ -292,9 +292,9 @@ export async function orchestratorNode(state, config) {
     Regel 0.1: Wenn die Aufgabe das Wort "INNOVATION_RADAR" enthält UND Scraping-Daten "NEIN" sind -> wähle "scraper". (Zuerst News suchen!)
     Regel 0.2: Wenn die Aufgabe das Wort "INNOVATION_RADAR" enthält UND Scraping-Daten "JA" sind UND Autorentext "NEIN" ist -> wähle "architect". (Dann Blueprint aus den News erstellen!)
 
-    // 📣 ROUTE 0.3: SOCIAL MEDIA / WACHSTUM (Twitter & LinkedIn Track)
-    Regel 0.3: Wenn die Aufgabe das Wort "TWITTER" oder "LINKEDIN" enthält UND Scraping-Daten "NEIN" sind -> wähle "scraper". (Erst aktuelle Daten für Social-Media-Inhalte sammeln!)
-    Regel 0.4: Wenn die Aufgabe das Wort "TWITTER" oder "LINKEDIN" enthält UND Scraping-Daten "JA" sind UND Autorentext "NEIN" ist -> wähle "writer". (Direkt zum Writer! Kein Analyzer für Social-Media-Content nötig.)
+    // 📣 ROUTE 0.3: SOCIAL MEDIA / WACHSTUM (Twitter, LinkedIn, Instagram, YouTube, TikTok, Email Track)
+    Regel 0.3: Wenn die Aufgabe das Wort "TWITTER", "LINKEDIN", "INSTAGRAM", "YOUTUBE", "TIKTOK" oder "EMAIL_CAMPAIGN" enthält UND Scraping-Daten "NEIN" sind -> wähle "scraper". (Erst aktuelle Daten für Social-Media-Inhalte sammeln!)
+    Regel 0.4: Wenn die Aufgabe das Wort "TWITTER", "LINKEDIN", "INSTAGRAM", "YOUTUBE", "TIKTOK" oder "EMAIL_CAMPAIGN" enthält UND Scraping-Daten "JA" sind UND Autorentext "NEIN" ist -> wähle "writer". (Direkt zum Writer! Kein Analyzer für Social-Media-Content nötig.)
     
     // 🎯 ROUTE 1: SOFTWARE & CODING (CTO-Track)
     Regel 1: WENN in der Aufgabe Wörter wie "Code", "Dashboard", "Software", "App", "Blueprint" oder "Next.js" vorkommen UND der Autorentext (Final Content) "NEIN" ist UND es KEIN "INNOVATION_RADAR" ist -> WÄHLEN SIE ZWINGEND "architect".

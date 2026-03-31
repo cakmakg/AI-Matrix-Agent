@@ -1,0 +1,121 @@
+{
+  "name": "▶️ YouTube Kommentar-Listener — AI Orchestra",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 15 }]
+        }
+      },
+      "id": "schedule_trigger",
+      "name": "Alle 15 Minuten",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/youtube/v3/commentThreads",
+        "requestMethod": "GET",
+        "queryParameters": {
+          "parameters": [
+            { "name": "part",                "value": "snippet" },
+            { "name": "allThreadsRelated",   "value": "true" },
+            { "name": "channelId",           "value": "={{$env.YOUTUBE_CHANNEL_ID}}" },
+            { "name": "maxResults",          "value": "20" },
+            { "name": "order",               "value": "time" },
+            { "name": "key",                 "value": "={{$env.YOUTUBE_API_KEY}}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch_comments",
+      "name": "YouTube-Kommentare abrufen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kommentare normalisieren — nur neue (letzte 15 Minuten)\nconst data = items[0].json;\nif (!data.items || data.items.length === 0) return [];\n\nconst cutoff = new Date(Date.now() - 16 * 60 * 1000); // 16 min Puffer\nconst results = [];\n\nfor (const thread of data.items) {\n  const snippet = thread.snippet?.topLevelComment?.snippet || {};\n  const publishedAt = new Date(snippet.publishedAt || 0);\n  if (publishedAt < cutoff) continue; // Bereits verarbeiteter Kommentar\n\n  results.push({\n    json: {\n      platform:     'youtube',\n      platform_id:  thread.id || '',\n      event_type:   'comment',\n      author:       snippet.authorDisplayName || '',\n      author_email: snippet.authorChannelUrl || '',\n      subject:      'YouTube Kommentar auf: ' + (snippet.videoId || ''),\n      content:      snippet.textOriginal || snippet.textDisplay || '',\n      video_id:     snippet.videoId || '',\n      comment_id:   thread.snippet?.topLevelComment?.id || '',\n      like_count:   snippet.likeCount || 0,\n      timestamp:    snippet.publishedAt || new Date().toISOString()\n    }\n  });\n}\n\nif (results.length === 0) {\n  console.log('[YouTube Listener] Keine neuen Kommentare.');\n  return [];\n}\nreturn results;"
+      },
+      "id": "normalize_comments",
+      "name": "Kommentare normalisieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.AI_BRAIN_URL}}/api/inbox",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type",     "value": "application/json" },
+            { "name": "X-Api-Key",        "value": "={{$env.AI_BRAIN_API_KEY}}" },
+            { "name": "X-Webhook-Secret", "value": "={{$env.N8N_WEBHOOK_SECRET}}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "platform",      "value": "={{$json.platform}}" },
+            { "name": "platform_id",   "value": "={{$json.platform_id}}" },
+            { "name": "author",        "value": "={{$json.author}}" },
+            { "name": "author_email",  "value": "={{$json.author_email}}" },
+            { "name": "subject",       "value": "={{$json.subject}}" },
+            { "name": "content",       "value": "={{$json.content}}" }
+          ]
+        },
+        "options": { "timeout": 30000 }
+      },
+      "id": "send_to_ai_brain",
+      "name": "An AI Brain senden → /api/inbox",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1020, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Nur HOT_LEAD-Antworten erhalten optional einen YouTube-Antwort-Kommentar\n// (Erfordert OAuth-Token mit youtube.force-ssl Scope)\nconst item = items[0].json;\nif (item.status !== 'PROCESSING' || !item.threadId) return [];\nreturn [{ json: item }];"
+      },
+      "id": "check_response",
+      "name": "Ergebnis prüfen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {},
+      "id": "done",
+      "name": "Fertig",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1540, 300]
+    }
+  ],
+  "connections": {
+    "Alle 15 Minuten": {
+      "main": [[{ "node": "YouTube-Kommentare abrufen", "type": "main", "index": 0 }]]
+    },
+    "YouTube-Kommentare abrufen": {
+      "main": [[{ "node": "Kommentare normalisieren", "type": "main", "index": 0 }]]
+    },
+    "Kommentare normalisieren": {
+      "main": [[{ "node": "An AI Brain senden → /api/inbox", "type": "main", "index": 0 }]]
+    },
+    "An AI Brain senden → /api/inbox": {
+      "main": [[{ "node": "Ergebnis prüfen", "type": "main", "index": 0 }]]
+    },
+    "Ergebnis prüfen": {
+      "main": [[{ "node": "Fertig", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "notes": "Ruft alle 15 Minuten neue Kommentare vom YouTube Data API v3 ab. Filtert Kommentare der letzten 16 Minuten (Polling-Fenster). Idempotenz: platform_id=commentThreadId. YouTube Quota: ~1 Unit/Anfrage — bleibt weit unter dem 10.000 Unit/Tag-Limit. ENV: YOUTUBE_API_KEY, YOUTUBE_CHANNEL_ID, AI_BRAIN_URL, AI_BRAIN_API_KEY, N8N_WEBHOOK_SECRET."
+}

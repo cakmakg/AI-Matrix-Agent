@@ -1,0 +1,259 @@
+{
+  "name": "📢 Social Media Publisher — AI Orchestra",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "publish",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook_trigger",
+      "name": "AI Brain Publish-Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "webhookId": "publish"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Eingehende Payload von AI Brain validieren und vorbereiten\nconst body = items[0].json.body || items[0].json;\n\n// Pflichtfelder prüfen\nif (!body.content || !body.platform) {\n  return [{ json: { __error: true, message: 'content und platform sind Pflichtfelder' } }];\n}\n\n// Inhalt kürzen je Plattform\nconst platform = (body.platform || '').toLowerCase();\nconst maxLen = {\n  twitter:   280,\n  linkedin:  3000,\n  instagram: 2200,\n  tiktok:    2200,\n  youtube:   5000,\n  email:     100000\n};\n\nconst content = (body.content || '').substring(0, maxLen[platform] || 5000);\n\nreturn [{\n  json: {\n    platform,\n    content,\n    threadId:      body.threadId || '',\n    clientId:      body.clientId || 'default',\n    task:          body.task || '',\n    humanFeedback: body.humanFeedback || 'Genehmigt',\n    fileSaved:     body.fileSaved || false,\n    // Social Autopilot Felder (von socialContentAgent)\n    postId:        body.postId || '',\n    isAutopilot:   body.isAutopilot || false\n  }\n}];"
+      },
+      "id": "validate_payload",
+      "name": "Payload validieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            { "value1": "={{$json.__error}}", "operation": "exists" }
+          ]
+        }
+      },
+      "id": "error_check",
+      "name": "Fehler-Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [760, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": false, \"error\": \"{{$json.message}}\"}",
+        "options": { "responseCode": 400 }
+      },
+      "id": "error_response",
+      "name": "Fehler-Antwort senden",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1020, 240]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{$json.platform}}",
+        "rules": {
+          "rules": [
+            { "value2": "twitter",   "output": 0 },
+            { "value2": "linkedin",  "output": 1 },
+            { "value2": "instagram", "output": 2 },
+            { "value2": "tiktok",    "output": 3 },
+            { "value2": "youtube",   "output": 4 },
+            { "value2": "email",     "output": 5 }
+          ]
+        }
+      },
+      "id": "platform_router",
+      "name": "Plattform-Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1020, 560]
+    },
+    {
+      "parameters": {
+        "resource": "tweet",
+        "text": "={{$json.content}}",
+        "additionalFields": {}
+      },
+      "id": "post_twitter",
+      "name": "🐦 Twitter/X posten",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [1280, 200],
+      "credentials": {
+        "twitterOAuth2Api": "twitter_oauth2"
+      }
+    },
+    {
+      "parameters": {
+        "resource": "ugcPost",
+        "text": "={{$json.content}}",
+        "visibility": "PUBLIC",
+        "additionalFields": {}
+      },
+      "id": "post_linkedin",
+      "name": "💼 LinkedIn posten",
+      "type": "n8n-nodes-base.linkedIn",
+      "typeVersion": 1,
+      "position": [1280, 360],
+      "credentials": {
+        "linkedInOAuth2Api": "linkedin_oauth2"
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://graph.instagram.com/v20.0/{{$env.INSTAGRAM_PAGE_ID}}/media",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.INSTAGRAM_ACCESS_TOKEN}}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"caption\": \"{{$json.content}}\",\n  \"media_type\": \"TEXT\",\n  \"image_url\": \"{{$env.INSTAGRAM_DEFAULT_IMAGE_URL}}\"\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "post_instagram",
+      "name": "📸 Instagram Container erstellen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1280, 520]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.instagram.com/v20.0/{{$env.INSTAGRAM_PAGE_ID}}/media_publish",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.INSTAGRAM_ACCESS_TOKEN}}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"creation_id\": \"{{$json.id}}\"\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "publish_instagram",
+      "name": "📸 Instagram veröffentlichen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1540, 520]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TikTok: Direkt-Post über offizielle API erfordert Video.\n// Text-Only Posts nicht unterstützt — Benachrichtigung an Dashboard senden.\nconst item = items[0].json;\nreturn [{\n  json: {\n    platform:  'tiktok',\n    status:    'MANUAL_REQUIRED',\n    message:   'TikTok unterstützt keine Text-only Posts. Bitte manuell posten.',\n    content:   item.content || '',\n    threadId:  item.threadId || ''\n  }\n}];"
+      },
+      "id": "tiktok_manual_note",
+      "name": "🎵 TikTok — Manuell erforderlich",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 680]
+    },
+    {
+      "parameters": {
+        "jsCode": "// YouTube Community Post (erfordert YouTube API v3 + Kanal mit Community-Tab)\n// Alternativ: Video-Beschreibung aktualisieren\nconst item = items[0].json;\nreturn [{\n  json: {\n    platform: 'youtube',\n    status:   'MANUAL_REQUIRED',\n    message:  'YouTube Community Posts erfordern separaten API-Zugriff.',\n    content:  item.content || '',\n    threadId: item.threadId || ''\n  }\n}];"
+      },
+      "id": "youtube_manual_note",
+      "name": "▶️ YouTube — Manuell erforderlich",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 840]
+    },
+    {
+      "parameters": {
+        "jsCode": "// E-Mail-Kampagne wird durch email-campaign-sender.json verarbeitet\nconst item = items[0].json;\nreturn [{\n  json: {\n    platform:  'email',\n    status:    'ROUTED_TO_EMAIL_WORKFLOW',\n    message:   'E-Mail-Kampagne an email-campaign-sender.json weitergeleitet.',\n    content:   item.content || '',\n    threadId:  item.threadId || ''\n  }\n}];"
+      },
+      "id": "email_route_note",
+      "name": "📧 E-Mail → eigener Workflow",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 1000]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Einheitliche Erfolgs-Response zusammenbauen\nconst item = items[0].json;\nreturn [{\n  json: {\n    success:   true,\n    platform:  $('Payload validieren').item.json.platform,\n    threadId:  $('Payload validieren').item.json.threadId,\n    clientId:  $('Payload validieren').item.json.clientId,\n    result:    item,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "build_success_response",
+      "name": "Erfolgs-Response bauen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 560]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify($json)}}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "success_response",
+      "name": "Erfolg antworten",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2060, 560]
+    }
+  ],
+  "connections": {
+    "AI Brain Publish-Webhook": {
+      "main": [[{ "node": "Payload validieren", "type": "main", "index": 0 }]]
+    },
+    "Payload validieren": {
+      "main": [[{ "node": "Fehler-Check", "type": "main", "index": 0 }]]
+    },
+    "Fehler-Check": {
+      "main": [
+        [{ "node": "Fehler-Antwort senden", "type": "main", "index": 0 }],
+        [{ "node": "Plattform-Router",      "type": "main", "index": 0 }]
+      ]
+    },
+    "Plattform-Router": {
+      "main": [
+        [{ "node": "🐦 Twitter/X posten",              "type": "main", "index": 0 }],
+        [{ "node": "💼 LinkedIn posten",                "type": "main", "index": 0 }],
+        [{ "node": "📸 Instagram Container erstellen",  "type": "main", "index": 0 }],
+        [{ "node": "🎵 TikTok — Manuell erforderlich",  "type": "main", "index": 0 }],
+        [{ "node": "▶️ YouTube — Manuell erforderlich", "type": "main", "index": 0 }],
+        [{ "node": "📧 E-Mail → eigener Workflow",       "type": "main", "index": 0 }]
+      ]
+    },
+    "🐦 Twitter/X posten": {
+      "main": [[{ "node": "Erfolgs-Response bauen", "type": "main", "index": 0 }]]
+    },
+    "💼 LinkedIn posten": {
+      "main": [[{ "node": "Erfolgs-Response bauen", "type": "main", "index": 0 }]]
+    },
+    "📸 Instagram Container erstellen": {
+      "main": [[{ "node": "📸 Instagram veröffentlichen", "type": "main", "index": 0 }]]
+    },
+    "📸 Instagram veröffentlichen": {
+      "main": [[{ "node": "Erfolgs-Response bauen", "type": "main", "index": 0 }]]
+    },
+    "🎵 TikTok — Manuell erforderlich": {
+      "main": [[{ "node": "Erfolgs-Response bauen", "type": "main", "index": 0 }]]
+    },
+    "▶️ YouTube — Manuell erforderlich": {
+      "main": [[{ "node": "Erfolgs-Response bauen", "type": "main", "index": 0 }]]
+    },
+    "📧 E-Mail → eigener Workflow": {
+      "main": [[{ "node": "Erfolgs-Response bauen", "type": "main", "index": 0 }]]
+    },
+    "Erfolgs-Response bauen": {
+      "main": [[{ "node": "Erfolg antworten", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "notes": "Empfängt POST-Requests von AI Brain (actionWorkerService WEBHOOK_N8N) und verteilt an die richtige Plattform. Webhook-URL muss als N8N_PUBLISH_WEBHOOK in server/.env eingetragen sein. TikTok und YouTube Community Posts erfordern manuelles Handling (keine Text-only API). Instagram: 2-Schritt-Prozess (Container erstellen → veröffentlichen). ENV: TWITTER_*, LINKEDIN_*, INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_PAGE_ID, N8N_WEBHOOK_SECRET."
+}

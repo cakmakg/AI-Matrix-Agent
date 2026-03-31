@@ -10,6 +10,7 @@
 
 import { ChatBedrockConverse } from "@langchain/aws";
 import { trackLLMCost } from "../services/costTracker.js";
+import { searchKnowledge } from "../services/ragService.js";
 
 const llm = new ChatBedrockConverse({
     model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
@@ -20,8 +21,27 @@ const llm = new ChatBedrockConverse({
     }
 });
 
-export async function innovatorNode(state) {
+export async function innovatorNode(state, config) {
     console.log("💡 Vizyoner (Ajan 11) sahneye çıkıyor — kuralları yıkıyor...");
+
+    const clientId = config?.configurable?.tenantConfig?.clientId || "default";
+
+    let analysisContext = state.analysisReport || "";
+
+    // 🔍 RAG INJECTION: analysisReport boşsa RAG'dan bağlam çek
+    if (!state.analysisReport && state.task) {
+        console.log("🔍 Innovator: Analiz raporu yok. RAG Bilgi Tabanı taranıyor...");
+        const cleanTask = state.task.replace(/^(BUSINESS_STRESS_TEST|IS_MODELI_TEST|PIVOT_ADVISOR|TREND_RADAR|INNOVATION_RADAR):\s*/i, "").trim();
+        const ragResult = await searchKnowledge(clientId, cleanTask);
+
+        if (ragResult && ragResult.context) {
+            analysisContext = ragResult.context;
+            console.log(`✅ Innovator: '${cleanTask}' için ${ragResult.sources?.length ?? 0} RAG dokümanı enjekte edildi.`);
+        } else {
+            analysisContext = "Keine Analyse-Daten verfügbar. Entwickle eine radikale Alternative basierend auf der Aufgabenstellung.";
+            console.log(`⚠️ Innovator: RAG'da '${cleanTask}' bulunamadı. Görev açıklamasıyla devam ediliyor.`);
+        }
+    }
 
     const prompt = `Du bist "The Visionary" — ein Devil's Advocate, Querdenker und Entdecker verborgener Chancen.
 
@@ -41,14 +61,14 @@ Aufgabenkontext:
 ${state.task}
 
 Die 3 Wege des Standard-Analysten:
-${state.analysisReport}`;
+${analysisContext}`;
 
     const response = await llm.invoke(prompt);
 
     trackLLMCost(
         response.usage_metadata?.input_tokens || 0,
         response.usage_metadata?.output_tokens || 0,
-        "INNOVATOR", state.threadId || "SYSTEM", "default",
+        "INNOVATOR", state.threadId || "SYSTEM", clientId,
         "eu.anthropic.claude-sonnet-4-5-20250929-v1:0"
     ).catch(() => {});
 

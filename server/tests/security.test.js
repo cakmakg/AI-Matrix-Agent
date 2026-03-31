@@ -277,7 +277,7 @@ describe("SECURITY — Admin Authorization", () => {
         const loginResponse = {
             success: true,
             apiKey: "sk-admin-xxx",
-            client: { name: "Admin", slug: "admin", email: "a@a.com", plan: "enterprise", product: "general", isAdmin: true }
+            client: { name: "Admin", slug: "admin", email: "a@a.com", plan: "enterprise", product: "holding", isAdmin: true }
         };
         expect(loginResponse.client).toHaveProperty("isAdmin");
         expect(loginResponse.client.isAdmin).toBe(true);

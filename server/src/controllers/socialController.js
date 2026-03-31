@@ -144,7 +144,7 @@ export async function getPosts(req, res) {
         const { status, limit = 50 } = req.query;
         const filter = status
             ? { clientId, status }
-            : { clientId, status: { $in: ["PENDING", "PUBLISHED", "FAILED"] } };
+            : { clientId, status: { $in: ["AWAITING_APPROVAL", "PENDING", "PUBLISHED", "FAILED"] } };
         const posts = await ScheduledPost.find(filter)
             .sort({ scheduledAt: -1 })
             .limit(Number(limit))

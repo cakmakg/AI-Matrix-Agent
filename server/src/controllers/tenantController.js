@@ -1,6 +1,6 @@
 import { TenantConfig } from "../models/TenantConfig.js";
 
-// PUT /api/tenant/integrations — per-tenant webhook URL'leri güncelle (Adım 3)
+// PUT /api/tenant/integrations — Mandantenspezifische Webhook-URLs aktualisieren (Schritt 3)
 export const updateTenantIntegrations = async (req, res) => {
     try {
         if (!req.tenant?.client) return res.status(401).json({ error: "Unauthorized" });
@@ -31,15 +31,17 @@ export const getTenantConfig = async (req, res) => {
 export const updateTenantConfig = async (req, res) => {
     try {
         if (!req.tenant?.client) return res.status(401).json({ error: "Unauthorized" });
-        const { agentPersona, tone, companyContext, supportInstructions, enabledSkills, skillConfigs } = req.body;
+        const { agentPersona, tone, companyContext, supportInstructions, enabledSkills, skillConfigs, socialAuto } = req.body;
 
         const updateObj = {};
-        if (agentPersona !== undefined) updateObj.agentPersona = agentPersona;
-        if (tone !== undefined) updateObj.tone = tone;
-        if (companyContext !== undefined) updateObj.companyContext = companyContext;
-        if (supportInstructions !== undefined) updateObj.supportInstructions = supportInstructions;
-        if (enabledSkills !== undefined) updateObj.enabledSkills = enabledSkills;
-        if (skillConfigs !== undefined) updateObj.skillConfigs = skillConfigs;
+        if (agentPersona         !== undefined) updateObj.agentPersona         = agentPersona;
+        if (tone                 !== undefined) updateObj.tone                 = tone;
+        if (companyContext       !== undefined) updateObj.companyContext       = companyContext;
+        if (supportInstructions  !== undefined) updateObj.supportInstructions  = supportInstructions;
+        if (enabledSkills        !== undefined) updateObj.enabledSkills        = enabledSkills;
+        if (skillConfigs         !== undefined) updateObj.skillConfigs         = skillConfigs;
+        // Autonomer Social-Media-Scheduler — vollständiges Objekt ersetzen
+        if (socialAuto           !== undefined) updateObj.socialAuto           = socialAuto;
 
         const config = await TenantConfig.findOneAndUpdate(
             { clientId: req.tenant.client._id },

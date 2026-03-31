@@ -1,0 +1,121 @@
+{
+  "name": "📸 Instagram Listener — AI Orchestra",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "instagram-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "instagram_webhook_trigger",
+      "name": "Instagram Webhook (Meta)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "instagram-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Meta sendet einen Hub-Challenge zur Verifizierung — sofort antworten\nconst query = items[0].json.query || {};\nif (query['hub.mode'] === 'subscribe' && query['hub.verify_token'] === $env.INSTAGRAM_VERIFY_TOKEN) {\n  return [{ json: { __verify: true, challenge: query['hub.challenge'] } }];\n}\n\n// Echte Webhook-Events verarbeiten\nconst body = items[0].json.body || items[0].json;\nconst events = [];\n\nfor (const entry of (body.entry || [])) {\n  for (const change of (entry.changes || [])) {\n    const val = change.value || {};\n\n    // DM (messaging)\n    if (change.field === 'messages' && val.messages) {\n      for (const msg of val.messages) {\n        if (msg.message && !msg.message.is_echo) {\n          events.push({\n            json: {\n              platform:     'instagram',\n              platform_id:  msg.id || '',\n              event_type:   'dm',\n              author:       val.sender?.id || '',\n              author_email: '',\n              subject:      'Instagram DM',\n              content:      msg.message.text || '[Mediannachricht]',\n              sender_id:    val.sender?.id || '',\n              timestamp:    new Date(msg.timestamp * 1000).toISOString()\n            }\n          });\n        }\n      }\n    }\n\n    // Kommentare\n    if (change.field === 'comments' && val.text) {\n      events.push({\n        json: {\n          platform:    'instagram',\n          platform_id: val.id || '',\n          event_type:  'comment',\n          author:      val.from?.username ? '@' + val.from.username : val.from?.id || '',\n          author_email: '',\n          subject:     'Instagram Kommentar',\n          content:     val.text || '',\n          sender_id:   val.from?.id || '',\n          media_id:    val.media?.id || '',\n          timestamp:   new Date().toISOString()\n        }\n      });\n    }\n  }\n}\n\nif (events.length === 0) return [];\nreturn events;"
+      },
+      "id": "normalize_instagram",
+      "name": "Instagram-Events normalisieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            { "value1": "={{$json.__verify}}", "operation": "equals", "value2": true }
+          ]
+        }
+      },
+      "id": "is_verification",
+      "name": "Verifizierungs-Check?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{$json.challenge}}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "webhook_verify_response",
+      "name": "Meta Verifizierung bestätigen",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1020, 180]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.AI_BRAIN_URL}}/api/inbox",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type",     "value": "application/json" },
+            { "name": "X-Api-Key",        "value": "={{$env.AI_BRAIN_API_KEY}}" },
+            { "name": "X-Webhook-Secret", "value": "={{$env.N8N_WEBHOOK_SECRET}}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "platform",      "value": "={{$json.platform}}" },
+            { "name": "platform_id",   "value": "={{$json.platform_id}}" },
+            { "name": "author",        "value": "={{$json.author}}" },
+            { "name": "author_email",  "value": "={{$json.author_email}}" },
+            { "name": "subject",       "value": "={{$json.subject}}" },
+            { "name": "content",       "value": "={{$json.content}}" }
+          ]
+        },
+        "options": { "timeout": 30000 }
+      },
+      "id": "send_to_ai_brain",
+      "name": "An AI Brain senden → /api/inbox",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1020, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\": true}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "webhook_event_response",
+      "name": "Webhook bestätigen (200 OK)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1280, 420]
+    }
+  ],
+  "connections": {
+    "Instagram Webhook (Meta)": {
+      "main": [[{ "node": "Instagram-Events normalisieren", "type": "main", "index": 0 }]]
+    },
+    "Instagram-Events normalisieren": {
+      "main": [[{ "node": "Verifizierungs-Check?", "type": "main", "index": 0 }]]
+    },
+    "Verifizierungs-Check?": {
+      "main": [
+        [{ "node": "Meta Verifizierung bestätigen",     "type": "main", "index": 0 }],
+        [{ "node": "An AI Brain senden → /api/inbox",  "type": "main", "index": 0 }]
+      ]
+    },
+    "An AI Brain senden → /api/inbox": {
+      "main": [[{ "node": "Webhook bestätigen (200 OK)", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "notes": "Empfängt Instagram DMs und Kommentare über Meta Webhooks (Echtzeit). Verifizierungs-Handshake wird automatisch behandelt. Sendet normalisierte Events an AI Brain. Setup: Meta Developer App → Instagram → Webhooks → URL: https://n8n.yourdomain.com/webhook/instagram-webhook. ENV: INSTAGRAM_VERIFY_TOKEN, AI_BRAIN_URL, AI_BRAIN_API_KEY, N8N_WEBHOOK_SECRET."
+}

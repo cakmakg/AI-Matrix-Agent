@@ -12,6 +12,7 @@ import remarkGfm from "remark-gfm";
 import { useAgentStore } from "@/store/agent-store";
 import type { SupportTicketSummary } from "@/store/agent-store";
 import { CmoStudio } from "./cmo-studio";
+import { getProductTheme } from "@/config/product-theme";
 
 /* ══════════════════════════════════════════════════════════════
    ACCORDION SECTION
@@ -64,8 +65,10 @@ function ReportPanel({ threadId }: { threadId: string }) {
         pendingContent, threadId: storeThreadId,
         missionMessage, workflowPhase,
         approveMission, rejectMission, setDrawerItem,
-        apiKey, editedContent, setEditedContent,
+        apiKey, editedContent, setEditedContent, clientProduct,
     } = useAgentStore();
+
+    const rejectPresets = getProductTheme(clientProduct).rejectPresets;
 
     const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
     const [feedback, setFeedback] = useState("");
@@ -243,6 +246,21 @@ function ReportPanel({ threadId }: { threadId: string }) {
                             <div className="flex items-center gap-2 mb-2">
                                 <AlertTriangle size={10} className="text-[#ff2d55]/60" />
                                 <span className="font-mono text-[8px] text-[#ff2d55]/60 uppercase tracking-widest">Ablehnungsgrund (Pflichtfeld)</span>
+                            </div>
+                            {/* Preset reject butonları */}
+                            <div className="flex flex-wrap gap-1.5 mb-2">
+                                {rejectPresets.map((p) => (
+                                    <button
+                                        key={p.label}
+                                        onClick={() => setFeedback(p.feedback)}
+                                        className={`px-2.5 py-1 rounded-md font-mono text-[8px] border transition-all
+                                            ${feedback === p.feedback
+                                                ? "border-[#ff2d55]/40 bg-[#ff2d55]/10 text-[#ff2d55]/80"
+                                                : "border-white/10 bg-white/3 text-white/40 hover:border-[#ff2d55]/25 hover:text-white/60"}`}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
                             </div>
                             <textarea
                                 value={feedback}
@@ -469,7 +487,8 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
    EMPTY STATE
 ═══════════════════════════════════════════════════════════════ */
 function EmptyState() {
-    const { workflowPhase, activeAgent, agents } = useAgentStore();
+    const { workflowPhase, activeAgent, agents, clientProduct } = useAgentStore();
+    const theme = getProductTheme(clientProduct);
     const isRunning = workflowPhase === "RUNNING" || workflowPhase === "DISPATCHING" || workflowPhase === "REVISING";
     const agent = activeAgent ? agents[activeAgent] : null;
 
@@ -509,13 +528,22 @@ function EmptyState() {
                 </>
             ) : (
                 <>
-                    <div className="w-16 h-16 rounded-2xl border border-white/8 flex items-center justify-center text-2xl opacity-20">
-                        ◫
+                    <div
+                        className="w-16 h-16 rounded-2xl border flex items-center justify-center text-2xl"
+                        style={{
+                            borderColor: `${theme.accent}20`,
+                            background: `${theme.accent}08`,
+                            boxShadow: `0 0 30px ${theme.accent}10`,
+                        }}
+                    >
+                        {theme.icon}
                     </div>
                     <div>
-                        <p className="font-mono text-[11px] text-white/30 font-semibold mb-2">Komuta Köprüsü Hazır</p>
+                        <p className="font-mono text-[11px] font-semibold mb-2" style={{ color: `${theme.accent}88` }}>
+                            {theme.emptyTitle}
+                        </p>
                         <p className="font-mono text-[9px] text-white/18 leading-relaxed max-w-[280px]">
-                            Sol kuyruktan bir öğe seçin veya yukarıdan yeni bir görev gönderin
+                            {theme.emptyDescription}
                         </p>
                     </div>
                 </>

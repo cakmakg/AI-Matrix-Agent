@@ -1,12 +1,9 @@
 // ── Primitive Types ──
 export type AgentStatus = "IDLE" | "THINKING" | "ACTIVE" | "SUCCESS" | "ERROR";
 export type WorkflowPhase = "IDLE" | "DISPATCHING" | "RUNNING" | "AWAITING_APPROVAL" | "PUBLISHING" | "DELIVERED" | "REVISING";
-export type ActiveView = "control" | "cfo" | "knowledge" | "settings" | "skills" | "social" | "security" | "auditor" | "supply" | "admin";
+export type ActiveView = "chat" | "control" | "cfo" | "knowledge" | "settings" | "skills" | "social" | "security" | "auditor" | "supply" | "admin";
 export type SocialPlatform = "twitter" | "instagram" | "linkedin" | "facebook" | "google_ads";
-export type SaaSProduct =
-    | "support_desk" | "rfp_responder" | "competitor_radar" | "b2b_outreach"
-    | "cto_service" | "social_engine" | "finance_audit" | "supply_chain" | "general" | "holding"
-    | "business_stress_test" | "trend_radar";
+export type SaaSProduct = "cx" | "growth" | "strategy" | "backoffice" | "engineering" | "holding";
 
 export type AgentId =
     | "ceo" | "cto" | "scraper" | "analyst" | "innovator"

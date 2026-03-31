@@ -27,7 +27,7 @@ Bu dosya, Agent-Matrix sistemindeki tüm AI ajanlarını, görevlerini, giriş/�
 Standalone (LangGraph dışı):
   [customerBotAgent]    — Gelen mesaj triage + RAG destek yanıtı
   [cmoAgent]            — Onaylanan rapordan pazarlama kampanyası
-  [twitterContentAgent] — Otomatik tweet üretimi + zamanlama
+  [socialContentAgent]  — Çok-kiracılı sosyal autopilot (TenantConfig.socialAuto)
 ```
 
 ---
@@ -58,9 +58,26 @@ Tüm ajanlar bu state üzerinden iletişim kurar.
 
 ---
 
+## SaaS Ürünleri → 6 Mega-Departman (2026-03-30)
+
+12 granüler ürün, Seçim Paradoksu stratejisi gereği 6 mega-departmana konsolide edildi.
+
+| Mega-Departman | `product` değeri | Alt Sekmeler (Sub-Tabs) |
+|----------------|-----------------|------------------------|
+| **CX & Destek** | `cx` | — (tek girdi, customerBot) |
+| **Growth & Revenue** | `growth` | Sosyal Medya · Soğuk Satış · İhale Yanıtla |
+| **Strategy & Innovation** | `strategy` | Rakip Radar · Trend Radar · Stres Testi |
+| **Finance & Operations** | `backoffice` | Finans Denetim · Stok Kontrolü |
+| **Engineering & IT** | `engineering` | — (tek girdi, architect) |
+| **The Holding** | `holding` | — (tüm ajanlar) |
+
+Frontend'deki aktif sub-tab, göreve uygun task prefix'ini otomatik ekler (`COLD_OUTREACH: `, `INNOVATION_RADAR: `, vb.). Orchestrator bu prefix'lere göre FREN routing yapar — **backend değişmedi**.
+
+---
+
 ## Routing Tracks (Yönlendirme Akışları)
 
-Orchestrator, `state.task` içindeki anahtar kelimelere göre **8 farklı akışa** yönlendirir. Tüm özel track'ler LLM'den önce deterministik FREN'lerle kontrol edilir.
+Orchestrator, `state.task` içindeki anahtar kelimelere göre **10 farklı akışa** yönlendirir. Tüm özel track'ler LLM'den önce deterministik FREN'lerle kontrol edilir.
 
 ### 🔬 Research Track (Varsayılan)
 ```
@@ -388,26 +405,30 @@ processIncomingMessage(customerMessage, clientId, tenantConfig)
 
 ---
 
-### 14. 🐦 Twitter Content Agent
-**Dosya:** `server/src/agents/twitterContentAgent.js`
-**Tetikleyici:** `cronService.js` — günlük `TWITTER_POST_HOUR` saatinde
+### 14. 📱 Social Content Agent (Çok-Kiracılı Sosyal Autopilot)
+**Dosya:** `server/src/agents/socialContentAgent.js`
+**Tetikleyici:** `cronService.js` → `runDailySocialScheduler()` — günlük, tüm tenant'ları döner
 
-`TWITTER_AUTO_TOPICS` env değişkeninden konuları okur, Tavily'den güncel veri çeker, insan sesiyle tweet üretir, `ScheduledPost` olarak zamanlar (09:00 / 12:00 / 15:00 / 18:00 / 21:00).
+`TenantConfig.socialAuto` bloğunu okuyan çok-kiracılı sosyal medya otomasyon ajanı. Twitter ve LinkedIn için tenant başına Tavily + LLM ile içerik üretir, `ScheduledPost` koleksiyonuna kaydeder.
 
-**Env Konfigürasyonu:**
-| Değişken | Varsayılan | Açıklama |
-|---------|-----------|---------|
-| `TWITTER_PERSONA` | Teknoloji meraklısı, girişimci | Kim olduğun |
-| `TWITTER_VOICE` | Samimi, düşündürücü, provokatif | Ses tonu |
-| `TWITTER_LANG` | `tr` | `tr / de / en / mixed` |
-| `TWITTER_HASHTAGS` | `1` | Tweet başına max hashtag |
-| `TWITTER_AUTO_TOPICS` | — | Virgülle ayrılmış konu listesi |
-| `TWITTER_POST_HOUR` | `7` | Günlük üretim saati |
-| `TWITTER_TWEETS_PER_TOPIC` | `3` | Konu başına tweet sayısı |
+**`requireHITL: true` ise:** Post `AWAITING_APPROVAL` statüsüyle düşer ve `sendHITLNotification()` ile Telegram bildirimi gönderilir.
+
+**TenantConfig.socialAuto Şeması:**
+| Alan | Tür | Açıklama |
+|------|-----|---------|
+| `enabled` | boolean | Autopilot aktif mi |
+| `platform` | string | `twitter` veya `linkedin` |
+| `topics` | string[] | Günlük konu listesi |
+| `postCount` | number | Konu başına post sayısı (varsayılan 3) |
+| `requireHITL` | boolean | `true` → `AWAITING_APPROVAL` + Telegram bildirimi |
+| `integrations.telegramBotToken` | string | Tenant Telegram botu (global ENV fallback) |
+| `integrations.telegramChatId` | string | Tenant Telegram sohbet ID'si |
+
+**Telegram Bildirim Önceliği:** `tenantIntegrations.telegramBotToken` → `process.env.TELEGRAM_BOT_TOKEN`
 
 ```js
-generateAndScheduleTweets(topic, count) → string[] (ScheduledPost id'leri)
-runDailyTwitterScheduler()              → void
+generateAndScheduleContent(topic, platform, socialAutoCfg, clientId, integrations?) → string[]
+runDailySocialScheduler() → void  // tüm tenant'ları döner, socialAuto.enabled olanları işler
 ```
 
 ---
@@ -425,51 +446,45 @@ Platform (Gmail/YouTube/Slack/Instagram/Twitter/TikTok)
     → n8n webhook → platforma yanıt
 ```
 
-### Mevcut n8n Workflow'ları
+### Mevcut n8n Workflow'ları (`n8n-workflows/`)
 
-| Workflow | ID | Durum | Açıklama |
-|---|---|---|---|
-| 📧 Email AI Sınıflandırıcı | PHpZSDhLt5ySqnI7 | 🟢 Aktif | 6 kategori, GPT-4o-mini |
-| 🎬 YouTube Yorum Dinleyici | yt1 | ⏸ Pasif | Her 5 dk polling |
-| 📩 Gmail Dinleyici | gm1 | ⏸ Pasif | Her dk, okunmamış |
-| 💬 Slack Dinleyici | sl1 | ⏸ Pasif | Real-time |
-| 📱 Instagram DM+Yorum | ig1 | ⏸ Pasif | Meta Webhook |
-| 🐦 Twitter/X Mention | tw1 | ⏸ Pasif | Her 2 dk |
-| 🎵 TikTok Yorum | tk1 | ⏸ Pasif | Her 10 dk |
+n8n saf veri pipeline'ı olarak kullanılır — içinde LLM yoktur. Tüm sınıflandırma AI Brain'de yapılır.
+
+| # | Workflow | Dosya | Yön | Tetikleyici |
+|---|---------|-------|-----|------------|
+| 1 | 📧 E-Mail Sınıflandırıcı | `email-classifier-workflow.json` | Gelen | Gmail Trigger |
+| 2 | 🐦 Twitter/X Listener | `twitter-listener.json` | Gelen | Her 5 dk polling |
+| 3 | 📸 Instagram Listener | `instagram-listener.json` | Gelen | Meta Webhook (gerçek zamanlı) |
+| 4 | ▶️ YouTube Listener | `youtube-listener.json` | Gelen | Her 15 dk polling |
+| 5 | 🎵 TikTok Listener | `tiktok-listener.json` | Gelen | Her 30 dk polling |
+| 6 | 📢 Social Media Publisher | `social-media-publisher.json` | Giden | Webhook (`N8N_PUBLISH_WEBHOOK`) |
+| 7 | 📧 E-Mail Kampagnen-Sender | `email-campaign-sender.json` | Giden | Webhook |
 
 ### `POST /api/inbox` — n8n'den Beyin'e
+
+Tüm gelen listener'lar bu formatta gönderir:
 ```json
 {
-  "source": "gmail|youtube|slack|instagram|twitter|tiktok",
-  "type": "email|comment|dm|mention|message",
-  "category": "ACIL_DESTEK|TEKLIF_TALEBI|...",
-  "platform_id": "platform_specific_id",
-  "author": "Gönderen adı",
-  "content": "Mesaj içeriği",
-  "received_at": "ISO 8601",
-  "ai_summary": "GPT özeti",
-  "priority": "critical|high|medium|low"
+  "platform":     "gmail|twitter|instagram|youtube|tiktok",
+  "platform_id":  "platform'a özgü tekil ID (idempotency)",
+  "author":       "@username veya görünen ad",
+  "author_email": "email@domain.com (varsa)",
+  "subject":      "konu veya bağlam",
+  "content":      "mesaj içeriği (max 3000 karakter)"
 }
 ```
 
-### n8n Webhook URL'leri (Beyin → Platforma)
-| Platform | Path |
-|---|---|
-| YouTube | `POST /webhook/youtube-reply` |
-| Slack | `POST /webhook/slack-reply` |
-| Instagram | `POST /webhook/instagram-reply` |
-| Twitter/X | `POST /webhook/twitter-reply` |
-| Gmail | n8n Gmail node'u |
+Header'lar: `X-Api-Key: <tenant API key>` + `X-Webhook-Secret: <N8N_WEBHOOK_SECRET>`
 
-### Email Kategorileri (Destek SLA)
-| Kategori | SLA | Öncelik |
-|---------|-----|---------|
-| 🔴 ACIL_DESTEK | 1 saat | critical |
-| 💰 TEKLIF_TALEBI | 24 saat | high |
-| 📋 IHTIYAC_ANALIZI | 48 saat | medium |
-| 💲 FIYAT_SORUSTURMASI | 24 saat | medium |
-| 😤 SIKAYET_IADE | 4 saat | high |
-| ℹ️ GENEL_BILGI | 72 saat | low |
+Yanıt statüsleri: `AWAITING_HUMAN_APPROVAL_SUPPORT` | `PROCESSING` | `DUPLICATE` | `NOTED` | `IGNORED`
+
+### n8n Outbound (Beyin → Platforma)
+
+| Hedef | Mekanizma |
+|-------|-----------|
+| Twitter, LinkedIn, Instagram | `N8N_PUBLISH_WEBHOOK` → `social-media-publisher.json` → platform API |
+| E-posta kampanyaları | `email-campaign-sender.json` webhook → SMTP (50/batch, 2s gecikme) |
+| TikTok, YouTube | `MANUAL_REQUIRED` statüsü döner — dashboard'da görüntülenir |
 
 ### n8n Geliştirme Kuralları
 1. Her zaman önce `search_templates()` ile başla

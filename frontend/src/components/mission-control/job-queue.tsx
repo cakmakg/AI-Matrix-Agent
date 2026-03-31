@@ -8,33 +8,90 @@ import {
 } from "lucide-react";
 import { useAgentStore } from "@/store/agent-store";
 import type { DrawerItem, SupportTicketSummary, CampaignDraftSummary, MissionSummary, AgentId, SaaSProduct } from "@/store/agent-store";
+import { getProductTheme } from "@/config/product-theme";
 
-// ── Ürün başına input konfigürasyonu ──────────────────────────
-const PRODUCT_INPUT: Record<SaaSProduct, {
-    type: "text" | "url" | "file";
+// ── Sub-tab tanımı (Growth, Strategy, Backoffice gibi çok-modlu departmanlar için) ──
+type SubTab = {
+    key: string;
     label: string;
+    icon: string;
+    type: "text" | "url" | "file";
+    placeholder: string;
+    inputLabel: string;
+    taskPrefix: string;
+};
+
+type ProductInputConfig = {
+    label: string;
+    type: "text" | "url" | "file";
     placeholder: string;
     taskPrefix: string;
-}> = {
-    rfp_responder:    { type: "file", label: "İhale Dosyası",    placeholder: "PDF/Word sürükleyin veya tıklayın",               taskPrefix: "RFP_RESPONSE: "      },
-    b2b_outreach:     { type: "url",  label: "Hedef Şirket URL", placeholder: "Hedef şirketin web sitesini girin (örn: stripe.com)", taskPrefix: "COLD_OUTREACH: "   },
-    competitor_radar: { type: "text", label: "Araştırma Hedefi", placeholder: "Rakip araştırması veya sektör analizi girin...",    taskPrefix: "INNOVATION_RADAR: " },
-    cto_service:      { type: "text", label: "Proje Tanımı",     placeholder: "Proje gereksinimlerini yazın (Next.js, Blueprint, App...)...", taskPrefix: "" },
-    social_engine:    { type: "text", label: "İçerik Görevi",    placeholder: "TWITTER veya LINKEDIN ile başlayan konu girin...", taskPrefix: ""                    },
-    support_desk:     { type: "text", label: "Destek Görevi",    placeholder: "Müşteri sorusu veya destek görevi girin...",       taskPrefix: ""                    },
-    finance_audit:    { type: "text", label: "Fatura Görevi",    placeholder: "INVOICE_PROCESSING: Tedarikçi adı ve tutar...",   taskPrefix: "INVOICE_PROCESSING: " },
-    supply_chain:     { type: "text", label: "Stok Görevi",      placeholder: "STOCK_CHECK: Ürün kodu ve mevcut stok...",        taskPrefix: "STOCK_CHECK: "        },
-    general:              { type: "text", label: "Görev",                 placeholder: "Herhangi bir görev girin... (Enter ile gönder)",                    taskPrefix: ""                       },
-    holding:              { type: "text", label: "Holding Görevi",       placeholder: "Tüm 14 ajan hazır — departman görevi veya herhangi bir görev girin...", taskPrefix: ""                       },
-    business_stress_test: { type: "file", label: "Pitch Deck",           placeholder: "İş Planınızı (Pitch Deck) Yükleyin (PDF/Word)",                       taskPrefix: "BUSINESS_STRESS_TEST: " },
-    trend_radar:          { type: "text", label: "Sektör / Trend Hedefi",placeholder: "Sektör adı girin (örn: Giyilebilir Teknoloji, Vegan Gıda)...",        taskPrefix: "TREND_RADAR: "          },
+    subTabs?: SubTab[];
+};
+
+// ── 6 Mega-Departman input konfigürasyonu ──────────────────────────
+const PRODUCT_INPUT: Record<SaaSProduct, ProductInputConfig> = {
+    cx: {
+        label: "Customer Experience",
+        type: "text",
+        placeholder: "Kundenanfrage eingeben — Agent antwortet autonom via RAG",
+        taskPrefix: "",
+    },
+    growth: {
+        label: "Growth & Revenue",
+        type: "text",
+        placeholder: "",
+        taskPrefix: "",
+        subTabs: [
+            { key: "twitter",   label: "🐦 Twitter/X",  icon: "🐦", type: "text", placeholder: "Twitter thread konusu girin (z.B. AI-Trends 2025)",             inputLabel: "Twitter-Task",   taskPrefix: "TWITTER: " },
+            { key: "linkedin",  label: "💼 LinkedIn",   icon: "💼", type: "text", placeholder: "LinkedIn post konusu girin (z.B. KI im Unternehmenseinsatz)",   inputLabel: "LinkedIn-Task",  taskPrefix: "LINKEDIN: " },
+            { key: "instagram", label: "📸 Instagram",  icon: "📸", type: "text", placeholder: "Instagram reels/post konusu girin (z.B. Behind the Scenes KI)", inputLabel: "Instagram-Task", taskPrefix: "INSTAGRAM: " },
+            { key: "youtube",   label: "▶️ YouTube",    icon: "▶️", type: "text", placeholder: "YouTube script/başlık konusu girin (z.B. KI Tool Demo)",        inputLabel: "YouTube-Task",   taskPrefix: "YOUTUBE: " },
+            { key: "tiktok",    label: "🎵 TikTok",     icon: "🎵", type: "text", placeholder: "TikTok video script konusu girin (z.B. Viral KI Hack)",         inputLabel: "TikTok-Task",    taskPrefix: "TIKTOK: " },
+            { key: "email",     label: "📧 E-Mail",     icon: "📧", type: "text", placeholder: "E-posta kampanya konusu girin (z.B. Yeni ürün lansmanı)",        inputLabel: "E-Mail-Task",    taskPrefix: "EMAIL_CAMPAIGN: " },
+            { key: "outreach", label: "🎯 Cold Outreach",  icon: "🎯", type: "url",  placeholder: "URL der Ziel-Firma eingeben...", inputLabel: "Ziel-URL", taskPrefix: "COLD_OUTREACH: " },
+            { key: "rfp",      label: "📋 RFP Response",icon: "📋", type: "file", placeholder: "Ausschreibung hochladen — Agent generiert RAG-gestützte Antwort",  inputLabel: "Ausschreibung",    taskPrefix: "RFP_RESPONSE: " },
+        ],
+    },
+    strategy: {
+        label: "Strategy & Innovation",
+        type: "text",
+        placeholder: "",
+        taskPrefix: "",
+        subTabs: [
+            { key: "competitor", label: "⚔️ Konkurrenz-Radar",  icon: "🔍", type: "url",  placeholder: "URL des anzugreifenden Konkurrenten eingeben (z.B. stripe.com)", inputLabel: "Konkurrenz-URL",       taskPrefix: "INNOVATION_RADAR: " },
+            { key: "trend",      label: "🌊 Trend-Radar", icon: "📡", type: "text", placeholder: "Welche Branche soll gescannt werden? (z.B. Wearable Health Tech)", inputLabel: "Branche / Trend", taskPrefix: "TREND_RADAR: " },
+            { key: "stress",     label: "💥 Stress-Test",icon: "🧪", type: "file", placeholder: "Business Plan oder Pitch Deck hochladen — wir finden die Schwachstellen",            inputLabel: "Pitch Deck",            taskPrefix: "BUSINESS_STRESS_TEST: " },
+        ],
+    },
+    backoffice: {
+        label: "Finance & Operations",
+        type: "text",
+        placeholder: "",
+        taskPrefix: "",
+        subTabs: [
+            { key: "audit",  label: "🧾 Rechnungsaudit",   icon: "🧾", type: "text", placeholder: "Rechnungsscan starten — Agent findet Anomalien und Lecks", inputLabel: "Rechnungs-Task", taskPrefix: "INVOICE_PROCESSING: " },
+            { key: "supply", label: "📦 Supply Chain",  icon: "📦", type: "text", placeholder: "Bestände prüfen — Agent meldet kritische Unterdeckungen",  inputLabel: "Inventar-Task",   taskPrefix: "STOCK_CHECK: " },
+        ],
+    },
+    engineering: {
+        label: "Engineering & IT",
+        type: "text",
+        placeholder: ">_ Projektanforderungen eingeben. (z.B. Erstelle B2B SaaS Architektur mit Next.js...)",
+        taskPrefix: "",
+    },
+    holding: {
+        label: "The Holding",
+        type: "text",
+        placeholder: ">_ Wie lautet Ihr Befehl an die Holding-KI?",
+        taskPrefix: "",
+    },
 };
 
 /* ── ProductInput Component ────────────────────────────────────────────────
-   Ürün tipine göre farklı input render eder:
-   - "text"  → standart textarea
-   - "url"   → URL girdi alanı (b2b_outreach)
-   - "file"  → dosya yükleme alanı (rfp_responder)
+   6 Mega-Departman yapısı:
+   - Sub-tab'ı olan departmanlar (growth, strategy, backoffice) → sekme UI gösterir
+   - Tek modlu departmanlar (cx, engineering, holding) → direkt input
    TaskPrefix ile girdi otomatik etiketlenerek gönderilir.
 ═══════════════════════════════════════════════════════════════════════════ */
 function ProductInput({ product, sending, onSend, onRdScan, onPullArtifact }: {
@@ -44,20 +101,28 @@ function ProductInput({ product, sending, onSend, onRdScan, onPullArtifact }: {
     onRdScan: () => void;
     onPullArtifact: () => void;
 }) {
-    const cfg = PRODUCT_INPUT[product] ?? PRODUCT_INPUT.general;
+    const cfg = PRODUCT_INPUT[product] ?? PRODUCT_INPUT.cx;
+    const [activeSubTab, setActiveSubTab] = useState(0);
     const [input, setInput] = useState("");
     const [dragOver, setDragOver] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
 
+    // Aktif sub-tab veya root config'den gelen input bilgileri
+    const activeSub = cfg.subTabs?.[activeSubTab];
+    const inputType    = activeSub?.type        ?? cfg.type;
+    const placeholder  = activeSub?.placeholder ?? cfg.placeholder;
+    const taskPrefix   = activeSub?.taskPrefix  ?? cfg.taskPrefix;
+
     const handleSend = () => {
         if (!input.trim()) return;
-        onSend(cfg.taskPrefix + input.trim());
+        onSend(taskPrefix + input.trim());
         setInput("");
     };
 
     const handleFile = (file: File) => {
-        const name = file.name.replace(/.[^.]+$/, "");
-        onSend(`RFP_RESPONSE: ${name} — ${file.name}`);
+        const prefix = activeSub?.taskPrefix ?? cfg.taskPrefix ?? "RFP_RESPONSE: ";
+        const name = file.name.replace(/\.[^.]+$/, "");
+        onSend(`${prefix}${name} — ${file.name}`);
     };
 
     const handleDrop = (e: React.DragEvent) => {
@@ -72,12 +137,30 @@ function ProductInput({ product, sending, onSend, onRdScan, onPullArtifact }: {
             <h3 className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
                 {cfg.label}
                 <span className="font-mono text-[8px] text-white/20 bg-white/5 px-2 py-0.5 rounded border border-white/8 normal-case tracking-normal">
-                    {product.replace(/_/g, " ")}
+                    {product}
                 </span>
             </h3>
 
+            {/* ── Sub-tab sekmeler (Growth, Strategy, Backoffice) ── */}
+            {cfg.subTabs && cfg.subTabs.length > 0 && (
+                <div className="flex gap-1.5 mb-3">
+                    {cfg.subTabs.map((tab, i) => (
+                        <button
+                            key={tab.key}
+                            onClick={() => { setActiveSubTab(i); setInput(""); }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all border
+                                ${i === activeSubTab
+                                    ? "border-[#00f0ff]/40 bg-[#00f0ff]/10 text-[#00f0ff] shadow-[0_0_12px_rgba(0,240,255,0.08)]"
+                                    : "border-white/8 bg-white/3 text-white/40 hover:border-white/15 hover:text-white/60"}`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* FILE input */}
-            {cfg.type === "file" && (
+            {inputType === "file" && (
                 <>
                     <div
                         onDragOver={e => { e.preventDefault(); setDragOver(true); }}
@@ -90,7 +173,7 @@ function ProductInput({ product, sending, onSend, onRdScan, onPullArtifact }: {
                                 : "border-white/12 bg-white/2 hover:border-[#00f0ff]/35 hover:bg-[#00f0ff]/4"}`}
                     >
                         <Upload size={20} className="text-white/25" />
-                        <p className="text-xs text-white/35 text-center leading-relaxed">{cfg.placeholder}</p>
+                        <p className="text-xs text-white/35 text-center leading-relaxed">{placeholder}</p>
                         <p className="text-[9px] text-white/18 font-mono">.pdf · .docx · .doc</p>
                     </div>
                     <input ref={fileRef} type="file" accept=".pdf,.docx,.doc" className="hidden"
@@ -99,7 +182,7 @@ function ProductInput({ product, sending, onSend, onRdScan, onPullArtifact }: {
             )}
 
             {/* URL input */}
-            {cfg.type === "url" && (
+            {inputType === "url" && (
                 <div className="relative">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2">
                         <Link size={13} className="text-[#00f0ff]/40" />
@@ -109,7 +192,7 @@ function ProductInput({ product, sending, onSend, onRdScan, onPullArtifact }: {
                         value={input}
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleSend(); } }}
-                        placeholder={cfg.placeholder}
+                        placeholder={placeholder}
                         className="w-full bg-white/4 border border-white/10 rounded-xl pl-9 pr-10 py-3 text-sm text-white/80
                                    placeholder:text-white/20 outline-none focus:border-[#00f0ff]/35 focus:bg-white/5 transition-colors"
                     />
@@ -126,13 +209,13 @@ function ProductInput({ product, sending, onSend, onRdScan, onPullArtifact }: {
             )}
 
             {/* TEXT textarea (default) */}
-            {cfg.type === "text" && (
+            {inputType === "text" && (
                 <div className="relative">
                     <textarea
                         value={input}
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                        placeholder={cfg.placeholder}
+                        placeholder={placeholder}
                         rows={3}
                         className="w-full bg-white/4 border border-white/10 rounded-xl px-4 py-3 pr-10 text-sm text-white/80
                                    placeholder:text-white/20 outline-none focus:border-[#00f0ff]/35 focus:bg-white/5
@@ -431,6 +514,12 @@ export const JobQueue = () => {
     const [activeTab, setActiveTab] = useState<FilterTab>("all");
     const [loading, setLoading]   = useState(false);
     const [sending, setSending]   = useState(false);
+    const [mounted, setMounted]   = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+
+    // SSR sırasında her zaman varsayılan temayı kullan
+    const safeProduct = mounted ? (clientProduct ?? "cx") : "cx";
+    const theme = getProductTheme(safeProduct);
 
     const hasLiveHitl     = workflowPhase === "AWAITING_APPROVAL" && !!threadId;
     const dbHitlMissions  = missions.filter(m => m.status === "AWAITING_APPROVAL" && m.threadId !== threadId);
@@ -483,7 +572,12 @@ export const JobQueue = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+            {/* DEPARTMAN ATMOSFERI (Background Pulse) */}
+            <div 
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] blur-[160px] opacity-[0.06] animate-pulse pointer-events-none" 
+                style={{ backgroundColor: theme.accent }} 
+            />
 
             {/* ── HEADER ── */}
             <header
@@ -595,7 +689,7 @@ export const JobQueue = () => {
                     {/* Mission Input — ürüne göre dinamik form */}
                     <div className="px-5 py-4 border-b border-white/6 shrink-0">
                         <ProductInput
-                            product={clientProduct ?? "general"}
+                            product={safeProduct}
                             sending={sending}
                             onSend={handleSend}
                             onRdScan={forceRdScan}

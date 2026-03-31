@@ -6,6 +6,7 @@ import { CheckCircle2, XCircle, Loader2, FileText } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAgentStore } from "@/store/agent-store";
+import { getProductTheme } from "@/config/product-theme";
 
 interface Props {
     threadId: string;
@@ -46,7 +47,9 @@ function ConfidenceBar({ score }: { score: number }) {
 }
 
 export const ReportViewer = ({ threadId }: Props) => {
-    const { pendingContent, threadId: storeThreadId, approveMission, rejectMission, workflowPhase, setDrawerItem, apiKey } = useAgentStore();
+    const { pendingContent, threadId: storeThreadId, approveMission, rejectMission, workflowPhase, setDrawerItem, apiKey, clientProduct } = useAgentStore();
+    const theme = getProductTheme(clientProduct);
+    const rejectPresets = theme.rejectPresets;
     const [feedback, setFeedback] = useState("");
     const [rejectMode, setRejectMode] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -222,10 +225,25 @@ export const ReportViewer = ({ threadId }: Props) => {
                 <div className="px-4 py-3 border-t border-white/5 shrink-0 space-y-2">
                     {rejectMode ? (
                         <>
+                            {/* Preset reject seçenekleri */}
+                            <div className="flex flex-wrap gap-1.5 mb-2">
+                                {rejectPresets.map((p) => (
+                                    <button
+                                        key={p.label}
+                                        onClick={() => setFeedback(p.feedback)}
+                                        className={`px-2.5 py-1 rounded-md font-mono text-[8px] border transition-all
+                                            ${feedback === p.feedback
+                                                ? "border-alert-red/40 bg-alert-red/10 text-alert-red/80"
+                                                : "border-white/10 bg-white/3 text-white/40 hover:border-alert-red/25 hover:text-white/60"}`}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
+                            </div>
                             <textarea
                                 value={feedback}
                                 onChange={(e) => setFeedback(e.target.value)}
-                                placeholder="Rejection reason (required)..."
+                                placeholder="Was soll geändert werden? Feedback an den Autor..."
                                 className="w-full bg-white/4 border border-white/10 rounded px-3 py-2 font-mono text-[10px] text-white/70
                                            placeholder:text-white/20 outline-none focus:border-alert-red/40 resize-none"
                                 rows={3}
@@ -270,7 +288,7 @@ export const ReportViewer = ({ threadId }: Props) => {
                                                disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                 >
                                     {submitting ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
-                                    Authorize
+                                    {theme.hitlApproveLabel}
                                 </motion.button>
                                 <button
                                     onClick={() => setRejectMode(true)}

@@ -2,9 +2,10 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Network } from "lucide-react";
+import { Network, Lock } from "lucide-react";
 import { useAgentStore } from "@/store/agent-store";
 import type { AgentId, AgentStatus } from "@/store/agent-store";
+import { getProductTheme } from "@/config/product-theme";
 
 const STATUS_RING: Record<AgentStatus, string> = {
     IDLE:     "border-white/10",
@@ -51,7 +52,9 @@ const AGENT_ROLE_DESC: Record<AgentId, string> = {
 };
 
 export const AgentTopology = () => {
-    const { agents, activeAgent, workflowPhase } = useAgentStore();
+    const { agents, activeAgent, workflowPhase, clientProduct } = useAgentStore();
+    const theme = getProductTheme(clientProduct);
+    const unlockedSet = new Set<AgentId>(theme.activeAgents);
 
     const activeCount = Object.values(agents).filter((a) =>
         a.status === "ACTIVE" || a.status === "THINKING"
@@ -91,6 +94,7 @@ export const AgentTopology = () => {
                     {AGENT_ORDER.map((id, i) => {
                         const agent = agents[id];
                         const isActive = activeAgent === id;
+                        const isLocked = !unlockedSet.has(id);
 
                         return (
                             <motion.div
@@ -98,24 +102,28 @@ export const AgentTopology = () => {
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: i * 0.05 }}
+                                title={isLocked ? "Bu ajanı uyandırmak için üst pakete geçin" : undefined}
                                 className={`glass-panel rounded-xl p-4 border transition-all duration-300 ${
-                                    isActive
-                                        ? "border-neon-green/25 bg-neon-green/4"
-                                        : "border-white/6 hover:border-white/12"
+                                    isLocked
+                                        ? "border-white/4 opacity-35 cursor-not-allowed"
+                                        : isActive
+                                            ? "border-neon-green/25 bg-neon-green/4"
+                                            : "border-white/6 hover:border-white/12"
                                 }`}
                             >
                                 {/* Avatar + status ring */}
                                 <div className="flex items-center gap-3 mb-3">
                                     <div className={`w-9 h-9 rounded-xl border-2 flex items-center justify-center text-lg
-                                                     transition-all duration-300 ${STATUS_RING[agent.status]}`}>
-                                        {agent.icon}
+                                                     transition-all duration-300 ${isLocked ? "border-white/8 grayscale" : STATUS_RING[agent.status]}`}>
+                                        {isLocked ? "🔒" : agent.icon}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-1.5">
-                                            <span className="font-mono text-[10px] font-bold text-white/70">
+                                            <span className={`font-mono text-[10px] font-bold ${isLocked ? "text-white/25" : "text-white/70"}`}>
                                                 {agent.shortLabel}
                                             </span>
-                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[agent.status]}`} />
+                                            {!isLocked && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[agent.status]}`} />}
+                                            {isLocked && <Lock size={8} className="text-white/15 shrink-0" />}
                                         </div>
                                         <p className="font-mono text-[8px] text-white/30 truncate">{agent.label}</p>
                                     </div>
@@ -128,10 +136,14 @@ export const AgentTopology = () => {
 
                                 {/* Status badge */}
                                 <div className="flex items-center justify-between">
-                                    <span className={`font-mono text-[7px] uppercase tracking-widest font-bold ${STATUS_LABEL[agent.status]}`}>
-                                        {agent.status}
-                                    </span>
-                                    {isActive && (
+                                    {isLocked ? (
+                                        <span className="font-mono text-[7px] uppercase tracking-widest text-white/15">LOCKED</span>
+                                    ) : (
+                                        <span className={`font-mono text-[7px] uppercase tracking-widest font-bold ${STATUS_LABEL[agent.status]}`}>
+                                            {agent.status}
+                                        </span>
+                                    )}
+                                    {isActive && !isLocked && (
                                         <span className="font-mono text-[7px] text-neon-green/70 uppercase tracking-wider">
                                             Active
                                         </span>

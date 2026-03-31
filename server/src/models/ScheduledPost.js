@@ -21,7 +21,7 @@ const ScheduledPostSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ["PENDING", "PUBLISHED", "FAILED", "CANCELLED"],
+            enum: ["AWAITING_APPROVAL", "PENDING", "PUBLISHED", "FAILED", "CANCELLED"],
             default: "PENDING",
         },
         publishedAt: {

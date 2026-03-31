@@ -33,6 +33,8 @@ Copy `server/.env.example` → `server/.env` and fill in:
 - `TWILIO_SID`, `TWILIO_TOKEN` — WhatsApp
 - `DISCORD_WEBHOOK_URL` — Discord
 - `GOOGLE_*` — Gmail OAuth2
+- `N8N_PUBLISH_WEBHOOK` — n8n Social Media Publisher webhook URL (outbound posts)
+- `N8N_WEBHOOK_SECRET` — Shared secret for n8n → AI Brain request verification (`X-Webhook-Secret` header)
 
 ---
 
@@ -44,7 +46,7 @@ Agent-Matrix/
 ├── server/          # Node.js + Express + LangGraph (ES Modules, type: "module")
 │   └── src/
 │       ├── index.js                   # Entry: Express + MongoDB + cron + Telegram startup
-│       ├── agents/                    # 15 AI agent node functions (LangGraph nodes)
+│       ├── agents/                    # 16 AI agent node functions (LangGraph nodes + standalone)
 │       ├── workflows/
 │       │   ├── graph.js               # StateGraph definition (nodes + edges)
 │       │   └── runner.js              # Workflow runners + SSE event bus + snapshot emitter
@@ -57,6 +59,7 @@ Agent-Matrix/
 │       ├── scripts/create-admin.js    # One-time admin account bootstrap
 │       ├── skills/index.js            # Dynamic skill tools for agents
 │       └── tools/scraperTool.js       # Tavily web scraping integration
+├── n8n-workflows/   # 7 production n8n workflow JSONs (inbound listeners + outbound publishers)
 └── frontend/        # Next.js 14 App Router (TypeScript)
     └── src/
         ├── app/page.tsx               # Root layout: Sidebar + main view + RightPanel
@@ -123,23 +126,29 @@ Defined in `server/src/config/plans.js`. Each tenant has a `plan` and a `product
 | `enterprise` | $999/mo | All agents | 5 |
 | `holding` | $3,000+/mo | All agents + salesRep, auditor, supplyChain | 999 |
 
-### Products & Routing Tracks
-| Product | Task Prefix | Input | Agent Flow | Required Plan |
-|---------|------------|-------|-----------|---------------|
-| `support_desk` | — | text | customerBot (standalone) | free |
-| `rfp_responder` | `RFP_RESPONSE:` | file | writer → critic → fileSaver | pro |
-| `competitor_radar` | `INNOVATION_RADAR:` | text | scraper → analyzer → innovator → writer | pro |
-| `b2b_outreach` | `COLD_OUTREACH:` | url | scraper → writer | pro |
-| `cto_service` | — | text | architect → fileSaver | pro |
-| `social_engine` | `TWITTER:`/`LINKEDIN:` | text | scraper → writer | pro |
-| `business_stress_test` | `BUSINESS_STRESS_TEST:` | file | analyzer → innovator → writer | pro |
-| `trend_radar` | `TREND_RADAR:` | text | scraper → analyzer → innovator → writer | pro |
-| `finance_audit` | `INVOICE_PROCESSING:` | text | auditor → fileSaver | enterprise |
-| `supply_chain` | `STOCK_CHECK:` | text | supplyChain → fileSaver | enterprise |
-| `general` | — | text | orchestrator decides | enterprise |
-| `holding` | — | text | all 14 agents | holding |
+### Products & Routing Tracks — 6 Mega-Departments
 
-**FREN system** (deterministic pre-LLM guards in `orchestrator.js`): FREN S (sales), FREN A (audit), FREN B (supply), FREN R (RFP), FREN C (outreach), **FREN T (business stress test)**, FREN 0–6 (loop breakers). See AGENTS.md for full table.
+**Refactored 2026-03-30** (Seçim Paradoksu strategy): 12 granular products consolidated into 6 departments. Each tenant has a single `product` field; multi-track departments expose **sub-tabs** in the UI — the active sub-tab prepends the task prefix before dispatch, enabling existing FREN routing to work without backend changes.
+
+| Product (Dept.) | Sub-Tab | Task Prefix | Input | Agent Flow | Required Plan |
+|----------------|---------|-------------|-------|-----------|---------------|
+| `cx` | — | — | text | customerBot (standalone) | free |
+| `growth` | Sosyal Medya | `TWITTER:`/`LINKEDIN:` | text | scraper → writer | pro |
+| `growth` | Soğuk Satış | `COLD_OUTREACH: ` | url | scraper → writer | pro |
+| `growth` | İhale Yanıtla | `RFP_RESPONSE: ` | file | writer → critic → fileSaver | pro |
+| `strategy` | Rakip Radar | `INNOVATION_RADAR: ` | text | scraper → analyzer → innovator → writer | pro |
+| `strategy` | Trend Radar | `TREND_RADAR: ` | text | scraper → analyzer → innovator → writer | pro |
+| `strategy` | Stres Testi | `BUSINESS_STRESS_TEST: ` | file | analyzer → innovator → writer | pro |
+| `backoffice` | Finans Denetim | `INVOICE_PROCESSING: ` | text | auditor → fileSaver | enterprise |
+| `backoffice` | Stok Kontrolü | `STOCK_CHECK: ` | text | supplyChain → fileSaver | enterprise |
+| `engineering` | — | — | text | architect → fileSaver | pro |
+| `holding` | — | — | text | all agents | holding |
+
+**SubTabs architecture** (`server/src/config/plans.js`): Products with multiple tracks define a `subTabs: [{ key, label, icon, inputType, taskPrefix }]` array in `PRODUCT_CONFIGS`. The frontend `job-queue.tsx` renders a tab bar and derives input type + task prefix from the active sub-tab. `orchestrator.js` is unaffected — it still routes on raw task string prefixes (FREN system).
+
+**SaaSProduct TypeScript type** (`frontend/src/store/types.ts`): `"cx" | "growth" | "strategy" | "backoffice" | "engineering" | "holding"`
+
+**FREN system** (deterministic pre-LLM guards in `orchestrator.js`): FREN S (sales), FREN A (audit), FREN B (supply), FREN R (RFP), FREN C (outreach), **FREN T (business stress test)**, FREN 0–6 (loop breakers). Routes on task string prefixes — unchanged by the mega-department refactor. See AGENTS.md for full table.
 
 ---
 
@@ -150,7 +159,7 @@ Defined in `server/src/config/plans.js`. Each tenant has a `plan` and a `product
 | **ActionQueue.js** | `threadId, agentId, actionType, payload, status, result, attempts` | 🛡️ MOAT Layer 4: Agent action isolation buffer. Agents write; ActionWorker reads & executes. |
 | **BannedIP.js** | `ip, reason, bannedBy, expiresAt` | Admin-banned IP addresses. Loaded into `bannedIPCacheService` Map on startup; checked in `rateLimiter.js` middleware. |
 | **CampaignDraft.js** | `threadId, reportTitle, campaignContent, status, clientId` | CMO workflow output — multi-channel marketing campaigns awaiting approval. |
-| **Client.js** | `name, slug, apiKey, plan, product, email, passwordHash, isAdmin` | Multi-tenant client registry. `isAdmin: true` unlocks `/api/admin/*` routes. |
+| **Client.js** | `name, slug, apiKey, plan, product, email, passwordHash, isAdmin` | Multi-tenant client registry. `isAdmin: true` unlocks `/api/admin/*` routes. `product` enum: `cx \| growth \| strategy \| backoffice \| engineering \| holding` (default `cx`). |
 | **Feedback.js** | `threadId, clientId, vote (up/down), reason, agentName` | User feedback on published reports. Index: `(clientId, vote, createdAt)` for fast negative retrieval. Used by `writerAgent` to inject learning rules. |
 | **Knowledge.js** | `clientId, title, content, embedding[1536], metadata` | RAG vector store. Requires Atlas vector search index `vector_index` (3072 dims). |
 | **Report.js** | `threadId (unique), task, content, status, humanFeedback, clientId, confidenceScore` | Main artifact storage. Linked to workflow thread. |
@@ -160,7 +169,7 @@ Defined in `server/src/config/plans.js`. Each tenant has a `plan` and a `product
 | **SocialAccount.js** | `platform, username, accountId, accessToken, isConnected, followerCount` | OAuth credentials for Twitter, LinkedIn, Instagram, Facebook, Google Ads. |
 | **SupportTicket.js** | `platform, from, subject, category, draftResponse, ragSources, aiSummary` | n8n webhook integration: incoming support tickets from email, YouTube, Slack, etc. |
 | **SystemPrompt.js** | `agentName (ANALYZER/CRITIC/WRITER), promptText, clientId` | Per-tenant customizable agent instructions. Unique index: `(agentName, clientId)`. Cached in-memory with 60s TTL. |
-| **TenantConfig.js** | `clientId, configObject` | Multi-tenant configuration overrides (skills, feature flags, persona). `configObject.throttled` disables LLM calls for that tenant. |
+| **TenantConfig.js** | `clientId, configObject` | Multi-tenant configuration overrides (skills, feature flags, persona). `configObject.throttled` disables LLM calls for that tenant. `configObject.socialAuto` enables social autopilot: `{ enabled, platform, topics[], postCount, requireHITL, integrations: { telegramBotToken, telegramChatId } }`. |
 | **Transaction.js** | `clientId, agentId, inputTokens, outputTokens, costUsd, model` | LLM token cost tracking for Bedrock. |
 | **WorkflowSnapshot.js** | `threadId, step, nodeName, clientId, tenantSlug, output (truncated), keyState` | Zaman Makinesi: per-node LangGraph state snapshot. Unique index: `(threadId, step)`. TTL: 7 days. |
 
@@ -186,6 +195,7 @@ Defined in `server/src/config/plans.js`. Each tenant has a `plan` and a `product
 | **auditorAgent.js** | `auditor` | Invoice/document analysis (FREN A). Reads invoices via RAG, flags anomalies, returns `invoiceAnalysis`. |
 | **supplyChainAgent.js** | `supplyChain` | Stock level monitoring (FREN B). Checks inventory, generates supplier order emails, returns `stockAlerts`. |
 | **salesAgent.js** | `salesRep` | B2B sales negotiation (FREN S). Runs up to 3 negotiation rounds, tracks `negotiationRound`. |
+| **socialContentAgent.js** | (async) | Multi-tenant social autopilot: reads `TenantConfig.socialAuto`, generates posts via Tavily + LLM, saves as `ScheduledPost` (`AWAITING_APPROVAL` when `requireHITL: true`), sends Telegram HITL notification per-tenant. Replaces `twitterContentAgent.js`. |
 
 ---
 
@@ -197,7 +207,7 @@ Defined in `server/src/config/plans.js`. Each tenant has a `plan` and a `product
 | **bannedIPCacheService.js** | In-memory `Map<string, BannedIPEntry>` for O(1) IP ban lookups. Loaded from MongoDB on startup; updated on ban/unban. Imported by `rateLimiter.js` — avoids circular dependency with `adminController.js`. |
 | **costEventBus.js** | Shared `EventEmitter` for real-time LLM cost events. `costTracker.js` emits `"cost"` after each `Transaction.create`; `adminController.js` listens for FinOps SSE stream. Standalone module to avoid circular import. |
 | **costTracker.js** | Tracks LLM token usage → USD cost. Logs to `Transaction` collection. Emits `cost_tick` event on `costEventBus` after each successful write. |
-| **cronService.js** | Schedules proactive R&D jobs (daily 11pm), weekly social posting, and other recurring tasks via `node-cron`. |
+| **cronService.js** | Schedules recurring tasks via `node-cron`: proactive R&D jobs (daily 11pm), and `runDailySocialScheduler()` — iterates all tenants with `socialAuto.enabled: true` and calls `generateAndScheduleContent()` per topic per platform. |
 | **gmailService.js** | OAuth2 Gmail integration: reads incoming emails, sends AI-drafted replies. |
 | **googleSheetsService.js** | Appends workflow results to Google Sheets for audit trails. |
 | **promptRepository.js** | Manages custom agent prompts. Exports `DEFAULT_PROMPTS`, `getPrompt`, `savePrompt`, `deletePrompt`. In-memory Map cache with 60s TTL. `savePrompt`/`deletePrompt` invalidate cache immediately. |
@@ -252,6 +262,49 @@ All routes mount under `/api/*` via [server/src/routes/index.js](server/src/rout
 | `GET` | `/ips` | List banned IPs |
 | `POST` | `/ips/ban` | Ban an IP address |
 | `DELETE` | `/ips/:ip` | Unban an IP address |
+
+---
+
+## Feature: Multi-Tenant Social Autopilot
+
+Per-tenant social media content generation with HITL approval gate.
+
+**Files:** `socialContentAgent.js` (agent), `cronService.js` (scheduler), `TenantConfig.js` (config store), `ScheduledPost.js` (queue)
+
+**How it works:**
+1. Admin sets `configObject.socialAuto = { enabled: true, platform: "twitter", topics: [...], postCount: 3, requireHITL: true, integrations: {...} }` via `POST /api/tenant/config`
+2. `cronService.js` runs `runDailySocialScheduler()` daily — queries all `TenantConfig` docs where `configObject.socialAuto.enabled === true`
+3. For each tenant × topic, `generateAndScheduleContent(topic, platform, socialAutoCfg, clientId, integrations)` scrapes Tavily + generates posts via LLM
+4. Posts saved as `ScheduledPost` with `status: "AWAITING_APPROVAL"` (when `requireHITL: true`) or `status: "SCHEDULED"`
+5. If `requireHITL === true` and posts created: `sendHITLNotification()` fires a Telegram message to the tenant's bot (falls back to global `TELEGRAM_BOT_TOKEN`)
+
+**Telegram notification priority:** `tenantIntegrations.telegramBotToken` → `process.env.TELEGRAM_BOT_TOKEN`
+
+**AWAITING_APPROVAL posts:** Visible in Social view; user approves → status becomes `SCHEDULED`; actionWorkerService picks up and posts via `N8N_PUBLISH_WEBHOOK`.
+
+---
+
+## Feature: n8n Workflow Integration
+
+7 production-ready n8n workflow JSON files in `n8n-workflows/`. n8n acts as a pure data pipeline — no LLM inside n8n; all AI classification stays in AI Brain.
+
+| # | File | Direction | Trigger |
+|---|------|-----------|---------|
+| 1 | `email-classifier-workflow.json` | Inbound | Gmail Trigger |
+| 2 | `twitter-listener.json` | Inbound | Polling every 5 min |
+| 3 | `instagram-listener.json` | Inbound | Meta Webhook (real-time) |
+| 4 | `youtube-listener.json` | Inbound | Polling every 15 min |
+| 5 | `tiktok-listener.json` | Inbound | Polling every 30 min |
+| 6 | `social-media-publisher.json` | Outbound | Webhook (`N8N_PUBLISH_WEBHOOK`) |
+| 7 | `email-campaign-sender.json` | Outbound | Webhook |
+
+**Inbound flow:** Platform → n8n (normalize) → `POST /api/inbox` with `X-Api-Key` + `X-Webhook-Secret` → AI Brain classifies → HITL or auto-respond.
+
+**Outbound flow:** AI Brain `publisherAgent` → `ActionQueue` → `actionWorkerService` → `POST N8N_PUBLISH_WEBHOOK` → `social-media-publisher.json` → platform.
+
+**Instagram:** 2-step publish (create container → `media_publish`). **TikTok/YouTube:** Text-only posts not supported — return `MANUAL_REQUIRED`. **Email batching:** 50 recipients/batch with 2s delay (anti-spam).
+
+See `n8n-workflows/README.md` for full setup instructions, ENV variables, and credentials.
 
 ---
 

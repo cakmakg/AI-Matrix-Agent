@@ -2,6 +2,7 @@ import { ChatBedrockConverse } from "@langchain/aws";
 import { trackLLMCost } from "../services/costTracker.js";
 import Feedback from "../models/Feedback.js";
 import { getPrompt } from "../services/promptRepository.js";
+import { searchKnowledge } from "../services/ragService.js";
 
 async function getRecentNegativeFeedbacks(clientId, limit = 3) {
     try {
@@ -155,7 +156,23 @@ export async function writerNode(state, config) {
         Verwende Markdown-Formatierung für Überschriften.`;
     }
     else {
-        console.log("✍️ İçerik Üretici (Ajan 3) devrede. Rapor ilk kez B2B IT formatında Almanca metne dökülüyor...");
+        console.log("✍️ İçerik Üretici (Ajan 3) devrede. Rapor B2B formatında hazırlanıyor...");
+
+        let finalAnalysis = state.analysisReport || "";
+        
+        // 🔍 RAG INJECTION: Analyzer atlanmışsa veya veri yoksa (RFP_RESPONSE vb.) RAG'dan sor
+        if (!state.analysisReport && state.task) {
+            console.log("🔍 Writer: Analyze raporu yok. RAG Bilgi Tabanı taranıyor (RFP/Doğrudan Yazar Modu)...");
+            const cleanTask = state.task.replace(/^(RFP_RESPONSE|IHALE_CEVAP|TENDER_RESPONSE|HOT_LEAD_FOLLOWUP|COLD_OUTREACH):\s*/i, "").trim();
+            const ragResult = await searchKnowledge(clientId, cleanTask);
+
+            if (ragResult && ragResult.context) {
+                finalAnalysis = ragResult.context;
+                console.log(`✅ Writer: '${cleanTask}' için ${ragResult.sources?.length ?? 0} RAG dokümanı enjekte edildi.`);
+            } else {
+                finalAnalysis = "Keine Analyse-Daten gefunden. Bitte basieren Sie Ihren Bericht auf dem Systemwissen und der Aufgabe.";
+            }
+        }
 
         const innovatorSection = state.innovatorInsight
             ? `\n\n        Außerdem hat unser "Visionary Agent" folgende provokante Alternative entwickelt.
@@ -168,8 +185,8 @@ export async function writerNode(state, config) {
             : "";
 
         prompt = `${persona}
-        Unten finden Sie einen strategischen Bericht, der von unserem Datenanalysten erstellt wurde.
-        Ihre Aufgabe ist es, diesen Bericht umfassend und hochwertig zu formatieren.
+        Unten finden Sie relevante Kontextdaten (Analyse, RAG-Suche oder Rohdaten).
+        Ihre Aufgabe ist es, diese Informationen in einen hochwertigen und strukturierten B2B-Bericht zu formatieren.
 
         Regeln:
         1. Verwenden Sie ein ${tone}.
@@ -191,8 +208,8 @@ export async function writerNode(state, config) {
            Geben Sie diesen Wert in der ALLERLETZTEN Zeile aus, exakt so (keine Erklärung, nur diese Zeile):
            CONFIDENCE_SCORE:XX
 
-        Hier ist der Analysebericht:
-        ${state.analysisReport}${innovatorSection}`;
+        Hier sind die Daten/Kontext zum Verarbeiten:
+        ${finalAnalysis}${innovatorSection}`;
     }
 
     // 📚 Öğrenme kurallarını prompt başına ekle

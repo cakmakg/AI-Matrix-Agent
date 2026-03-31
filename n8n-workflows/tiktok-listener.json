@@ -1,0 +1,146 @@
+{
+  "name": "🎵 TikTok Kommentar-Listener — AI Orchestra",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 30 }]
+        }
+      },
+      "id": "schedule_trigger",
+      "name": "Alle 30 Minuten",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://open.tiktokapis.com/v2/video/list/",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization",  "value": "Bearer {{$env.TIKTOK_ACCESS_TOKEN}}" },
+            { "name": "Content-Type",   "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "{\n  \"max_count\": 5,\n  \"fields\": \"id,title,create_time,statistics\"\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch_recent_videos",
+      "name": "Letzte Videos abrufen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Video-IDs aus der Antwort extrahieren\nconst data = items[0].json;\nconst videos = data.data?.videos || [];\nif (videos.length === 0) {\n  console.log('[TikTok Listener] Keine Videos gefunden.');\n  return [];\n}\n// Jedes Video als eigenes Item weitergeben\nreturn videos.map(v => ({ json: { video_id: v.id, title: v.title || '', create_time: v.create_time } }));"
+      },
+      "id": "extract_video_ids",
+      "name": "Video-IDs extrahieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://open.tiktokapis.com/v2/video/comment/list/",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.TIKTOK_ACCESS_TOKEN}}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"video_id\": \"{{$json.video_id}}\",\n  \"max_count\": 20,\n  \"sort_type\": 0,\n  \"fields\": \"id,text,create_time,like_count,username,display_name\"\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch_comments",
+      "name": "Kommentare je Video abrufen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1020, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kommentare der letzten 35 Minuten filtern und normalisieren\nconst data = items[0].json;\nconst comments = data.data?.comments || [];\nif (comments.length === 0) return [];\n\nconst cutoff = Math.floor(Date.now() / 1000) - 35 * 60; // Unix Timestamp\nconst results = [];\n\nfor (const c of comments) {\n  if ((c.create_time || 0) < cutoff) continue;\n  results.push({\n    json: {\n      platform:     'tiktok',\n      platform_id:  c.id || '',\n      event_type:   'comment',\n      author:       c.username ? '@' + c.username : c.display_name || '',\n      author_email: '',\n      subject:      'TikTok Kommentar',\n      content:      c.text || '',\n      video_id:     $('Letzte Videos abrufen').item.json?.video_id || '',\n      like_count:   c.like_count || 0,\n      timestamp:    new Date((c.create_time || 0) * 1000).toISOString()\n    }\n  });\n}\n\nif (results.length === 0) {\n  console.log('[TikTok Listener] Keine neuen Kommentare.');\n  return [];\n}\nreturn results;"
+      },
+      "id": "normalize_comments",
+      "name": "Kommentare normalisieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.AI_BRAIN_URL}}/api/inbox",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type",     "value": "application/json" },
+            { "name": "X-Api-Key",        "value": "={{$env.AI_BRAIN_API_KEY}}" },
+            { "name": "X-Webhook-Secret", "value": "={{$env.N8N_WEBHOOK_SECRET}}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "platform",      "value": "={{$json.platform}}" },
+            { "name": "platform_id",   "value": "={{$json.platform_id}}" },
+            { "name": "author",        "value": "={{$json.author}}" },
+            { "name": "author_email",  "value": "={{$json.author_email}}" },
+            { "name": "subject",       "value": "={{$json.subject}}" },
+            { "name": "content",       "value": "={{$json.content}}" }
+          ]
+        },
+        "options": { "timeout": 30000 }
+      },
+      "id": "send_to_ai_brain",
+      "name": "An AI Brain senden → /api/inbox",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1540, 300]
+    },
+    {
+      "parameters": {},
+      "id": "done",
+      "name": "Fertig",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1800, 300]
+    }
+  ],
+  "connections": {
+    "Alle 30 Minuten": {
+      "main": [[{ "node": "Letzte Videos abrufen", "type": "main", "index": 0 }]]
+    },
+    "Letzte Videos abrufen": {
+      "main": [[{ "node": "Video-IDs extrahieren", "type": "main", "index": 0 }]]
+    },
+    "Video-IDs extrahieren": {
+      "main": [[{ "node": "Kommentare je Video abrufen", "type": "main", "index": 0 }]]
+    },
+    "Kommentare je Video abrufen": {
+      "main": [[{ "node": "Kommentare normalisieren", "type": "main", "index": 0 }]]
+    },
+    "Kommentare normalisieren": {
+      "main": [[{ "node": "An AI Brain senden → /api/inbox", "type": "main", "index": 0 }]]
+    },
+    "An AI Brain senden → /api/inbox": {
+      "main": [[{ "node": "Fertig", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "notes": "Ruft alle 30 Minuten Kommentare der letzten 5 Videos ab (TikTok API v2). Filtert Kommentare des letzten 35-Minuten-Fensters. TikTok API erfordert Business/Creator-Account + genehmigte App. Idempotenz: platform_id=commentId. ENV: TIKTOK_ACCESS_TOKEN, AI_BRAIN_URL, AI_BRAIN_API_KEY, N8N_WEBHOOK_SECRET."
+}

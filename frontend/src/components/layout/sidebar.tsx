@@ -1,17 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     LayoutDashboard, BarChart3, BookOpen, Settings, Blocks,
     Activity, Share2, ShieldAlert, ChevronDown, Plus, LogOut,
-    Check, Building2, Lock, FileSearch, Truck, Terminal,
+    Check, Building2, Lock, FileSearch, Truck, Terminal, MessageSquare,
 } from "lucide-react";
 import { useAgentStore } from "@/store/agent-store";
 import type { ActiveView } from "@/store/agent-store";
 import { CronTimer } from "@/components/hud/cron-timer";
+import { getProductTheme } from "@/config/product-theme";
 
 const NAV_ITEMS: { view: ActiveView; label: string; icon: React.ReactNode; requiredPlan?: "pro" | "enterprise" }[] = [
+    { view: "chat",      label: "Command Center",   icon: <MessageSquare size={16} /> },
     { view: "control",   label: "Übersicht",        icon: <LayoutDashboard size={16} /> },
     { view: "cfo",       label: "CFO-Dashboard",    icon: <BarChart3 size={16} />,       requiredPlan: "pro" },
     { view: "auditor",   label: "Rechnungsprüfung", icon: <FileSearch size={16} />,      requiredPlan: "enterprise" },
@@ -41,9 +43,14 @@ export const Sidebar = () => {
     const {
         activeView, setActiveView,
         workflowPhase, supportTickets, campaignDrafts, threadId,
-        clientName, clientSlug, apiKey, clientPlan, workspaces,
+        clientName, clientSlug, apiKey, clientPlan, clientProduct, workspaces,
         switchWorkspace, logout, isAdmin,
     } = useAgentStore();
+
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+    // SSR sırasında her zaman varsayılan temayı kullan (hydration mismatch önleme)
+    const productTheme = getProductTheme(mounted ? clientProduct : null);
 
     const [wsOpen, setWsOpen] = useState(false);
 
@@ -85,8 +92,9 @@ export const Sidebar = () => {
                     </div>
                     <div className="flex-1 min-w-0 text-left">
                         <div className="font-mono text-[10px] font-semibold text-white/75 truncate">{displayName}</div>
-                        <div className="font-mono text-[8px] truncate" style={{ color: PLAN_BADGE[clientPlan ?? "free"]?.color ?? "#00f0ff", opacity: 0.7 }}>
-                            {PLAN_BADGE[clientPlan ?? "free"]?.label ?? "Support"}
+                        <div className="font-mono text-[8px] truncate flex items-center gap-1" style={{ color: productTheme.accent, opacity: 0.7 }}>
+                            <span>{productTheme.icon}</span>
+                            <span>{productTheme.slogan}</span>
                         </div>
                     </div>
                     <ChevronDown size={11} className={`text-white/30 shrink-0 transition-transform duration-200 ${wsOpen ? "rotate-180" : ""}`} />

@@ -10,8 +10,8 @@ const ClientSchema = new mongoose.Schema(
         plan: { type: String, enum: ["free", "pro", "enterprise", "holding"], default: "free" },
         product: {
             type: String,
-            enum: ["support_desk", "rfp_responder", "competitor_radar", "b2b_outreach", "cto_service", "social_engine", "finance_audit", "supply_chain", "general", "business_stress_test", "trend_radar"],
-            default: "general",
+            enum: ["cx", "growth", "strategy", "backoffice", "engineering", "holding"],
+            default: "cx",
         },
         // Admin & Durum
         isAdmin: { type: Boolean, default: false },

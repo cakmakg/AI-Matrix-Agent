@@ -43,7 +43,7 @@ export const createAuthSlice: StateCreator<AgentStore, [], [], AuthSlice> = (set
 
     setWorkspaceInfo: ({ name, slug, email, apiKey, plan, product, isAdmin }) => {
         const resolvedPlan    = (plan    ?? "enterprise") as "free" | "pro" | "enterprise" | "holding";
-        const resolvedProduct = product ?? "general";
+        const resolvedProduct = product ?? "cx";
         lsSet(LS.apiKey,   apiKey);
         lsSet(LS.name,     name);
         lsSet(LS.slug,     slug);
