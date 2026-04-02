@@ -46,6 +46,38 @@ const searchSchema = z.object({
 
 const llmWithStructuredOutput = llm.withStructuredOutput(searchSchema, { name: "generate_search_query" });
 
+// ─── Direct URL Scraper ───────────────────────────────────────────────────
+async function scrapeDirectUrls(task) {
+    if (!task) return "";
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    const urls = task.match(urlRegex);
+    if (!urls || urls.length === 0) return "";
+    
+    let result = "";
+    for (const url of urls.slice(0, 3)) { // Max 3 URL'yi tara
+        console.log(`   -> ✨ Doğrudan URL taranıyor: ${url}`);
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+            
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) throw new Error(`HTTP Hata: ${response.status}`);
+            const html = await response.text();
+            
+            const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+            const content = bodyMatch ? bodyMatch[1] : html;
+            
+            const cleanContent = sanitizeWebContent(content);
+            result += `\n[URL İçeriği: ${url}]\n${cleanContent}\n`;
+        } catch (err) {
+            console.warn(`   ⚠️ Doğrudan taranırken hata (${url}): ${err.message}`);
+        }
+    }
+    return result;
+}
+
 export async function scraperNode(state) {
     console.log("🔍 Araştırmacı Ajan (Ajan 1) internete bağlanıyor...");
 
@@ -61,10 +93,15 @@ export async function scraperNode(state) {
     console.log(`   -> Strateji: ${queryResponse.reasoning}`);
     console.log(`   -> İnternette Aranan Kelime: "${queryResponse.searchQuery}"`);
 
+    // Yeni Adım: Doğrudan URL var mı diye kontrol et ve içeriğini çek
+    let searchResults = await scrapeDirectUrls(state.task);
+    
+    // Eğer doğrudan bir URL bulunduysa ve çok uzunsa arama yapmaya gerek kalmayabilir ancak yine de Tavily ile de zenginleştirebiliriz.
+    // Biz her ihtimale karşı arama sonuçlarını birleştiriyoruz.
+
     // Adım 2: Native Fetch ile doğrudan Tavily API'sine bağlan! (Paketsiz, sorunsuz)
     console.log("   -> Tavily AI API'sine doğrudan istek atılıyor...");
     
-    let searchResults = "";
     try {
         const response = await fetch("https://api.tavily.com/search", {
             method: "POST",
@@ -88,7 +125,11 @@ export async function scraperNode(state) {
         
         // 🛡️ MOAT: Web içeriğini sanitize ederek formatlıyoruz
         const cleanAnswer = sanitizeWebContent(data.answer || "");
-        searchResults = `Tavily AI Yapay Zeka Özeti:\n${cleanAnswer}\n\nDetaylı Kaynaklar:\n`;
+        if (cleanAnswer) {
+            searchResults += `\n\nTavily AI Yapay Zeka Özeti:\n${cleanAnswer}\n\nDetaylı Kaynaklar:\n`;
+        } else {
+            searchResults += `\n\nTavily Arama Sonuçları:\n`;
+        }
         data.results.forEach((res, index) => {
             const cleanContent = sanitizeWebContent(res.content || "");
             // URL'yi de doğrula (sadece http/https)

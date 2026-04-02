@@ -195,8 +195,8 @@ export async function cancelPost(req, res) {
         const clientId = req.clientId || "default";
         const post = await ScheduledPost.findOne({ _id: req.params.id, clientId });
         if (!post) return res.status(404).json({ success: false, error: "Post bulunamadı." });
-        if (post.status !== "PENDING") {
-            return res.status(400).json({ success: false, error: "Sadece PENDING postlar iptal edilebilir." });
+        if (post.status !== "PENDING" && post.status !== "AWAITING_APPROVAL") {
+            return res.status(400).json({ success: false, error: "Sadece PENDING veya AWAITING_APPROVAL postlar iptal edilebilir." });
         }
         post.status = "CANCELLED";
         await post.save();
@@ -234,6 +234,26 @@ export async function publishNow(req, res) {
         await post.save();
 
         res.json({ success: true, results, status: post.status });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+}
+
+/**
+ * POST /api/social/posts/:id/approve
+ * Approve an AWAITING_APPROVAL post → moves it to PENDING for scheduled publishing.
+ */
+export async function approvePost(req, res) {
+    try {
+        const clientId = req.clientId || "default";
+        const post = await ScheduledPost.findOne({ _id: req.params.id, clientId });
+        if (!post) return res.status(404).json({ success: false, error: "Post bulunamadı." });
+        if (post.status !== "AWAITING_APPROVAL") {
+            return res.status(400).json({ success: false, error: "Sadece AWAITING_APPROVAL postlar onaylanabilir." });
+        }
+        post.status = "PENDING";
+        await post.save();
+        res.json({ success: true, status: post.status });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }

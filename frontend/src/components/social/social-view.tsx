@@ -22,6 +22,7 @@ const PLATFORM_META: Record<SocialPlatform, { label: string; color: string; icon
 };
 
 const STATUS_STYLES: Record<ScheduledPost["status"], { label: string; color: string; icon: React.ReactNode }> = {
+    AWAITING_APPROVAL: { label: "Freigabe ausstehend", color: "#bf5fff", icon: <AlertCircle size={12} /> },
     PENDING:   { label: "Ausstehend",    color: "#ffb000", icon: <Clock size={12} /> },
     PUBLISHED: { label: "Veröffentlicht",color: "#39ff14", icon: <CheckCircle size={12} /> },
     FAILED:    { label: "Fehlgeschlagen",color: "#ff2d55", icon: <XCircle size={12} /> },
@@ -267,7 +268,7 @@ function PostComposer() {
 // ─── Post Queue Row ───────────────────────────────────────────────────────────
 
 function PostRow({ post }: { post: ScheduledPost }) {
-    const { cancelScheduledPost, publishPostNow } = useAgentStore();
+    const { cancelScheduledPost, approveScheduledPost, publishPostNow } = useAgentStore();
     const [expanded, setExpanded] = useState(false);
     const statusMeta = STATUS_STYLES[post.status];
 
@@ -326,6 +327,17 @@ function PostRow({ post }: { post: ScheduledPost }) {
                                 </div>
                             )}
 
+                            {post.status === "AWAITING_APPROVAL" && (
+                                <div className="flex gap-2">
+                                    <button onClick={() => approveScheduledPost(post._id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#39ff14]/10 border border-[#39ff14]/30 rounded font-mono text-[10px] text-[#39ff14] hover:bg-[#39ff14]/20 transition-all">
+                                        <CheckCircle size={10} /> Freigeben
+                                    </button>
+                                    <button onClick={() => cancelScheduledPost(post._id)} className="flex items-center gap-1.5 px-3 py-1.5 border border-red-500/20 rounded font-mono text-[10px] text-red-400/60 hover:text-red-400 transition-all">
+                                        <Trash2 size={10} /> Ablehnen
+                                    </button>
+                                </div>
+                            )}
+
                             {post.status === "PENDING" && (
                                 <div className="flex gap-2">
                                     <button onClick={() => publishPostNow(post._id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#39ff14]/10 border border-[#39ff14]/30 rounded font-mono text-[10px] text-[#39ff14] hover:bg-[#39ff14]/20 transition-all">
@@ -353,7 +365,7 @@ export const SocialView = () => {
     } = useAgentStore();
 
     const [showConnect, setShowConnect] = useState(false);
-    const [activeTab, setActiveTab] = useState<"queue" | "published" | "failed">("queue");
+    const [activeTab, setActiveTab] = useState<"approval" | "queue" | "published" | "failed">("approval");
 
     useEffect(() => {
         fetchSocialAccounts();
@@ -361,11 +373,12 @@ export const SocialView = () => {
         fetchSocialSummary();
     }, [fetchSocialAccounts, fetchScheduledPosts, fetchSocialSummary]);
 
+    const approvalPosts = scheduledPosts.filter(p => p.status === "AWAITING_APPROVAL");
     const pendingPosts = scheduledPosts.filter(p => p.status === "PENDING");
     const publishedPosts = scheduledPosts.filter(p => p.status === "PUBLISHED");
     const failedPosts = scheduledPosts.filter(p => p.status === "FAILED");
 
-    const tabPosts = activeTab === "queue" ? pendingPosts : activeTab === "published" ? publishedPosts : failedPosts;
+    const tabPosts = activeTab === "approval" ? approvalPosts : activeTab === "queue" ? pendingPosts : activeTab === "published" ? publishedPosts : failedPosts;
 
     return (
         <div className="flex-1 flex flex-col h-full bg-[#090e1a] overflow-hidden">
@@ -429,23 +442,32 @@ export const SocialView = () => {
                     {/* Tabs */}
                     <div className="flex border-b border-white/5 px-5 shrink-0">
                         {([
-                            { key: "queue",     label: "Warteschlange", count: pendingPosts.length },
-                            { key: "published", label: "Veröffentlicht", count: publishedPosts.length },
-                            { key: "failed",    label: "Fehlgeschlagen", count: failedPosts.length },
-                        ] as const).map(tab => (
-                            <button
-                                key={tab.key}
-                                onClick={() => setActiveTab(tab.key)}
-                                className={`px-4 py-3 font-mono text-[11px] border-b-2 transition-colors flex items-center gap-2 ${activeTab === tab.key ? "border-[#00f0ff] text-[#00f0ff]" : "border-transparent text-white/40 hover:text-white/60"}`}
-                            >
-                                {tab.label}
-                                {tab.count > 0 && (
-                                    <span className={`min-w-[18px] h-4 px-1 rounded-full text-[8px] font-bold flex items-center justify-center ${activeTab === tab.key ? "bg-[#00f0ff]/20 text-[#00f0ff]" : "bg-white/10 text-white/40"}`}>
-                                        {tab.count}
-                                    </span>
-                                )}
-                            </button>
-                        ))}
+                            { key: "approval",  label: "Freigabe", count: approvalPosts.length, accent: "#bf5fff" },
+                            { key: "queue",     label: "Warteschlange", count: pendingPosts.length, accent: "#00f0ff" },
+                            { key: "published", label: "Veröffentlicht", count: publishedPosts.length, accent: "#00f0ff" },
+                            { key: "failed",    label: "Fehlgeschlagen", count: failedPosts.length, accent: "#00f0ff" },
+                        ] as const).map(tab => {
+                            const isActive = activeTab === tab.key;
+                            const color = isActive ? tab.accent : undefined;
+                            return (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setActiveTab(tab.key)}
+                                    className={`px-4 py-3 font-mono text-[11px] border-b-2 transition-colors flex items-center gap-2 ${isActive ? "" : "border-transparent text-white/40 hover:text-white/60"}`}
+                                    style={isActive ? { borderColor: color, color } : undefined}
+                                >
+                                    {tab.label}
+                                    {tab.count > 0 && (
+                                        <span
+                                            className="min-w-[18px] h-4 px-1 rounded-full text-[8px] font-bold flex items-center justify-center"
+                                            style={isActive ? { background: `${tab.accent}20`, color: tab.accent } : { background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }}
+                                        >
+                                            {tab.count}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {/* Posts list */}
@@ -453,7 +475,7 @@ export const SocialView = () => {
                         {tabPosts.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full text-white/20 font-mono text-[11px] gap-2">
                                 <Calendar size={28} className="text-white/10" />
-                                {activeTab === "queue" ? "Keine geplanten Beiträge." : activeTab === "published" ? "Noch nichts veröffentlicht." : "Keine fehlgeschlagenen Posts."}
+                                {activeTab === "approval" ? "Keine Beiträge zur Freigabe." : activeTab === "queue" ? "Keine geplanten Beiträge." : activeTab === "published" ? "Noch nichts veröffentlicht." : "Keine fehlgeschlagenen Posts."}
                             </div>
                         ) : (
                             tabPosts.map(post => <PostRow key={post._id} post={post} />)

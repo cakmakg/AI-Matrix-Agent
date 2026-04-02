@@ -105,7 +105,8 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 export const SettingsView = () => {
-    const { addAlert, apiKey } = useAgentStore((s) => ({ addAlert: s.addAlert, apiKey: s.apiKey }));
+    const addAlert = useAgentStore((s) => s.addAlert);
+    const apiKey   = useAgentStore((s) => s.apiKey);
     const [activeTab, setActiveTab]           = useState<ActiveTab>("agent");
     const [client, setClient]                 = useState<ClientData | null>(null);
     const [loading, setLoading]               = useState(false);

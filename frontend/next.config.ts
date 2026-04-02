@@ -1,6 +1,11 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import path from "path";
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
   devIndicators: false,
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
   async rewrites() {
     return [
       {

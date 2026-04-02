@@ -8,6 +8,7 @@ import {
     getPosts,
     createPost,
     cancelPost,
+    approvePost,
     publishNow,
     getSummary,
 } from "../controllers/socialController.js";
@@ -25,6 +26,7 @@ router.get("/accounts/:id/analytics", getAnalytics);
 router.get("/posts", getPosts);
 router.post("/posts", createPost);
 router.delete("/posts/:id", cancelPost);
+router.post("/posts/:id/approve", approvePost);
 router.post("/posts/:id/publish", publishNow);
 
 // ── Summary ──

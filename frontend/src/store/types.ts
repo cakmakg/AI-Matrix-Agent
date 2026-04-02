@@ -44,7 +44,7 @@ export interface SocialAccount {
 }
 export interface ScheduledPost {
     _id: string; platforms: SocialPlatform[]; content: string; mediaUrls: string[];
-    scheduledAt: string; status: "PENDING" | "PUBLISHED" | "FAILED" | "CANCELLED";
+    scheduledAt: string; status: "AWAITING_APPROVAL" | "PENDING" | "PUBLISHED" | "FAILED" | "CANCELLED";
     publishedAt: string | null; errorMessage: string; title: string;
     threadId: string | null; campaignId: string | null;
     results: Record<string, unknown>; createdAt: string;
@@ -158,6 +158,7 @@ export interface SocialSlice {
     fetchScheduledPosts: () => Promise<void>;
     createScheduledPost: (data: { platforms: SocialPlatform[]; content: string; scheduledAt: string; mediaUrls?: string[]; title?: string }) => Promise<void>;
     cancelScheduledPost: (id: string) => Promise<void>;
+    approveScheduledPost: (id: string) => Promise<void>;
     publishPostNow: (id: string) => Promise<void>;
     fetchSocialSummary: () => Promise<void>;
 }

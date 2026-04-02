@@ -151,7 +151,7 @@ export async function orchestratorNode(state, config) {
 
     const planBlockedMap = {
         free: requestsAnalyzer || requestsInnovator || requestsArchitect,
-        pro:  requestsInnovator || requestsArchitect,
+        pro:  requestsArchitect,
     };
 
     if (planBlockedMap[clientPlan]) {

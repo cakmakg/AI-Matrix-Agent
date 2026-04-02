@@ -34,7 +34,7 @@ export const ApiKeyModal = () => {
             });
             const data = await res.json();
             if (!res.ok) { setError(data.error || "Giriş başarısız."); return; }
-            setWorkspaceInfo({ name: data.client.name, slug: data.client.slug, email: data.client.email, apiKey: data.apiKey, plan: data.client.plan, isAdmin: data.client.isAdmin });
+            setWorkspaceInfo({ name: data.client.name, slug: data.client.slug, email: data.client.email, apiKey: data.apiKey, plan: data.client.plan, product: data.client.product, isAdmin: data.client.isAdmin });
         } catch {
             setError("Sunucuya ulaşılamadı.");
         } finally {

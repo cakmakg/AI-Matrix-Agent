@@ -53,7 +53,7 @@ export const PRODUCT_THEMES: Record<SaaSProduct, ProductTheme> = {
         slogan: "Revenue Engine",
         emptyTitle: "Wachstumsmotor Bereit",
         emptyDescription: "Social Media Content erstellen, Cold-Outreach starten oder RFPs beantworten",
-        activeAgents: ["ceo", "scraper", "writer", "qa", "hitl", "publisher", "cmo"],
+        activeAgents: ["ceo", "scraper", "analyst", "innovator", "writer", "qa", "hitl", "publisher", "cmo"],
         rejectPresets: [
             { label: "Aggressiver verkaufen", feedback: "Nutze einen aggressiveren Verkaufston. Erzeuge Dringlichkeit und fokussiere auf den Nutzen." },
             { label: "Sanfterer Ton", feedback: "Reduziere den Verkaufsdruck. Nutze einen beratenden, vertrauensbildenden Ton." },

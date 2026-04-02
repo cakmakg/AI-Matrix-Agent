@@ -79,6 +79,18 @@ export const createSocialSlice: StateCreator<AgentStore, [], [], SocialSlice> = 
         }
     },
 
+    approveScheduledPost: async (id: string) => {
+        try {
+            const res = await fetch(`/api/social/posts/${id}/approve`, { method: "POST", headers: buildHeaders(get().apiKey) });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            get().addAlert({ message: "Beitrag freigegeben und eingeplant.", type: "success" });
+            await get().fetchScheduledPosts();
+            await get().fetchSocialSummary();
+        } catch (err) {
+            get().addAlert({ message: `Freigabe-Fehler: ${err instanceof Error ? err.message : String(err)}`, type: "error" });
+        }
+    },
+
     publishPostNow: async (id: string) => {
         try {
             const res = await fetch(`/api/social/posts/${id}/publish`, { method: "POST", headers: buildHeaders(get().apiKey) });

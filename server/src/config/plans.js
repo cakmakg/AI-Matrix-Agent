@@ -3,7 +3,7 @@
  * Client.plan alanındaki değerler: "free" | "pro" | "enterprise" | "holding"
  *
  * free       → AI Destek Masası    ($99/ay)    — yalnızca gelen kutusu
- * pro        → AI Pazarlama Ekibi  ($299/ay)   — Scraper + Writer + Critic + CMO
+ * pro        → Growth & Revenue    ($499/ay)   — Scraper + Analyzer + Innovator + Writer + Critic + CMO
  * enterprise → Enterprise Brain    ($999/ay)   — Tüm ajanlar serbest
  * holding    → AI Holding Brain    ($3.000+/ay) — Tüm departmanlar + sınırsız revizyon + öncelikli destek
  */
@@ -15,8 +15,8 @@ export const PLAN_LIMITS = {
         maxRevisions: 1,
     },
     pro: {
-        label: "AI Pazarlama Ekibi",
-        allowedAgents: ["scraper", "writer", "critic", "fileSaver", "human_approval", "publisher"],
+        label: "Growth & Revenue",
+        allowedAgents: ["scraper", "analyzer", "innovator", "writer", "critic", "fileSaver", "human_approval", "publisher"],
         maxRevisions: 3,
     },
     enterprise: {

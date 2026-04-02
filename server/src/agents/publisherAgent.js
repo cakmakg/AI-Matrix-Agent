@@ -47,6 +47,7 @@ export async function publisherNode(state, config) {
         { prefix: /^YOUTUBE:/i,         platform: "youtube" },
         { prefix: /^TIKTOK:/i,          platform: "tiktok" },
         { prefix: /^EMAIL_CAMPAIGN:/i,  platform: "email" },
+        { prefix: /^COLD_OUTREACH:/i,   platform: "email" },
     ];
     const taskText = state.task || "";
     const detectedPlatform = PLATFORM_PREFIXES.find(p => p.prefix.test(taskText))?.platform || null;
