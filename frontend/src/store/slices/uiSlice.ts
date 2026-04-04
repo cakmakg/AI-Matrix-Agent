@@ -12,6 +12,10 @@ export const createUISlice: StateCreator<AgentStore, [], [], UISlice> = (set, ge
     drawerItem: null,
     editedContent: null,
     chatMessages: [],
+    expandedTaskId: null,
+    expandedTaskType: null,
+    monitorCollapsed: false,
+    terminalExpanded: false,
 
     setAgentStatus: (id: AgentId, status: AgentStatus) =>
         set((s) => ({ agents: { ...s.agents, [id]: { ...s.agents[id], status } } })),
@@ -51,4 +55,8 @@ export const createUISlice: StateCreator<AgentStore, [], [], UISlice> = (set, ge
         })),
 
     clearChatMessages: () => set({ chatMessages: [] }),
+
+    setExpandedTask: (id, type) => set({ expandedTaskId: id, expandedTaskType: type }),
+    setMonitorCollapsed: (v) => set({ monitorCollapsed: v }),
+    setTerminalExpanded: (v) => set({ terminalExpanded: v }),
 });

@@ -87,6 +87,11 @@ export interface UISlice {
     drawerItem: DrawerItem | null;
     editedContent: string | null;
     chatMessages: ChatMessage[];
+    // New redesign state
+    expandedTaskId: string | null;
+    expandedTaskType: "report" | "support" | "campaign" | null;
+    monitorCollapsed: boolean;
+    terminalExpanded: boolean;
     setAgentStatus: (id: AgentId, status: AgentStatus) => void;
     setActiveAgent: (id: AgentId | null) => void;
     addLog: (entry: Omit<LogEntry, "id">) => void;
@@ -99,6 +104,9 @@ export interface UISlice {
     setEditedContent: (c: string | null) => void;
     addChatMessage: (msg: Omit<ChatMessage, "id">) => void;
     clearChatMessages: () => void;
+    setExpandedTask: (id: string | null, type: "report" | "support" | "campaign" | null) => void;
+    setMonitorCollapsed: (v: boolean) => void;
+    setTerminalExpanded: (v: boolean) => void;
 }
 
 export interface AuthSlice {
@@ -123,6 +131,7 @@ export interface WorkflowSlice {
     pendingContent: string | null;
     missionMessage: string | null;
     missionCategory: "HOT_LEAD" | "CTO" | "SUPPORT" | null;
+    reportStatus: "AWAITING_APPROVAL" | "APPROVED" | "REJECTED" | "PUBLISHED" | null;
     _workflowSSE: EventSource | null;
     setWorkflowPhase: (phase: WorkflowPhase) => void;
     sendMission: (message: string) => Promise<void>;

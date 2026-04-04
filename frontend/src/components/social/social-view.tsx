@@ -399,7 +399,7 @@ export const SocialView = () => {
                     { label: "Verbundene Konten", value: socialSummary.connectedCount, icon: <Link2 size={14} />, color: "#00f0ff" },
                     { label: "Ausstehende Posts", value: socialSummary.pendingCount, icon: <Clock size={14} />, color: "#ffb000" },
                     { label: "Diese Woche veröffentlicht", value: socialSummary.publishedThisWeek, icon: <TrendingUp size={14} />, color: "#39ff14" },
-                    { label: "Plattformen", value: Object.keys(PLATFORM_META).length, icon: <Zap size={14} />, color: "#bf5fff" },
+                    { label: "Plattformen", value: new Set(socialAccounts.map(a => a.platform)).size, icon: <Zap size={14} />, color: "#bf5fff" },
                 ].map((kpi) => (
                     <div key={kpi.label} className="flex-1 px-4 py-3 rounded-xl border border-white/6 bg-white/[0.02]">
                         <div className="flex items-center gap-2 mb-1" style={{ color: kpi.color }}>

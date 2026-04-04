@@ -157,6 +157,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
         pendingContent: null,
         missionMessage: null,
         missionCategory: null,
+        reportStatus: null,
         _workflowSSE: null,
 
         setWorkflowPhase: (phase) => set({ workflowPhase: phase }),
@@ -245,8 +246,11 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
                 if (data.success) {
                     setAgentStatus("publisher", "SUCCESS");
                     setWorkflowPhase("DELIVERED");
+                    set({ reportStatus: "PUBLISHED" });
                     addLog({ timestamp: getTimestamp(), agent: "PUBLISHER", message: "PAYLOAD DELIVERED to external channels.", level: "SUCCESS" });
                     addAlert({ message: "PAYLOAD DELIVERED — TRANSMISSION COMPLETE", type: "success" });
+                    // Inbox mission listesini güncelle
+                    get().fetchMissions();
                     setTimeout(() => {
                         get().resetAllAgents();
                         set({ workflowPhase: "IDLE", threadId: null, pendingContent: null, missionMessage: null, missionCategory: null });

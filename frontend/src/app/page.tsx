@@ -4,7 +4,7 @@ import { useAgentStore } from "@/store/agent-store";
 import { SystemAlerts } from "@/components/ui/system-alert";
 import { Sidebar } from "@/components/layout/sidebar";
 import { JobQueue } from "@/components/mission-control/job-queue";
-import { OperatingTable } from "@/components/mission-control/operating-table";
+import { SystemMonitor } from "@/components/monitor/system-monitor";
 import { CfoDashboard } from "@/components/finance/cfo-dashboard";
 import { KnowledgeView } from "@/components/knowledge/knowledge-view";
 import { SettingsView } from "@/components/settings/settings-view";
@@ -37,11 +37,11 @@ export default function Home() {
                 </main>
             )}
 
-            {/* ── MISSION CONTROL (relative for overlay drawer) ── */}
+            {/* ── MISSION CONTROL: MainStage + SystemMonitor ── */}
             {activeView === "control" && clientProduct !== "cx" && (
-                <div className="flex-1 relative min-w-0 overflow-hidden flex">
+                <div className="flex-1 min-w-0 overflow-hidden flex">
                     <JobQueue />
-                    <OperatingTable />
+                    <SystemMonitor />
                 </div>
             )}
 

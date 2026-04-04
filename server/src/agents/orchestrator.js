@@ -122,6 +122,10 @@ export async function orchestratorNode(state, config) {
             console.log("   -> ⚡ FREN C: Hedef araştırıldı → writer'a (analyzer/innovator atlanıyor).");
             return { nextAgent: "writer" };
         }
+        if (state.finalContent && !state.fileSaved) {
+            console.log("   -> ⚡ FREN C: Outreach maili hazır → fileSaver'a yönlendiriliyor.");
+            return { nextAgent: "fileSaver" };
+        }
     }
 
     // ==========================================

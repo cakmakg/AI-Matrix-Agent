@@ -60,8 +60,9 @@ export const Sidebar = () => {
         campaignDrafts.filter(c => c.status === "AWAITING_APPROVAL").length;
 
     const isRunning    = workflowPhase !== "IDLE" && workflowPhase !== "DELIVERED";
-    const displayName  = clientName || "Default Tenant";
-    const displaySlug  = clientSlug || "default";
+    // SSR sırasında localStorage değerleri yok — hydration mismatch önleme
+    const displayName  = mounted ? (clientName || "Default Tenant") : "Default Tenant";
+    const displaySlug  = mounted ? (clientSlug || "default") : "default";
 
     return (
         <aside
