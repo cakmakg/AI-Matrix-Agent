@@ -1,16 +1,197 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Mail, Clock, Database, Edit3, CheckCircle2, XCircle, Loader2,
-    Inbox, Brain, X, ChevronDown, ChevronUp
+    Inbox, Brain, X, ChevronDown, ChevronUp, BarChart3,
 } from "lucide-react";
+import {
+    ResponsiveContainer,
+    PieChart as RPieChart, Pie, Cell,
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+    BarChart, Bar,
+    Legend,
+} from "recharts";
 import { useAgentStore } from "@/store/agent-store";
 import type { SupportTicketSummary } from "@/store/types";
 import { RagKnowledgePanel } from "@/components/knowledge/knowledge-view";
+import { ChartCard, CyberTooltip, NoData, CHART_COLORS, PLATFORM_COLORS, axisTickStyle, gridProps } from "@/components/charts";
 
 const DEFAULT_CLIENT = process.env.NEXT_PUBLIC_CLIENT_ID ?? "default";
+
+/* ── Analytics Types ── */
+interface SupportAnalytics {
+    platformDist: Array<{ platform: string; count: number }>;
+    weeklyTrend: Array<{ date: string; count: number }>;
+    categoryDist: Array<{ category: string; count: number }>;
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+    HOT_LEAD: "#ff6b35",
+    SUPPORT_PRICING: "#00f0ff",
+    SUPPORT_BUG: "#ff2d55",
+    OTHER: "#bf5fff",
+    SPAM: "#666666",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+    HOT_LEAD: "Hot Lead",
+    SUPPORT_PRICING: "Preisanfrage",
+    SUPPORT_BUG: "Technisch",
+    OTHER: "Sonstige",
+    SPAM: "Spam",
+};
+
+/* ── CX Analytics Panel ── */
+function CxAnalyticsPanel() {
+    const [data, setData] = useState<SupportAnalytics | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [expanded, setExpanded] = useState(true);
+
+    const fetchAnalytics = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await fetch("/api/analytics/support");
+            if (res.ok) {
+                const json = await res.json();
+                setData(json.data ?? json);
+            }
+        } catch {
+            /* silent */
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
+
+    if (!expanded) {
+        return (
+            <button
+                onClick={() => setExpanded(true)}
+                className="w-full flex items-center gap-2 px-4 py-2 border-b border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+            >
+                <BarChart3 size={10} className="text-[#00f0ff]/50" />
+                <span className="font-mono text-[8px] text-white/40 uppercase tracking-widest">Analytics</span>
+                <ChevronDown size={10} className="text-white/20 ml-auto" />
+            </button>
+        );
+    }
+
+    /* Donut: platform distribution — Email, WhatsApp, YouTube etc. with total in center */
+    const donutData = (data?.platformDist ?? []).map(p => ({
+        name: p.platform,
+        value: p.count,
+        color: PLATFORM_COLORS[p.platform] ?? "#ffffff",
+    }));
+    const totalTickets = donutData.reduce((sum, d) => sum + d.value, 0);
+
+    /* Category horizontal bar */
+    const categoryData = (data?.categoryDist ?? []).map(c => ({
+        name: CATEGORY_LABELS[c.category] ?? c.category,
+        count: c.count,
+        color: CATEGORY_COLORS[c.category] ?? "#ffffff",
+    }));
+
+    /* Weekly trend area */
+    const trendData = data?.weeklyTrend ?? [];
+
+    return (
+        <div className="border-b border-white/5">
+            <button
+                onClick={() => setExpanded(false)}
+                className="w-full flex items-center gap-2 px-4 py-2 bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+            >
+                <BarChart3 size={10} className="text-[#00f0ff]/50" />
+                <span className="font-mono text-[8px] text-white/40 uppercase tracking-widest flex-1 text-left">Support Analytics</span>
+                <ChevronUp size={10} className="text-white/20" />
+            </button>
+            <div className="px-3 pb-4 space-y-3">
+                {/* Row 1: Donut + Category Bar */}
+                <div className="grid grid-cols-2 gap-3">
+                    <ChartCard title="Kanal Dağılımı" accent="#00f0ff" minHeight={180}>
+                        {donutData.length === 0 ? (
+                            <NoData accent="#00f0ff" message="Ticket verisi yok" />
+                        ) : (
+                            <ResponsiveContainer width="100%" height={180}>
+                                <RPieChart>
+                                    <Pie
+                                        data={donutData}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={40}
+                                        outerRadius={65}
+                                        paddingAngle={3}
+                                        stroke="none"
+                                    >
+                                        {donutData.map((entry, idx) => (
+                                            <Cell key={idx} fill={entry.color} opacity={0.8} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip content={<CyberTooltip />} />
+                                    <Legend formatter={(v: string) => <span className="font-mono text-[8px] text-white/40">{v}</span>} />
+                                    {/* Center label */}
+                                    <text x="50%" y="48%" textAnchor="middle" dominantBaseline="central" className="font-mono" fill="white" fontSize={18} fontWeight="bold">
+                                        {totalTickets}
+                                    </text>
+                                    <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central" className="font-mono" fill="rgba(255,255,255,0.3)" fontSize={8}>
+                                        TICKETS
+                                    </text>
+                                </RPieChart>
+                            </ResponsiveContainer>
+                        )}
+                    </ChartCard>
+
+                    <ChartCard title="Kategori Dağılımı" accent="#00f0ff" minHeight={180}>
+                        {categoryData.length === 0 ? (
+                            <NoData accent="#00f0ff" message="Kategori verisi yok" />
+                        ) : (
+                            <ResponsiveContainer width="100%" height={180}>
+                                <BarChart data={categoryData} layout="vertical" margin={{ top: 5, right: 15, left: 5, bottom: 5 }}>
+                                    <CartesianGrid {...gridProps} horizontal={false} />
+                                    <XAxis type="number" tick={axisTickStyle} axisLine={false} tickLine={false} />
+                                    <YAxis type="category" dataKey="name" tick={{ ...axisTickStyle, fontSize: 8 }} axisLine={false} tickLine={false} width={70} />
+                                    <Tooltip content={<CyberTooltip />} />
+                                    <Bar dataKey="count" name="Ticket" radius={[0, 4, 4, 0]}>
+                                        {categoryData.map((entry, idx) => (
+                                            <Cell key={idx} fill={entry.color} opacity={0.75} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
+                    </ChartCard>
+                </div>
+
+                {/* Row 2: Weekly trend */}
+                <ChartCard title="Haftalık Ticket Trendi" subtitle="Son 4 hafta" accent="#00f0ff" minHeight={140}>
+                    {trendData.length === 0 ? (
+                        <NoData accent="#00f0ff" message="Trend verisi yok" />
+                    ) : (
+                        <ResponsiveContainer width="100%" height={140}>
+                            <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="cxTrendGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#00f0ff" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid {...gridProps} />
+                                <XAxis dataKey="date" tick={{ ...axisTickStyle, fontSize: 8 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={axisTickStyle} axisLine={false} tickLine={false} />
+                                <Tooltip content={<CyberTooltip />} />
+                                <Area type="monotone" dataKey="count" name="Tickets" stroke="#00f0ff" fill="url(#cxTrendGrad)" strokeWidth={2} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    )}
+                </ChartCard>
+            </div>
+        </div>
+    );
+}
 
 // ── CUSTOM COMPONENTS ────────────────────────────────────────────────────────
 
@@ -248,6 +429,9 @@ export function CxDashboard() {
                         </div>
                     </div>
                 </div>
+
+                {/* Analytics Panel — collapse/expand */}
+                <CxAnalyticsPanel />
 
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 scrollbar-hide">
                     {supportTickets.length === 0 ? (

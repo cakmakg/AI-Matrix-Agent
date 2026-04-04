@@ -18,6 +18,7 @@ import promptRoutes from "./promptRoutes.js";
 import auditorRoutes from "./auditorRoutes.js";
 import supplyChainRoutes from "./supplyChainRoutes.js";
 import adminRoutes from "./adminRoutes.js";
+import analyticsRoutes from "./analyticsRoutes.js";
 import { classifyEmail } from "../controllers/classifyController.js";
 import { webhookAuth } from "../middleware/webhook.js";
 
@@ -41,6 +42,7 @@ router.use("/prompts", promptRoutes);
 router.use("/auditor", auditorRoutes);
 router.use("/supply", supplyChainRoutes);
 router.use("/admin", adminRoutes);
+router.use("/analytics", analyticsRoutes);
 router.post("/classify-email", webhookAuth, classifyEmail);
 
 export default router;

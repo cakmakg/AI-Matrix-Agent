@@ -16,6 +16,9 @@ import { SupplyChainDashboard } from "@/components/supply/supply-chain-dashboard
 import { ApiKeyModal } from "@/components/auth/api-key-modal";
 import { AdminLayout } from "@/components/admin/admin-layout";
 import { CxDashboard } from "@/components/cx/cx-dashboard";
+import { GrowthAnalytics } from "@/components/growth/growth-analytics";
+import { StrategyDashboard } from "@/components/strategy/strategy-dashboard";
+import { EngineeringDashboard } from "@/components/engineering/engineering-dashboard";
 import { ChatView } from "@/components/chat/chat-view";
 
 export default function Home() {
@@ -37,8 +40,8 @@ export default function Home() {
                 </main>
             )}
 
-            {/* ── MISSION CONTROL: MainStage + SystemMonitor ── */}
-            {activeView === "control" && clientProduct !== "cx" && (
+            {/* ── MISSION CONTROL: Default products (backoffice, holding) ── */}
+            {activeView === "control" && !["cx", "growth", "strategy", "engineering"].includes(clientProduct ?? "") && (
                 <div className="flex-1 min-w-0 overflow-hidden flex">
                     <JobQueue />
                     <SystemMonitor />
@@ -49,6 +52,42 @@ export default function Home() {
             {activeView === "control" && clientProduct === "cx" && (
                 <div className="flex-1 relative min-w-0 overflow-hidden flex">
                     <CxDashboard />
+                </div>
+            )}
+
+            {/* ── GROWTH: JobQueue + Growth Analytics ── */}
+            {activeView === "control" && clientProduct === "growth" && (
+                <div className="flex-1 min-w-0 overflow-hidden flex">
+                    <div className="w-[45%] flex flex-col border-r border-white/5 overflow-hidden">
+                        <JobQueue />
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                        <GrowthAnalytics />
+                    </div>
+                </div>
+            )}
+
+            {/* ── STRATEGY: JobQueue + Strategy War Room ── */}
+            {activeView === "control" && clientProduct === "strategy" && (
+                <div className="flex-1 min-w-0 overflow-hidden flex">
+                    <div className="w-[45%] flex flex-col border-r border-white/5 overflow-hidden">
+                        <JobQueue />
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                        <StrategyDashboard />
+                    </div>
+                </div>
+            )}
+
+            {/* ── ENGINEERING: JobQueue + Engineering Lab ── */}
+            {activeView === "control" && clientProduct === "engineering" && (
+                <div className="flex-1 min-w-0 overflow-hidden flex">
+                    <div className="w-[45%] flex flex-col border-r border-white/5 overflow-hidden">
+                        <JobQueue />
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                        <EngineeringDashboard />
+                    </div>
                 </div>
             )}
 

@@ -2,8 +2,17 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FileSearch, RefreshCw, AlertTriangle, CheckCircle, XCircle, Clock, TrendingUp, ShieldAlert } from "lucide-react";
+import {
+    FileSearch, RefreshCw, AlertTriangle, CheckCircle, XCircle, Clock, TrendingUp, ShieldAlert,
+} from "lucide-react";
+import {
+    ResponsiveContainer,
+    RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+} from "recharts";
+import { ChartCard, CyberTooltip, NoData, CHART_COLORS, axisTickStyle, gridProps } from "../charts";
 
+/* ── types ── */
 interface AnomalyBreakdown { _id: string; count: number; }
 interface StatusBreakdown  { _id: string; count: number; }
 interface AuditFinding {
@@ -17,7 +26,6 @@ interface AuditFinding {
     confidenceScore: number;
     createdAt: string;
 }
-
 interface AuditSummary {
     period: string;
     invoiceCount: number;
@@ -49,6 +57,16 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 const formatCurrency = (v: number, currency = "TRY") =>
     new Intl.NumberFormat("tr-TR", { style: "currency", currency, maximumFractionDigits: 0 }).format(v);
 
+/* ── Radar data: anomaly breakdown → 5-axis spider chart ── */
+const ANOMALY_AXES = ["PRICE_MISMATCH", "DUPLICATE_INVOICE", "SUSPICIOUS_VENDOR", "AMOUNT_EXCEEDS_LIMIT", "NONE"];
+const ANOMALY_LABELS: Record<string, string> = {
+    PRICE_MISMATCH: "Fiyat Uyumsuzluğu",
+    DUPLICATE_INVOICE: "Mükerrer Fatura",
+    SUSPICIOUS_VENDOR: "Şüpheli Tedarikçi",
+    AMOUNT_EXCEEDS_LIMIT: "Limit Aşımı",
+    NONE: "Temiz",
+};
+
 export const AuditorDashboard = () => {
     const [summary, setSummary] = useState<AuditSummary | null>(null);
     const [findings, setFindings] = useState<AuditFinding[]>([]);
@@ -76,6 +94,27 @@ export const AuditorDashboard = () => {
     }, []);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    /* ── Radar chart data ── */
+    const radarData = ANOMALY_AXES.map(axis => ({
+        axis: ANOMALY_LABELS[axis],
+        value: summary?.anomalyBreakdown?.find(a => a._id === axis)?.count ?? 0,
+    }));
+
+    /* ── Savings trend: per-finding cumulative savings ── */
+    const savingsData = findings
+        .filter(f => f.anomalyDetected && f.invoiceAmount > f.agreedAmount)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        .reduce<Array<{ date: string; saving: number; cumulative: number }>>((acc, f) => {
+            const saving = f.invoiceAmount - f.agreedAmount;
+            const prev = acc.length > 0 ? acc[acc.length - 1].cumulative : 0;
+            acc.push({
+                date: new Date(f.createdAt).toLocaleDateString("tr-TR", { month: "short", day: "numeric" }),
+                saving,
+                cumulative: prev + saving,
+            });
+            return acc;
+        }, []);
 
     return (
         <div className="flex flex-col h-full overflow-y-auto" style={{ background: "#070c14" }}>
@@ -143,7 +182,7 @@ export const AuditorDashboard = () => {
                             key={card.label}
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="rounded-xl border border-white/6 bg-white/2 p-4"
+                            className="rounded-xl border border-white/6 bg-white/[0.02] p-4"
                         >
                             <div className="flex items-center gap-2 mb-3">
                                 <span style={{ color: card.color }}>{card.icon}</span>
@@ -155,10 +194,85 @@ export const AuditorDashboard = () => {
                     ))}
                 </div>
 
-                {/* Anomali Dağılımı + Son Faturalar */}
+                {/* Charts Row — Anomaly Radar + Savings Trend */}
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Radar Chart: 5 anomaly axis — spider/web visualization */}
+                    <ChartCard
+                        title="Anomali Tipi Radarı"
+                        subtitle="5-eksenli dağılım"
+                        accent="#ff2d55"
+                        icon={<ShieldAlert size={12} />}
+                        minHeight={260}
+                    >
+                        {(summary?.anomalyBreakdown?.length ?? 0) === 0 ? (
+                            <NoData accent="#ff2d55" message="Anomali verisi yok" />
+                        ) : (
+                            <ResponsiveContainer width="100%" height={260}>
+                                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                                    <PolarGrid stroke={CHART_COLORS.grid} />
+                                    <PolarAngleAxis
+                                        dataKey="axis"
+                                        tick={{ fontSize: 9, fontFamily: "monospace", fill: "rgba(255,255,255,0.45)" }}
+                                    />
+                                    <PolarRadiusAxis
+                                        tick={{ fontSize: 8, fontFamily: "monospace", fill: "rgba(255,255,255,0.2)" }}
+                                        axisLine={false}
+                                    />
+                                    <Radar
+                                        name="Anomali"
+                                        dataKey="value"
+                                        stroke="#ff2d55"
+                                        fill="#ff2d55"
+                                        fillOpacity={0.2}
+                                        strokeWidth={2}
+                                    />
+                                    <Tooltip content={<CyberTooltip />} />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        )}
+                    </ChartCard>
+
+                    {/* Area Chart: Cumulative savings from anomaly detection */}
+                    <ChartCard
+                        title="Tasarruf Trendi"
+                        subtitle="Kümülatif anomali tasarrufu"
+                        accent="#39ff14"
+                        icon={<TrendingUp size={12} />}
+                        minHeight={260}
+                    >
+                        {savingsData.length === 0 ? (
+                            <NoData accent="#39ff14" message="Tasarruf verisi yok — fatura denetimi başlatın" />
+                        ) : (
+                            <ResponsiveContainer width="100%" height={260}>
+                                <AreaChart data={savingsData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="savingsGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#39ff14" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#39ff14" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid {...gridProps} />
+                                    <XAxis dataKey="date" tick={axisTickStyle} axisLine={false} tickLine={false} />
+                                    <YAxis tick={axisTickStyle} axisLine={false} tickLine={false} tickFormatter={(v: number) => `₺${(v / 1000).toFixed(0)}K`} />
+                                    <Tooltip content={<CyberTooltip formatter={(v, name) => name === "cumulative" ? formatCurrency(v) : formatCurrency(v)} />} />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="cumulative"
+                                        name="Kümülatif Tasarruf"
+                                        stroke="#39ff14"
+                                        fill="url(#savingsGrad)"
+                                        strokeWidth={2}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
+                    </ChartCard>
+                </div>
+
+                {/* Anomali + Durum + Onay Bekleyen Row */}
                 <div className="grid grid-cols-3 gap-4">
-                    {/* Anomali Tipi */}
-                    <div className="rounded-xl border border-white/6 bg-white/2 p-5">
+                    {/* Anomali Tipi List */}
+                    <div className="rounded-xl border border-white/6 bg-white/[0.02] p-5">
                         <div className="text-[11px] font-mono text-white/40 uppercase tracking-wider mb-4">Anomali Tipleri</div>
                         {loading ? (
                             <div className="text-white/20 text-sm">Yükleniyor...</div>
@@ -180,7 +294,7 @@ export const AuditorDashboard = () => {
                     </div>
 
                     {/* Durum Dağılımı */}
-                    <div className="rounded-xl border border-white/6 bg-white/2 p-5">
+                    <div className="rounded-xl border border-white/6 bg-white/[0.02] p-5">
                         <div className="text-[11px] font-mono text-white/40 uppercase tracking-wider mb-4">Durum Dağılımı</div>
                         {loading ? (
                             <div className="text-white/20 text-sm">Yükleniyor...</div>
@@ -197,8 +311,8 @@ export const AuditorDashboard = () => {
                         )}
                     </div>
 
-                    {/* Hızlı İstatistik */}
-                    <div className="rounded-xl border border-[#ffb000]/20 bg-[#ffb000]/3 p-5">
+                    {/* Onay Bekleyenler */}
+                    <div className="rounded-xl border border-[#ffb000]/20 bg-[#ffb000]/[0.03] p-5">
                         <div className="text-[11px] font-mono text-[#ffb000]/60 uppercase tracking-wider mb-4">Onay Bekleyenler</div>
                         <div className="text-[40px] font-bold text-[#ffb000] font-mono">
                             {loading ? "..." : summary?.awaitingApproval ?? 0}
@@ -213,7 +327,7 @@ export const AuditorDashboard = () => {
                 </div>
 
                 {/* Son Faturalar Tablosu */}
-                <div className="rounded-xl border border-white/6 bg-white/2 overflow-hidden">
+                <div className="rounded-xl border border-white/6 bg-white/[0.02] overflow-hidden">
                     <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
                         <span className="text-[12px] font-mono text-white/50 uppercase tracking-wider">Son Fatura Kayıtları</span>
                         <span className="text-[10px] text-white/25 font-mono">{findings.length} kayıt</span>
@@ -233,7 +347,7 @@ export const AuditorDashboard = () => {
                                 ) : findings.length === 0 ? (
                                     <tr><td colSpan={7} className="px-4 py-8 text-center text-white/20">Kayıt bulunamadı</td></tr>
                                 ) : findings.map(f => (
-                                    <tr key={f.threadId} className="border-b border-white/3 hover:bg-white/2 transition-colors">
+                                    <tr key={f.threadId} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
                                         <td className="px-4 py-3 text-white/70 font-mono">{f.vendorName || "—"}</td>
                                         <td className="px-4 py-3 text-white font-mono font-semibold">{formatCurrency(f.invoiceAmount)}</td>
                                         <td className="px-4 py-3 text-white/50 font-mono">{f.agreedAmount ? formatCurrency(f.agreedAmount) : "—"}</td>

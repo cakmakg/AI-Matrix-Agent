@@ -2,8 +2,12 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+    ResponsiveContainer, PieChart as RPieChart, Pie, Cell, Tooltip,
+} from "recharts";
 import { useAgentStore } from "@/store/agent-store";
 import { IPManager } from "./ip-manager";
+import { CyberTooltip } from "../charts";
 
 const SEVERITY_COLORS: Record<string, string> = {
     LOW: "#00f0ff", MEDIUM: "#ffb000", HIGH: "#ff6b35", CRITICAL: "#ff2d55",
@@ -46,6 +50,41 @@ export const SocPanel = () => {
                             <div className="text-sm font-bold font-mono text-white/80">{count}</div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Threat Severity Distribution — Donut */}
+            {globalSecurity && Object.values(globalSecurity.severityCounts).some(c => c > 0) && (
+                <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2">
+                    <div className="text-[8px] font-mono text-white/25 uppercase tracking-wider mb-1">Threat Verteilung</div>
+                    <ResponsiveContainer width="100%" height={120}>
+                        <RPieChart>
+                            <Pie
+                                data={Object.entries(globalSecurity.severityCounts)
+                                    .filter(([, c]) => c > 0)
+                                    .map(([sev, count]) => ({
+                                        name: sev,
+                                        value: count,
+                                        color: SEVERITY_COLORS[sev] ?? "#666",
+                                    }))}
+                                dataKey="value"
+                                nameKey="name"
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={28}
+                                outerRadius={45}
+                                paddingAngle={3}
+                                stroke="none"
+                            >
+                                {Object.entries(globalSecurity.severityCounts)
+                                    .filter(([, c]) => c > 0)
+                                    .map(([sev], idx) => (
+                                        <Cell key={idx} fill={SEVERITY_COLORS[sev] ?? "#666"} opacity={0.75} />
+                                    ))}
+                            </Pie>
+                            <Tooltip content={<CyberTooltip />} />
+                        </RPieChart>
+                    </ResponsiveContainer>
                 </div>
             )}
 

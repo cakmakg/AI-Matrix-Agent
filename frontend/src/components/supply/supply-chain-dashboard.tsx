@@ -2,8 +2,19 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Truck, RefreshCw, AlertTriangle, CheckCircle, Clock, Package, Zap, Send } from "lucide-react";
+import {
+    Truck, RefreshCw, AlertTriangle, CheckCircle, Clock, Package, Zap, Send,
+} from "lucide-react";
+import {
+    ResponsiveContainer,
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
+    PieChart as RPieChart, Pie,
+    AreaChart, Area,
+    Legend,
+} from "recharts";
+import { ChartCard, CyberTooltip, NoData, CHART_COLORS, URGENCY_COLORS, axisTickStyle, gridProps } from "../charts";
 
+/* ── types ── */
 interface SupplyAlert {
     threadId: string;
     sku: string;
@@ -16,10 +27,8 @@ interface SupplyAlert {
     status: string;
     createdAt: string;
 }
-
 interface UrgencyBreakdown { _id: string; count: number; }
 interface StatusBreakdown  { _id: string; count: number; }
-
 interface SupplySummary {
     criticalAlerts: number;
     awaitingApproval: number;
@@ -28,18 +37,11 @@ interface SupplySummary {
     topAlerts: SupplyAlert[];
 }
 
-const URGENCY_COLOR: Record<string, string> = {
-    CRITICAL: "#ff2d55",
-    HIGH:     "#ff6b35",
-    MEDIUM:   "#ffb000",
-    LOW:      "#39ff14",
-};
-
 const URGENCY_LABEL: Record<string, string> = {
-    CRITICAL: "🔴 KRİTİK",
-    HIGH:     "🟠 YÜKSEK",
-    MEDIUM:   "🟡 ORTA",
-    LOW:      "🟢 DÜŞÜK",
+    CRITICAL: "KRİTİK",
+    HIGH:     "YÜKSEK",
+    MEDIUM:   "ORTA",
+    LOW:      "DÜŞÜK",
 };
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
@@ -78,6 +80,49 @@ export const SupplyChainDashboard = () => {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    /* ── Chart data: supplier performance (horizontal bar) ── */
+    const supplierData = (() => {
+        const map = new Map<string, { name: string; critical: number; high: number; medium: number; low: number }>();
+        for (const a of alerts) {
+            const name = a.supplierName || "Bilinmiyor";
+            if (!map.has(name)) map.set(name, { name, critical: 0, high: 0, medium: 0, low: 0 });
+            const entry = map.get(name)!;
+            const key = a.urgencyLevel.toLowerCase() as "critical" | "high" | "medium" | "low";
+            entry[key]++;
+        }
+        return Array.from(map.values()).sort((a, b) => (b.critical + b.high) - (a.critical + a.high)).slice(0, 8);
+    })();
+
+    /* ── Chart data: stockout countdown (top 10 most critical) ── */
+    const countdownData = alerts
+        .filter(a => a.daysUntilStockout != null)
+        .sort((a, b) => a.daysUntilStockout - b.daysUntilStockout)
+        .slice(0, 10)
+        .map(a => ({
+            name: a.productName || a.sku,
+            days: a.daysUntilStockout,
+            color: a.daysUntilStockout <= 3 ? "#ff2d55" : a.daysUntilStockout <= 7 ? "#ffb000" : "#39ff14",
+        }));
+
+    /* ── Chart data: urgency pie ── */
+    const urgencyPieData = (summary?.urgencyBreakdown ?? []).map(u => ({
+        name: URGENCY_LABEL[u._id] ?? u._id,
+        value: u.count,
+        color: URGENCY_COLORS[u._id] ?? "#ffffff",
+    }));
+
+    /* ── Chart data: weekly trend by urgency (stacked area) ── */
+    const weeklyTrendData = (() => {
+        const dayMap = new Map<string, Record<string, number>>();
+        for (const a of alerts) {
+            const day = new Date(a.createdAt).toLocaleDateString("tr-TR", { month: "short", day: "numeric" });
+            if (!dayMap.has(day)) dayMap.set(day, { date: 0, CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 });
+            const entry = dayMap.get(day)!;
+            entry[a.urgencyLevel]++;
+        }
+        return Array.from(dayMap.entries()).map(([date, vals]) => ({ date, ...vals }));
+    })();
+
     return (
         <div className="flex flex-col h-full overflow-y-auto" style={{ background: "#070c14" }}>
             {/* Header */}
@@ -102,138 +147,158 @@ export const SupplyChainDashboard = () => {
             </div>
 
             {error && (
-                <div className="mx-8 mt-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                    {error}
-                </div>
+                <div className="mx-8 mt-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>
             )}
 
             <div className="px-8 py-6 space-y-6">
                 {/* KPI Cards */}
                 <div className="grid grid-cols-4 gap-4">
                     {[
-                        {
-                            label: "Kritik Uyarı",
-                            value: summary?.criticalAlerts ?? "—",
-                            icon: <AlertTriangle size={14} />,
-                            color: (summary?.criticalAlerts ?? 0) > 0 ? "#ff2d55" : "#39ff14",
-                            sub: "stok tükenmek üzere",
-                            pulse: (summary?.criticalAlerts ?? 0) > 0,
-                        },
-                        {
-                            label: "Onay Bekleyen",
-                            value: summary?.awaitingApproval ?? "—",
-                            icon: <Clock size={14} />,
-                            color: "#ffb000",
-                            sub: "sipariş maili bekliyor",
-                            pulse: false,
-                        },
-                        {
-                            label: "Toplam Uyarı",
-                            value: alerts.length,
-                            icon: <Package size={14} />,
-                            color: "#00f0ff",
-                            sub: "aktif stok olayı",
-                            pulse: false,
-                        },
-                        {
-                            label: "Gönderilen Sipariş",
-                            value: summary?.statusBreakdown?.find(s => s._id === "ORDER_SENT")?.count ?? 0,
-                            icon: <Send size={14} />,
-                            color: "#39ff14",
-                            sub: "bu ay",
-                            pulse: false,
-                        },
+                        { label: "Kritik Uyarı", value: summary?.criticalAlerts ?? "—", icon: <AlertTriangle size={14} />, color: (summary?.criticalAlerts ?? 0) > 0 ? "#ff2d55" : "#39ff14", sub: "stok tükenmek üzere", pulse: (summary?.criticalAlerts ?? 0) > 0 },
+                        { label: "Onay Bekleyen", value: summary?.awaitingApproval ?? "—", icon: <Clock size={14} />, color: "#ffb000", sub: "sipariş maili bekliyor", pulse: false },
+                        { label: "Toplam Uyarı", value: alerts.length, icon: <Package size={14} />, color: "#00f0ff", sub: "aktif stok olayı", pulse: false },
+                        { label: "Gönderilen Sipariş", value: summary?.statusBreakdown?.find(s => s._id === "ORDER_SENT")?.count ?? 0, icon: <Send size={14} />, color: "#39ff14", sub: "bu ay", pulse: false },
                     ].map((card) => (
                         <motion.div
                             key={card.label}
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="rounded-xl border border-white/6 bg-white/2 p-4"
+                            className="rounded-xl border border-white/6 bg-white/[0.02] p-4"
                             style={{ borderColor: card.pulse ? `${card.color}30` : undefined }}
                         >
                             <div className="flex items-center gap-2 mb-3">
                                 <span style={{ color: card.color }} className={card.pulse ? "animate-pulse" : ""}>{card.icon}</span>
                                 <span className="text-[11px] text-white/40 font-mono uppercase tracking-wider">{card.label}</span>
                             </div>
-                            <div className="text-[22px] font-bold font-mono" style={{ color: card.color }}>
-                                {loading ? "..." : card.value}
-                            </div>
+                            <div className="text-[22px] font-bold font-mono" style={{ color: card.color }}>{loading ? "..." : card.value}</div>
                             <div className="text-[10px] text-white/30 mt-1 font-mono">{card.sub}</div>
                         </motion.div>
                     ))}
                 </div>
 
-                {/* Aciliyet Dağılımı + Durum + Top Kritik */}
-                <div className="grid grid-cols-3 gap-4">
-                    {/* Aciliyet seviyeleri */}
-                    <div className="rounded-xl border border-white/6 bg-white/2 p-5">
-                        <div className="text-[11px] font-mono text-white/40 uppercase tracking-wider mb-4">Aciliyet Seviyeleri</div>
-                        {loading ? (
-                            <div className="text-white/20 text-sm">Yükleniyor...</div>
+                {/* Charts Row 1 — Supplier Performance + Stockout Countdown */}
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Horizontal Bar: Supplier Performance Score */}
+                    <ChartCard
+                        title="Tedarikçi Performans Skoru"
+                        subtitle="Aciliyet ağırlıklı dağılım"
+                        accent="#ffb000"
+                        icon={<Truck size={12} />}
+                        minHeight={240}
+                    >
+                        {supplierData.length === 0 ? (
+                            <NoData accent="#ffb000" message="Tedarikçi verisi yok" />
                         ) : (
-                            <div className="space-y-3">
-                                {["CRITICAL", "HIGH", "MEDIUM", "LOW"].map(level => {
-                                    const item = summary?.urgencyBreakdown?.find(u => u._id === level);
-                                    return (
-                                        <div key={level} className="flex items-center gap-3">
-                                            <div className="w-2 h-2 rounded-full" style={{ background: URGENCY_COLOR[level] }} />
-                                            <span className="text-[11px] text-white/60 flex-1 font-mono">{URGENCY_LABEL[level]}</span>
-                                            <span className="text-[13px] font-bold" style={{ color: URGENCY_COLOR[level] }}>
-                                                {item?.count ?? 0}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            <ResponsiveContainer width="100%" height={240}>
+                                <BarChart data={supplierData} layout="vertical" margin={{ top: 5, right: 20, left: 5, bottom: 5 }}>
+                                    <CartesianGrid {...gridProps} horizontal={false} />
+                                    <XAxis type="number" tick={axisTickStyle} axisLine={false} tickLine={false} />
+                                    <YAxis type="category" dataKey="name" tick={axisTickStyle} axisLine={false} tickLine={false} width={80} />
+                                    <Tooltip content={<CyberTooltip />} />
+                                    <Bar dataKey="critical" name="Kritik" stackId="a" fill="#ff2d55" radius={[0, 0, 0, 0]} />
+                                    <Bar dataKey="high" name="Yüksek" stackId="a" fill="#ff6b35" />
+                                    <Bar dataKey="medium" name="Orta" stackId="a" fill="#ffb000" />
+                                    <Bar dataKey="low" name="Düşük" stackId="a" fill="#39ff14" radius={[0, 4, 4, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
                         )}
-                    </div>
+                    </ChartCard>
 
-                    {/* Durum dağılımı */}
-                    <div className="rounded-xl border border-white/6 bg-white/2 p-5">
-                        <div className="text-[11px] font-mono text-white/40 uppercase tracking-wider mb-4">Durum Dağılımı</div>
-                        {loading ? (
-                            <div className="text-white/20 text-sm">Yükleniyor...</div>
+                    {/* Bar Chart: Stockout Countdown — top 10 most critical products */}
+                    <ChartCard
+                        title="Stok Tükenme Takvimi"
+                        subtitle="En kritik 10 ürün — kalan gün"
+                        accent="#ff2d55"
+                        icon={<AlertTriangle size={12} />}
+                        minHeight={240}
+                    >
+                        {countdownData.length === 0 ? (
+                            <NoData accent="#ff2d55" message="Kritik stok yok" />
                         ) : (
-                            <div className="space-y-3">
-                                {(summary?.statusBreakdown ?? []).map(s => (
-                                    <div key={s._id} className="flex items-center gap-3">
-                                        {STATUS_ICON[s._id] ?? <Package size={12} className="text-white/30" />}
-                                        <span className="text-[11px] text-white/60 flex-1 font-mono">{s._id}</span>
-                                        <span className="text-[13px] font-bold text-white">{s.count}</span>
-                                    </div>
-                                ))}
-                            </div>
+                            <ResponsiveContainer width="100%" height={240}>
+                                <BarChart data={countdownData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                                    <CartesianGrid {...gridProps} />
+                                    <XAxis dataKey="name" tick={{ ...axisTickStyle, fontSize: 8 }} axisLine={false} tickLine={false} angle={-30} textAnchor="end" height={50} />
+                                    <YAxis tick={axisTickStyle} axisLine={false} tickLine={false} label={{ value: "Gün", style: { ...axisTickStyle, fill: "rgba(255,255,255,0.25)" }, position: "insideLeft", offset: 10 }} />
+                                    <Tooltip content={<CyberTooltip formatter={(v) => `${v} gün`} />} />
+                                    <Bar dataKey="days" name="Kalan Gün" radius={[4, 4, 0, 0]}>
+                                        {countdownData.map((entry, idx) => (
+                                            <Cell key={idx} fill={entry.color} opacity={0.8} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
                         )}
-                    </div>
+                    </ChartCard>
+                </div>
 
-                    {/* En kritik ürün */}
-                    <div className="rounded-xl border border-[#ff2d55]/20 bg-[#ff2d55]/3 p-5">
-                        <div className="text-[11px] font-mono text-[#ff2d55]/60 uppercase tracking-wider mb-3">En Kritik Ürün</div>
-                        {loading ? (
-                            <div className="text-white/20 text-sm">Yükleniyor...</div>
-                        ) : (summary?.topAlerts?.[0] ? (
-                            <>
-                                <div className="text-[13px] font-bold text-white truncate">{summary.topAlerts[0].productName || summary.topAlerts[0].sku}</div>
-                                <div className="text-[11px] text-white/40 font-mono mt-1">SKU: {summary.topAlerts[0].sku}</div>
-                                <div className="text-[28px] font-bold text-[#ff2d55] font-mono mt-2">
-                                    {summary.topAlerts[0].daysUntilStockout}
-                                    <span className="text-[14px] text-[#ff2d55]/60 ml-1">gün</span>
-                                </div>
-                                <div className="text-[10px] text-[#ff2d55]/50 font-mono">tahmini stok bitişi</div>
-                                <div className="mt-2 text-[10px] font-mono text-white/30">
-                                    Stok: {summary.topAlerts[0].currentStock} / Eşik: {summary.topAlerts[0].reorderPoint}
-                                </div>
-                            </>
+                {/* Charts Row 2 — Urgency Pie + Weekly Stacked Area */}
+                <div className="grid grid-cols-5 gap-4">
+                    {/* Pie Chart: Urgency distribution */}
+                    <ChartCard
+                        title="Aciliyet Dağılımı"
+                        accent="#ffb000"
+                        icon={<Zap size={12} />}
+                        className="col-span-2"
+                        minHeight={220}
+                    >
+                        {urgencyPieData.length === 0 ? (
+                            <NoData accent="#ffb000" message="Uyarı verisi yok" />
                         ) : (
-                            <div className="flex items-center gap-2 text-[#39ff14] text-sm mt-2">
-                                <CheckCircle size={14} /> Kritik stok yok
-                            </div>
-                        ))}
-                    </div>
+                            <ResponsiveContainer width="100%" height={220}>
+                                <RPieChart>
+                                    <Pie
+                                        data={urgencyPieData}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={45}
+                                        outerRadius={75}
+                                        paddingAngle={3}
+                                        stroke="none"
+                                    >
+                                        {urgencyPieData.map((entry, idx) => (
+                                            <Cell key={idx} fill={entry.color} opacity={0.8} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip content={<CyberTooltip />} />
+                                    <Legend formatter={(value: string) => <span className="font-mono text-[9px] text-white/50">{value}</span>} />
+                                </RPieChart>
+                            </ResponsiveContainer>
+                        )}
+                    </ChartCard>
+
+                    {/* Stacked Area: Weekly alert trend by urgency level */}
+                    <ChartCard
+                        title="Haftalık Stok Uyarı Trendi"
+                        subtitle="Aciliyet seviyesine göre"
+                        accent="#ffb000"
+                        icon={<Package size={12} />}
+                        className="col-span-3"
+                        minHeight={220}
+                    >
+                        {weeklyTrendData.length === 0 ? (
+                            <NoData accent="#ffb000" message="Trend verisi yok" />
+                        ) : (
+                            <ResponsiveContainer width="100%" height={220}>
+                                <AreaChart data={weeklyTrendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                                    <CartesianGrid {...gridProps} />
+                                    <XAxis dataKey="date" tick={axisTickStyle} axisLine={false} tickLine={false} />
+                                    <YAxis tick={axisTickStyle} axisLine={false} tickLine={false} />
+                                    <Tooltip content={<CyberTooltip />} />
+                                    <Area type="monotone" dataKey="CRITICAL" name="Kritik" stackId="1" stroke="#ff2d55" fill="#ff2d55" fillOpacity={0.3} />
+                                    <Area type="monotone" dataKey="HIGH" name="Yüksek" stackId="1" stroke="#ff6b35" fill="#ff6b35" fillOpacity={0.25} />
+                                    <Area type="monotone" dataKey="MEDIUM" name="Orta" stackId="1" stroke="#ffb000" fill="#ffb000" fillOpacity={0.2} />
+                                    <Area type="monotone" dataKey="LOW" name="Düşük" stackId="1" stroke="#39ff14" fill="#39ff14" fillOpacity={0.15} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
+                    </ChartCard>
                 </div>
 
                 {/* Stok Uyarıları Tablosu */}
-                <div className="rounded-xl border border-white/6 bg-white/2 overflow-hidden">
+                <div className="rounded-xl border border-white/6 bg-white/[0.02] overflow-hidden">
                     <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
                         <span className="text-[12px] font-mono text-white/50 uppercase tracking-wider">Stok Uyarıları</span>
                         <span className="text-[10px] text-white/25 font-mono">{alerts.length} uyarı</span>
@@ -253,7 +318,7 @@ export const SupplyChainDashboard = () => {
                                 ) : alerts.length === 0 ? (
                                     <tr><td colSpan={7} className="px-4 py-8 text-center text-white/20">Stok uyarısı yok</td></tr>
                                 ) : alerts.map(a => (
-                                    <tr key={a.threadId} className="border-b border-white/3 hover:bg-white/2 transition-colors">
+                                    <tr key={a.threadId} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
                                         <td className="px-4 py-3">
                                             <div className="text-white/80 font-mono font-semibold">{a.sku}</div>
                                             {a.productName && <div className="text-white/35 text-[10px] font-mono">{a.productName}</div>}
@@ -261,21 +326,14 @@ export const SupplyChainDashboard = () => {
                                         <td className="px-4 py-3 text-white font-mono font-bold">{a.currentStock}</td>
                                         <td className="px-4 py-3 text-white/40 font-mono">{a.reorderPoint}</td>
                                         <td className="px-4 py-3">
-                                            <span
-                                                className="font-mono font-bold"
-                                                style={{ color: a.daysUntilStockout <= 3 ? "#ff2d55" : a.daysUntilStockout <= 7 ? "#ffb000" : "#39ff14" }}
-                                            >
+                                            <span className="font-mono font-bold" style={{ color: a.daysUntilStockout <= 3 ? "#ff2d55" : a.daysUntilStockout <= 7 ? "#ffb000" : "#39ff14" }}>
                                                 {a.daysUntilStockout} gün
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
                                             <span
                                                 className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border"
-                                                style={{
-                                                    color: URGENCY_COLOR[a.urgencyLevel],
-                                                    borderColor: `${URGENCY_COLOR[a.urgencyLevel]}40`,
-                                                    background: `${URGENCY_COLOR[a.urgencyLevel]}10`,
-                                                }}
+                                                style={{ color: URGENCY_COLORS[a.urgencyLevel], borderColor: `${URGENCY_COLORS[a.urgencyLevel]}40`, background: `${URGENCY_COLORS[a.urgencyLevel]}10` }}
                                             >
                                                 {a.urgencyLevel}
                                             </span>
