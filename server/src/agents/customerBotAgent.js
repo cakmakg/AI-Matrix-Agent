@@ -1,15 +1,11 @@
-import { ChatBedrockConverse } from "@langchain/aws";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { z } from "zod";
 import { searchKnowledge } from "../services/ragService.js";
 
 // Ajan 6: Triyaj ve Destek Yöneticisi
-const llm = new ChatBedrockConverse({
-    model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    }
+const llm = new ChatAnthropic({
+    model: "claude-sonnet-4-6",
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 const leadSchema = z.object({

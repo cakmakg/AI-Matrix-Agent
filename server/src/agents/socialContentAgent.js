@@ -18,7 +18,7 @@
  *   E-Commerce       → topics: ["Conversion-Optimierung", "Warenkorbabbrüche reduzieren"]
  */
 
-import { ChatBedrockConverse } from "@langchain/aws";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { ScheduledPost } from "../models/ScheduledPost.js";
 import { TenantConfig } from "../models/TenantConfig.js";
 import { Client } from "../models/Client.js";
@@ -62,13 +62,9 @@ async function sendHITLNotification(tenantIntegrations, clientSlug, topic, platf
     }
 }
 
-const llm = new ChatBedrockConverse({
-    model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId:     process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    },
+const llm = new ChatAnthropic({
+    model: "claude-sonnet-4-6",
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 // Standard-Veröffentlichungszeiten innerhalb eines Tages (für ScheduledPost.scheduledAt)

@@ -1,15 +1,11 @@
-import { ChatBedrockConverse } from "@langchain/aws";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { trackLLMCost } from "../services/costTracker.js";
 import { InvoiceAudit } from "../models/InvoiceAudit.js";
 import { searchKnowledge } from "../services/ragService.js";
 
-const llm = new ChatBedrockConverse({
-    model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    }
+const llm = new ChatAnthropic({
+    model: "claude-sonnet-4-6",
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 const AUDITOR_SYSTEM_PROMPT = `Sie sind ein präziser KI-Buchprüfer (Agent 13 — Der Prüfer).
@@ -55,10 +51,10 @@ export async function auditorNode(state, config) {
                             taskText.match(/lieferant[:\s]+([^\n,]+)/i);
         if (vendorMatch) {
             const vendorName = vendorMatch[1].trim();
-            const ragResults = await searchKnowledge(`${vendorName} vereinbarter Preis Vertrag`, clientId, 3);
-            if (ragResults && ragResults.length > 0) {
-                ragContext = ragResults.map(r => r.content).join("\n---\n");
-                console.log(`   -> RAG: ${vendorName} için ${ragResults.length} kayıt bulundu.`);
+            const ragResult = await searchKnowledge(clientId, `${vendorName} vereinbarter Preis Vertrag`);
+            if (ragResult && ragResult.context) {
+                ragContext = ragResult.context;
+                console.log(`   -> RAG: ${vendorName} için ${ragResult.sources?.length ?? 0} kayıt bulundu.`);
             }
         }
     } catch (err) {

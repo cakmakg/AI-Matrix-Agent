@@ -13,16 +13,12 @@
  *   TWITTER_TWEETS_PER_TOPIC → Konu başına tweet sayısı (varsayılan: 3)
  */
 
-import { ChatBedrockConverse } from "@langchain/aws";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { ScheduledPost } from "../models/ScheduledPost.js";
 
-const llm = new ChatBedrockConverse({
-    model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId:     process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    },
+const llm = new ChatAnthropic({
+    model: "claude-sonnet-4-6",
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 // Gün içinde tweet'lerin yayınlanacağı saatler

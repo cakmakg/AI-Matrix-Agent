@@ -2,105 +2,43 @@
 
 import { useAgentStore } from "@/store/agent-store";
 import { SystemAlerts } from "@/components/ui/system-alert";
-import { Sidebar } from "@/components/layout/sidebar";
-import { JobQueue } from "@/components/mission-control/job-queue";
-import { SystemMonitor } from "@/components/monitor/system-monitor";
-import { CfoDashboard } from "@/components/finance/cfo-dashboard";
-import { KnowledgeView } from "@/components/knowledge/knowledge-view";
-import { SettingsView } from "@/components/settings/settings-view";
-import { SkillsView } from "@/components/skills/skills-view";
-import { SocialView } from "@/components/social/social-view";
-import { SecurityView } from "@/components/security/security-view";
-import { AuditorDashboard } from "@/components/finance/auditor-dashboard";
-import { SupplyChainDashboard } from "@/components/supply/supply-chain-dashboard";
+import { AppSidebar } from "@/components/layout/sidebar";
+import { CenterPanel } from "@/components/layout/center-panel";
+import { RightPanel } from "@/components/layout/right-panel";
 import { ApiKeyModal } from "@/components/auth/api-key-modal";
 import { AdminLayout } from "@/components/admin/admin-layout";
-import { CxDashboard } from "@/components/cx/cx-dashboard";
-import { GrowthAnalytics } from "@/components/growth/growth-analytics";
-import { StrategyDashboard } from "@/components/strategy/strategy-dashboard";
-import { EngineeringDashboard } from "@/components/engineering/engineering-dashboard";
-import { ChatView } from "@/components/chat/chat-view";
+import { OperatingTable } from "@/components/mission-control/operating-table";
 
 export default function Home() {
     const activeView = useAgentStore((s) => s.activeView);
-    const clientProduct = useAgentStore((s) => s.clientProduct);
+
+    // Admin layout tam ekran — kendi layout'una sahip
+    if (activeView === "admin") {
+        return (
+            <div className="w-screen h-screen overflow-hidden" style={{ background: "#F5F7FA" }}>
+                <ApiKeyModal />
+                <SystemAlerts />
+                <AdminLayout />
+            </div>
+        );
+    }
 
     return (
-        <div className="w-screen h-screen flex overflow-hidden" style={{ background: "#070c14" }}>
+        <div className="w-screen h-screen flex overflow-hidden relative" style={{ background: "#F5F7FA" }}>
             <ApiKeyModal />
             <SystemAlerts />
 
-            {/* ── LEFT: Sidebar + Live Agent Radar ── */}
-            <Sidebar />
+            {/* ── SOL PANEL: Sidebar Navigasyon ── */}
+            <AppSidebar />
 
-            {/* ── CHAT / COMMAND CENTER ── */}
-            {activeView === "chat" && (
-                <main className="flex-1 min-w-0 flex flex-col overflow-hidden border-l border-white/5">
-                    <ChatView />
-                </main>
-            )}
+            {/* ── MERKEZ PANEL: Chat + Input ── */}
+            <CenterPanel />
 
-            {/* ── MISSION CONTROL: Default products (backoffice, holding) ── */}
-            {activeView === "control" && !["cx", "growth", "strategy", "engineering"].includes(clientProduct ?? "") && (
-                <div className="flex-1 min-w-0 overflow-hidden flex">
-                    <JobQueue />
-                    <SystemMonitor />
-                </div>
-            )}
+            {/* ── SAĞ PANEL: Sistem Durumu ── */}
+            <RightPanel />
 
-            {/* ── CX DASHBOARD (Inbox + Knowledge) ── */}
-            {activeView === "control" && clientProduct === "cx" && (
-                <div className="flex-1 relative min-w-0 overflow-hidden flex">
-                    <CxDashboard />
-                </div>
-            )}
-
-            {/* ── GROWTH: JobQueue + Growth Analytics ── */}
-            {activeView === "control" && clientProduct === "growth" && (
-                <div className="flex-1 min-w-0 overflow-hidden flex">
-                    <div className="w-[45%] flex flex-col border-r border-white/5 overflow-hidden">
-                        <JobQueue />
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                        <GrowthAnalytics />
-                    </div>
-                </div>
-            )}
-
-            {/* ── STRATEGY: JobQueue + Strategy War Room ── */}
-            {activeView === "control" && clientProduct === "strategy" && (
-                <div className="flex-1 min-w-0 overflow-hidden flex">
-                    <div className="w-[45%] flex flex-col border-r border-white/5 overflow-hidden">
-                        <JobQueue />
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                        <StrategyDashboard />
-                    </div>
-                </div>
-            )}
-
-            {/* ── ENGINEERING: JobQueue + Engineering Lab ── */}
-            {activeView === "control" && clientProduct === "engineering" && (
-                <div className="flex-1 min-w-0 overflow-hidden flex">
-                    <div className="w-[45%] flex flex-col border-r border-white/5 overflow-hidden">
-                        <JobQueue />
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                        <EngineeringDashboard />
-                    </div>
-                </div>
-            )}
-
-            {/* ── FULL-PAGE SECONDARY VIEWS ── */}
-            {activeView === "cfo"       && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><CfoDashboard /></main>}
-            {activeView === "knowledge" && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><KnowledgeView /></main>}
-            {activeView === "settings"  && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SettingsView /></main>}
-            {activeView === "skills"    && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SkillsView /></main>}
-            {activeView === "social"    && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SocialView /></main>}
-            {activeView === "security"  && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SecurityView /></main>}
-            {activeView === "auditor"   && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><AuditorDashboard /></main>}
-            {activeView === "supply"    && <main className="flex-1 min-w-0 overflow-hidden border-l border-white/5"><SupplyChainDashboard /></main>}
-            {activeView === "admin"     && <AdminLayout />}
+            {/* ── OVERLAY DRAWER: HITL Onay / Destek / Kampanya ── */}
+            <OperatingTable />
         </div>
     );
 }

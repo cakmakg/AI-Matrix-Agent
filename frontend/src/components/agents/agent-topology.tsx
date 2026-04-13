@@ -33,22 +33,27 @@ const STATUS_LABEL: Record<AgentStatus, string> = {
 
 const AGENT_ORDER: AgentId[] = [
     "ceo", "cto", "scraper", "analyst", "innovator", "writer",
-    "qa", "hitl", "publisher", "radar", "cmo", "cfo"
+    "qa", "hitl", "publisher", "radar", "cmo", "cfo",
+    "auditor", "supplyChain", "salesRep", "customerBot",
 ];
 
 const AGENT_ROLE_DESC: Record<AgentId, string> = {
-    ceo:       "Orchestration & Routing",
-    cto:       "Architecture & Blueprints",
-    scraper:   "Web Research & Data Acquisition",
-    analyst:   "Data Processing & Analysis",
-    innovator: "Lateral Thinking & Devil's Advocate",
-    writer:    "Content Generation",
-    qa:        "Quality Review & Critique",
-    hitl:      "Human-in-the-Loop Gate",
-    publisher: "Multi-channel Distribution",
-    radar:     "R&D Proactive Scanning",
-    cmo:       "Marketing Campaign Generation",
-    cfo:       "Financial Tracking & P&L",
+    ceo:         "Orchestration & Routing",
+    cto:         "Architecture & Blueprints",
+    scraper:     "Web Research & Data Acquisition",
+    analyst:     "Data Processing & Analysis",
+    innovator:   "Lateral Thinking & Devil's Advocate",
+    writer:      "Content Generation",
+    qa:          "Quality Review & Critique",
+    hitl:        "Human-in-the-Loop Gate",
+    publisher:   "Multi-channel Distribution",
+    radar:       "R&D Proactive Scanning",
+    cmo:         "Marketing Campaign Generation",
+    cfo:         "Financial Tracking & P&L",
+    auditor:     "Invoice Audit & Anomaly Detection",
+    supplyChain: "Stock Monitoring & Supplier Orders",
+    salesRep:    "B2B Sales Negotiation",
+    customerBot: "AI Customer Service & Ticket Response",
 };
 
 export const AgentTopology = () => {
@@ -69,7 +74,7 @@ export const AgentTopology = () => {
                     <span className="font-mono text-[10px] font-bold text-white/60 uppercase tracking-widest">
                         Agent Topology
                     </span>
-                    <span className="font-mono text-[8px] text-white/25">12 agents</span>
+                    <span className="font-mono text-[8px] text-white/25">16 agents</span>
                 </div>
                 <div className="flex items-center gap-2">
                     {activeCount > 0 && (

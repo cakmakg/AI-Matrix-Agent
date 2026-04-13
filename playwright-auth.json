@@ -1,0 +1,38 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:3002",
+      "localStorage": [
+        {
+          "name": "ai_orchestra_client_name",
+          "value": "TechNova E-Commerce"
+        },
+        {
+          "name": "ai_orchestra_client_email",
+          "value": "technova@test.com"
+        },
+        {
+          "name": "ai_orchestra_client_product",
+          "value": "backoffice"
+        },
+        {
+          "name": "ai_orchestra_workspaces",
+          "value": "[{\"name\":\"TechNova E-Commerce\",\"slug\":\"technova-e-commerce\",\"apiKey\":\"sk-technova-e-commerce-f5f85d753a4b42f7\"}]"
+        },
+        {
+          "name": "ai_orchestra_client_plan",
+          "value": "enterprise"
+        },
+        {
+          "name": "ai_orchestra_client_slug",
+          "value": "technova-e-commerce"
+        },
+        {
+          "name": "ai_orchestra_api_key",
+          "value": "sk-technova-e-commerce-f5f85d753a4b42f7"
+        }
+      ]
+    }
+  ]
+}

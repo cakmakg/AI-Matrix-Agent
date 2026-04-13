@@ -6,12 +6,14 @@ import type { AgentId } from "@/store/types";
 const AGENT_ORDER: AgentId[] = [
     "ceo", "cto", "scraper", "analyst", "innovator", "writer",
     "qa", "hitl", "publisher", "radar", "cmo", "cfo",
+    "auditor", "supplyChain", "salesRep", "customerBot",
 ];
 
 const CHIP_LABELS: Record<AgentId, string> = {
     ceo: "CEO", cto: "CTO", scraper: "SCR", analyst: "ANL",
     innovator: "VZN", writer: "WRT", qa: "QA ", hitl: "HIT",
     publisher: "PUB", radar: "RDR", cmo: "CMO", cfo: "CFO",
+    auditor: "AUD", supplyChain: "SCM", salesRep: "SLS", customerBot: "CXB",
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -51,7 +53,7 @@ export function AgentChips() {
                     Agenten
                 </span>
                 <span className={`font-mono text-[8px] font-bold ${activeCount > 0 ? "text-[#39ff14]/70" : "text-white/20"}`}>
-                    {activeCount > 0 ? `${activeCount}/12 aktiv` : "Bereit"}
+                    {activeCount > 0 ? `${activeCount}/16 aktiv` : "Bereit"}
                 </span>
             </div>
 

@@ -7,7 +7,8 @@ export type SaaSProduct = "cx" | "growth" | "strategy" | "backoffice" | "enginee
 
 export type AgentId =
     | "ceo" | "cto" | "scraper" | "analyst" | "innovator"
-    | "writer" | "qa" | "hitl" | "publisher" | "radar" | "cmo" | "cfo";
+    | "writer" | "qa" | "hitl" | "publisher" | "radar" | "cmo" | "cfo"
+    | "auditor" | "supplyChain" | "salesRep" | "customerBot";
 
 // ── Entity Interfaces ──
 export interface AgentState {
@@ -84,6 +85,7 @@ export interface UISlice {
     alerts: SystemAlert[];
     cronSecondsLeft: number;
     activeView: ActiveView;
+    activeTrack: string;  // TrackId — string to avoid circular import from center-panel
     drawerItem: DrawerItem | null;
     editedContent: string | null;
     chatMessages: ChatMessage[];
@@ -100,6 +102,7 @@ export interface UISlice {
     setCronSeconds: (s: number) => void;
     resetAllAgents: () => void;
     setActiveView: (view: ActiveView) => void;
+    setActiveTrack: (track: string) => void;
     setDrawerItem: (item: DrawerItem | null) => void;
     setEditedContent: (c: string | null) => void;
     addChatMessage: (msg: Omit<ChatMessage, "id">) => void;

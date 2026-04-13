@@ -1,17 +1,13 @@
-import { ChatBedrockConverse } from "@langchain/aws";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { z } from "zod";
 import fs from "fs";
 import path from "path";
 import { trackLLMCostFromStrings } from "../services/costTracker.js";
 
 // Ajan 8: Baş Yazılım Mimarı (CTO / Tech Lead)
-const llm = new ChatBedrockConverse({
-    model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0", // Mimari zeka için Sonnet kusursuzdur
-    region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    }
+const llm = new ChatAnthropic({
+    model: "claude-sonnet-4-6",
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 // 🎯 LLM'in üreteceği "Blueprint" Şeması

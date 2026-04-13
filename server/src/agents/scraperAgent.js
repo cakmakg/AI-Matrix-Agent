@@ -1,4 +1,4 @@
-import { ChatBedrockConverse } from "@langchain/aws";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { z } from "zod";
 
 // ─── MOAT Katman 1b: Web İçeriği Sanitizasyonu ───────────────────────────────
@@ -29,13 +29,9 @@ function sanitizeWebContent(text) {
 }
 
 // Ajan 1: Otonom Araştırmacı (Bağımsız Native Fetch Mimarisi)
-const llm = new ChatBedrockConverse({
-    model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    }
+const llm = new ChatAnthropic({
+    model: "claude-sonnet-4-6",
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 // 🎯 LLM'den en iyi arama kelimesini üretmesini istiyoruz

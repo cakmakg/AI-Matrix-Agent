@@ -79,6 +79,10 @@ export const AGENT_UI_MAP = {
     human_approval: "hitl",
     publisher: "publisher",
     architect: "cto",
+    auditor: "auditor",
+    supplyChain: "supplyChain",
+    salesRep: "salesRep",
+    customerBot: "customerBot",
     __interrupt__: "hitl",   // LangGraph interrupt → HITL
 };
 

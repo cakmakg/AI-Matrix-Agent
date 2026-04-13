@@ -11,6 +11,7 @@ emlakci-test.mjs
 .env
 .env.local
 .env.*.local
+.md
 
 # Build outputs
 dist/

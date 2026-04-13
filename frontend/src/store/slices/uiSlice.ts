@@ -9,6 +9,7 @@ export const createUISlice: StateCreator<AgentStore, [], [], UISlice> = (set, ge
     alerts: [],
     cronSecondsLeft: 120,
     activeView: "control",
+    activeTrack: "cx",
     drawerItem: null,
     editedContent: null,
     chatMessages: [],
@@ -43,6 +44,7 @@ export const createUISlice: StateCreator<AgentStore, [], [], UISlice> = (set, ge
     resetAllAgents: () => set({ agents: { ...DEFAULT_AGENTS }, activeAgent: null }),
 
     setActiveView: (view: ActiveView) => set({ activeView: view }),
+    setActiveTrack: (track: string) => set({ activeTrack: track }),
     setDrawerItem: (item: DrawerItem | null) => set({ drawerItem: item }),
     setEditedContent: (c) => set({ editedContent: c }),
 

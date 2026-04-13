@@ -1,16 +1,12 @@
-import { ChatBedrockConverse } from "@langchain/aws";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { trackLLMCost } from "../services/costTracker.js";
 import { getPrompt, DEFAULT_PROMPTS } from "../services/promptRepository.js";
 import { searchKnowledge } from "../services/ragService.js";
 
 // Ajan 2'nin Beyni (Yine Claude veya ileride değiştirebileceğimiz bir model)
-const llm = new ChatBedrockConverse({
-    model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    }
+const llm = new ChatAnthropic({
+    model: "claude-sonnet-4-6",
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export async function analyzerNode(state, config) {

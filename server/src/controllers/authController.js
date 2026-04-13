@@ -30,11 +30,17 @@ function generateApiKey(slug) {
 
 export const register = async (req, res) => {
     try {
-        const { name, email, password, sector } = req.body;
+        const { name, email, password, sector, plan, product } = req.body;
 
         if (!name || !email || !password) {
             return res.status(400).json({ error: "name, email ve password zorunludur." });
         }
+
+        // Plan ve product doğrulaması
+        const validPlans = ["free", "pro", "enterprise", "holding"];
+        const validProducts = ["cx", "growth", "strategy", "backoffice", "engineering", "holding"];
+        const selectedPlan = validPlans.includes(plan) ? plan : "free";
+        const selectedProduct = validProducts.includes(product) ? product : "cx";
         if (password.length < 6) {
             return res.status(400).json({ error: "Şifre en az 6 karakter olmalıdır." });
         }
@@ -63,6 +69,8 @@ export const register = async (req, res) => {
             email: email.toLowerCase().trim(),
             passwordHash,
             sector: sector || "general",
+            plan: selectedPlan,
+            product: selectedProduct,
         });
 
         // Varsayılan TenantConfig oluştur

@@ -3,16 +3,20 @@ import type { AgentStore, WorkflowSlice, AgentId } from "../types";
 import { buildHeaders, getTimestamp, BACKEND_SSE } from "../utils";
 
 const AGENT_LABELS: Record<string, string> = {
-    ceo:       "Orchestrator routing...",
-    scraper:   "Connecting to Global Network... Fetching data...",
-    analyst:   "Processing data blocks...",
-    innovator: "Breaking conventional thinking... generating contrarian 10x insight...",
-    writer:    "Composing B2B content...",
-    qa:        "Scanning output for errors...",
-    cto:       "Generating architecture blueprint...",
-    hitl:      "HITL gate armed. Awaiting authorization.",
-    publisher: "Initiating payload delivery...",
-    radar:     "R&D scan in progress...",
+    ceo:         "Orchestrator routing...",
+    scraper:     "Connecting to Global Network... Fetching data...",
+    analyst:     "Processing data blocks...",
+    innovator:   "Breaking conventional thinking... generating contrarian 10x insight...",
+    writer:      "Composing B2B content...",
+    qa:          "Scanning output for errors...",
+    cto:         "Generating architecture blueprint...",
+    hitl:        "HITL gate armed. Awaiting authorization.",
+    publisher:   "Initiating payload delivery...",
+    radar:       "R&D scan in progress...",
+    auditor:     "Auditing invoices... scanning for anomalies...",
+    supplyChain: "Monitoring stock levels... checking supplier inventory...",
+    salesRep:    "B2B negotiation in progress... generating sales pitch...",
+    customerBot: "Processing customer ticket... generating response...",
 };
 
 const RD_AGENT_LABELS: Record<string, string> = {

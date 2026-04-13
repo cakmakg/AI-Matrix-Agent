@@ -1,16 +1,12 @@
-import { ChatBedrockConverse } from "@langchain/aws";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { z } from "zod";
 import { trackLLMCostFromStrings } from "../services/costTracker.js";
 import { getEnabledTools } from "../skills/index.js";
 import { getPlanRules } from "../config/plans.js";
 
-const llm = new ChatBedrockConverse({
-    model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    }
+const llm = new ChatAnthropic({
+    model: "claude-sonnet-4-6",
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 const routingSchema = z.object({
@@ -71,6 +67,14 @@ export async function orchestratorNode(state, config) {
             console.log("   -> ⚡ FREN A: Fatura görevi → auditor'a yönlendiriliyor.");
             return { nextAgent: "auditor" };
         }
+        // Plan yetersiz → upgrade mesajı üret (fileSaved değilse — döngü önleyici)
+        if (!state.invoiceAnalysis && !planRules.allowedAgents.includes("auditor") && !state.fileSaved) {
+            console.log(`   -> 🛑 FREN A (PLAN GUARD): '${clientPlan}' planı 'auditor' ajanını çalıştıramaz.`);
+            return {
+                finalContent: `⚠️ **Plan-Beschränkung:** Die Rechnungsprüfung ist im **${planRules.label}**-Paket nicht verfügbar.\n\nUpgrade auf **Enterprise** ($999/Monat) erforderlich, um Rechnungsprüfung und Lieferkettenmanagement freizuschalten.`,
+                nextAgent: "fileSaver",
+            };
+        }
     }
 
     // ==========================================
@@ -89,6 +93,14 @@ export async function orchestratorNode(state, config) {
         if (!state.stockAlerts && planRules.allowedAgents.includes("supplyChain")) {
             console.log("   -> ⚡ FREN B: Stok görevi → supplyChain'e yönlendiriliyor.");
             return { nextAgent: "supplyChain" };
+        }
+        // Plan yetersiz → upgrade mesajı üret (fileSaved değilse — döngü önleyici)
+        if (!state.stockAlerts && !planRules.allowedAgents.includes("supplyChain") && !state.fileSaved) {
+            console.log(`   -> 🛑 FREN B (PLAN GUARD): '${clientPlan}' planı 'supplyChain' ajanını çalıştıramaz.`);
+            return {
+                finalContent: `⚠️ **Plan-Beschränkung:** Das Lieferkettenmanagement ist im **${planRules.label}**-Paket nicht verfügbar.\n\nUpgrade auf **Enterprise** ($999/Monat) erforderlich, um Rechnungsprüfung und Lieferkettenmanagement freizuschalten.`,
+                nextAgent: "fileSaver",
+            };
         }
     }
 
@@ -331,7 +343,10 @@ export async function orchestratorNode(state, config) {
     // LLM talimatları görmezden gelerek yetkisiz bir ajan seçtiyse burada engelle.
     if (response.nextAgent !== "END" && !planRules.allowedAgents.includes(response.nextAgent)) {
         console.log(`   -> ⚠️ POST-LLM PLAN İHLALİ: LLM '${response.nextAgent}' seçti ama '${clientPlan}' planında yasak. fileSaver'a yönlendiriliyor.`);
-        return { nextAgent: "fileSaver" };
+        return {
+            finalContent: `⚠️ **Plan-Beschränkung:** Der Agent **${response.nextAgent}** ist im **${planRules.label}**-Paket nicht verfügbar.\n\nBitte upgraden Sie Ihren Plan, um diese Funktion freizuschalten.`,
+            nextAgent: "fileSaver",
+        };
     }
 
     return { nextAgent: response.nextAgent };

@@ -45,4 +45,8 @@ export const DEFAULT_AGENTS: Record<AgentId, AgentState> = {
     radar:     { id: "radar",     label: "Ar-Ge Radar",    shortLabel: "RDR",  icon: "🔬",  color: "#39ff14", status: "IDLE" },
     cmo:       { id: "cmo",       label: "Pazarlama Dir.", shortLabel: "CMO",  icon: "📣",  color: "#ff6b35", status: "IDLE" },
     cfo:       { id: "cfo",       label: "Finans Dir.",    shortLabel: "CFO",  icon: "📊",  color: "#00d4aa", status: "IDLE" },
+    auditor:     { id: "auditor",     label: "Denetçi",        shortLabel: "AUD",  icon: "🔍",  color: "#ffb000", status: "IDLE" },
+    supplyChain: { id: "supplyChain", label: "Tedarik Zinciri", shortLabel: "SCM", icon: "📦",  color: "#ff6b35", status: "IDLE" },
+    salesRep:    { id: "salesRep",    label: "Satış Temsilcisi", shortLabel: "SLS", icon: "🤝",  color: "#39ff14", status: "IDLE" },
+    customerBot: { id: "customerBot", label: "Müşteri Botu",   shortLabel: "CXB",  icon: "🤖",  color: "#00f0ff", status: "IDLE" },
 };

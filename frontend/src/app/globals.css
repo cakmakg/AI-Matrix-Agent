@@ -1,24 +1,52 @@
 @import "tailwindcss";
 
+/* ══════════════════════════════════════════════════════════════
+   DESIGN TOKENS — Light Theme
+══════════════════════════════════════════════════════════════ */
 @theme inline {
-  --color-background: #111827;
-  --color-foreground: #f0f6ff;
+  /* Backgrounds */
+  --color-bg-page:    #F5F7FA;
+  --color-bg-card:    #FFFFFF;
+  --color-bg-sidebar: #FFFFFF;
+  --color-bg-input:   #F8F9FC;
 
-  --color-neon-blue: #38bdf8;
-  --color-neon-green: #4ade80;
-  --color-cyber-amber: #fbbf24;
-  --color-alert-red: #f87171;
-  --color-neon-purple: #a78bfa;
+  /* Text */
+  --color-text-primary:   #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-muted:     #9CA3AF;
+  --color-text-disabled:  #D1D5DB;
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Borders */
+  --color-border-default: #E5E7EB;
+  --color-border-strong:  #D1D5DB;
+
+  /* Brand / Accent — Indigo */
+  --color-accent:       #6366F1;
+  --color-accent-light: #EEF2FF;
+  --color-accent-hover: #4F46E5;
+
+  /* Status Colors */
+  --color-success:       #10B981;
+  --color-success-light: #D1FAE5;
+  --color-warning:       #F59E0B;
+  --color-warning-light: #FEF3C7;
+  --color-danger:        #EF4444;
+  --color-danger-light:  #FEE2E2;
+  --color-info:          #3B82F6;
+  --color-info-light:    #DBEAFE;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
 }
 
 :root {
-  --background: #111827;
-  --foreground: #f0f6ff;
+  --background: #F5F7FA;
+  --foreground: #111827;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════════════════════════════ */
 * {
   box-sizing: border-box;
 }
@@ -26,81 +54,100 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-mono), "Courier New", monospace;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   overflow: hidden;
   margin: 0;
   padding: 0;
   width: 100vw;
   height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Glass Panels ── */
-@utility glass-panel {
-  background: rgba(30, 41, 60, 0.85);
-  backdrop-filter: blur(20px) saturate(1.6);
-  -webkit-backdrop-filter: blur(20px) saturate(1.6);
-  border: 1px solid rgba(56, 189, 248, 0.18);
-  box-shadow:
-    0 0 1px rgba(56, 189, 248, 0.3),
-    inset 0 0 20px rgba(56, 189, 248, 0.04);
+/* ══════════════════════════════════════════════════════════════
+   CARD / PANEL UTILITIES
+══════════════════════════════════════════════════════════════ */
+@utility card {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-/* ── Neon Text Utilities ── */
-@utility neon-text-blue {
-  color: var(--color-neon-blue);
-  text-shadow:
-    0 0 4px rgba(56, 189, 248, 0.9),
-    0 0 11px rgba(56, 189, 248, 0.4),
-    0 0 20px rgba(56, 189, 248, 0.15);
+@utility card-hover {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: #D1D5DB;
+  }
 }
 
-@utility neon-text-green {
-  color: var(--color-neon-green);
-  text-shadow:
-    0 0 4px rgba(74, 222, 128, 0.9),
-    0 0 11px rgba(74, 222, 128, 0.4),
-    0 0 20px rgba(74, 222, 128, 0.15);
+@utility panel {
+  background: #FFFFFF;
+  border-right: 1px solid #E5E7EB;
 }
 
-@utility neon-text-amber {
-  color: var(--color-cyber-amber);
-  text-shadow:
-    0 0 4px rgba(251, 191, 36, 0.9),
-    0 0 11px rgba(251, 191, 36, 0.4),
-    0 0 20px rgba(251, 191, 36, 0.15);
+/* ══════════════════════════════════════════════════════════════
+   STATUS BADGE UTILITIES
+══════════════════════════════════════════════════════════════ */
+@utility badge-success {
+  background: #D1FAE5;
+  color: #059669;
+  border: 1px solid #6EE7B7;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
 }
 
-@utility neon-text-red {
-  color: var(--color-alert-red);
-  text-shadow:
-    0 0 4px rgba(248, 113, 113, 0.9),
-    0 0 11px rgba(248, 113, 113, 0.4),
-    0 0 20px rgba(248, 113, 113, 0.15);
+@utility badge-warning {
+  background: #FEF3C7;
+  color: #D97706;
+  border: 1px solid #FCD34D;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
 }
 
-/* ── Neon Border Glow ── */
-@utility neon-border-blue {
-  border-color: rgba(56, 189, 248, 0.35);
-  box-shadow:
-    0 0 6px rgba(56, 189, 248, 0.2),
-    inset 0 0 6px rgba(56, 189, 248, 0.06);
+@utility badge-danger {
+  background: #FEE2E2;
+  color: #DC2626;
+  border: 1px solid #FCA5A5;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
 }
 
-@utility neon-border-green {
-  border-color: rgba(74, 222, 128, 0.35);
-  box-shadow:
-    0 0 6px rgba(74, 222, 128, 0.2),
-    inset 0 0 6px rgba(74, 222, 128, 0.06);
+@utility badge-info {
+  background: #DBEAFE;
+  color: #2563EB;
+  border: 1px solid #93C5FD;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
 }
 
-@utility neon-border-amber {
-  border-color: rgba(251, 191, 36, 0.35);
-  box-shadow:
-    0 0 6px rgba(251, 191, 36, 0.2),
-    inset 0 0 6px rgba(251, 191, 36, 0.06);
+@utility badge-accent {
+  background: #EEF2FF;
+  color: #6366F1;
+  border: 1px solid #C7D2FE;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
 }
 
-/* ── Scrollbar ── */
+/* ══════════════════════════════════════════════════════════════
+   SCROLLBAR — Light Style
+══════════════════════════════════════════════════════════════ */
 @utility scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -110,10 +157,9 @@ body {
   }
 }
 
-/* ── Scrollbar Styled ── */
 @utility scrollbar-styled {
   scrollbar-width: thin;
-  scrollbar-color: rgba(56, 189, 248, 0.25) transparent;
+  scrollbar-color: #D1D5DB transparent;
 
   &::-webkit-scrollbar {
     width: 4px;
@@ -122,130 +168,248 @@ body {
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: rgba(56, 189, 248, 0.25);
+    background: #D1D5DB;
     border-radius: 4px;
+
+    &:hover {
+      background: #9CA3AF;
+    }
   }
 }
 
-/* ── Keyframe Animations ── */
-@keyframes scanline {
-  0% {
-    transform: translateY(-100%);
+/* ══════════════════════════════════════════════════════════════
+   INPUT / TEXTAREA — Light Style
+══════════════════════════════════════════════════════════════ */
+@utility input-light {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  color: #111827;
+  font-size: 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+
+  &::placeholder {
+    color: #9CA3AF;
   }
 
-  100% {
-    transform: translateY(100vh);
-  }
-}
-
-@keyframes radar-sweep {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes data-pulse {
-
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-
-  50% {
-    opacity: 1;
+  &:focus {
+    border-color: #6366F1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
   }
 }
 
-@keyframes flicker {
+/* ══════════════════════════════════════════════════════════════
+   BUTTON UTILITIES
+══════════════════════════════════════════════════════════════ */
+@utility btn-primary {
+  background: #6366F1;
+  color: #FFFFFF;
+  border: 1px solid #6366F1;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 16px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
 
-  0%,
-  100% {
-    opacity: 1;
+  &:hover {
+    background: #4F46E5;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
   }
 
-  92% {
-    opacity: 1;
-  }
-
-  93% {
-    opacity: 0.7;
-  }
-
-  94% {
-    opacity: 1;
-  }
-
-  96% {
-    opacity: 0.85;
-  }
-
-  97% {
-    opacity: 1;
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 }
 
-@keyframes typing-cursor {
+@utility btn-success {
+  background: #D1FAE5;
+  color: #059669;
+  border: 1px solid #6EE7B7;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 16px;
+  transition: background 0.15s ease;
+  cursor: pointer;
 
-  0%,
-  100% {
-    opacity: 1;
+  &:hover {
+    background: #A7F3D0;
   }
 
-  50% {
-    opacity: 0;
-  }
-}
-
-@keyframes hex-rotate {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes float-y {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-6px);
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 }
 
-@utility animate-scanline {
-  animation: scanline 6s linear infinite;
+@utility btn-danger {
+  background: #FEE2E2;
+  color: #DC2626;
+  border: 1px solid #FCA5A5;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 16px;
+  transition: background 0.15s ease;
+  cursor: pointer;
+
+  &:hover {
+    background: #FECACA;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
 }
 
-@utility animate-radar-sweep {
-  animation: radar-sweep 4s linear infinite;
+@utility btn-ghost {
+  background: transparent;
+  color: #6B7280;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 13px;
+  padding: 8px 16px;
+  transition: background 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+
+  &:hover {
+    background: #F3F4F6;
+    color: #374151;
+  }
 }
 
-@utility animate-data-pulse {
-  animation: data-pulse 2s ease-in-out infinite;
+/* ══════════════════════════════════════════════════════════════
+   PROSE — Light Theme Markdown
+══════════════════════════════════════════════════════════════ */
+@utility prose-light {
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.7;
+
+  & h1, & h2, & h3, & h4 {
+    color: #111827;
+    font-weight: 600;
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+  }
+
+  & h1 { font-size: 1.25rem; }
+  & h2 { font-size: 1.1rem; }
+  & h3 { font-size: 1rem; }
+
+  & p { margin-bottom: 0.75em; }
+
+  & strong {
+    color: #111827;
+    font-weight: 600;
+  }
+
+  & code {
+    background: #F3F4F6;
+    color: #6366F1;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+  }
+
+  & pre {
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  & blockquote {
+    border-left: 3px solid #6366F1;
+    padding-left: 12px;
+    color: #6B7280;
+    margin: 8px 0;
+  }
+
+  & ul, & ol {
+    padding-left: 20px;
+
+    & li { margin-bottom: 4px; }
+  }
+
+  & a { color: #6366F1; text-decoration: underline; }
+
+  & table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    & th {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    & td {
+      border: 1px solid #E5E7EB;
+      padding: 8px 12px;
+      color: #4B5563;
+    }
+
+    & tr:nth-child(even) td {
+      background: #F9FAFB;
+    }
+  }
+
+  & hr {
+    border: none;
+    border-top: 1px solid #E5E7EB;
+    margin: 16px 0;
+  }
 }
 
-@utility animate-flicker {
-  animation: flicker 4s ease-in-out infinite;
+/* ══════════════════════════════════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════════════════════════════════ */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-@utility animate-typing-cursor {
-  animation: typing-cursor 1s step-end infinite;
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
-@utility animate-hex-rotate {
-  animation: hex-rotate 20s linear infinite;
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
 }
 
-@utility animate-float-y {
-  animation: float-y 3s ease-in-out infinite;
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@utility animate-fade-in {
+  animation: fade-in 0.2s ease forwards;
+}
+
+@utility animate-slide-right {
+  animation: slide-in-right 0.2s ease forwards;
+}
+
+@utility animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+@utility animate-spin {
+  animation: spin 1s linear infinite;
 }

@@ -17,25 +17,24 @@ import { getProductTheme } from "@/config/product-theme";
 /* ══════════════════════════════════════════════════════════════
    ACCORDION SECTION
 ═══════════════════════════════════════════════════════════════ */
-function AccordionSection({ title, icon, defaultOpen = false, children, accent = "white" }: {
+function AccordionSection({ title, icon, defaultOpen = false, children }: {
     title: string; icon: React.ReactNode; defaultOpen?: boolean;
-    children: React.ReactNode; accent?: string;
+    children: React.ReactNode;
 }) {
     const [open, setOpen] = useState(defaultOpen);
     return (
-        <div className="border border-white/6 rounded-lg overflow-hidden">
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
             <button
                 onClick={() => setOpen(!open)}
-                className="w-full flex items-center gap-2.5 px-4 py-2.5 bg-white/2 hover:bg-white/4 transition-colors text-left"
+                className="w-full flex items-center gap-2.5 px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
             >
-                <span style={{ color: accent === "white" ? "rgba(255,255,255,0.4)" : accent }}>{icon}</span>
-                <span className="font-mono text-[9px] font-semibold uppercase tracking-widest flex-1"
-                    style={{ color: accent === "white" ? "rgba(255,255,255,0.5)" : `${accent}bb` }}>
+                <span className="text-gray-400">{icon}</span>
+                <span className="text-[12px] font-semibold text-gray-700 flex-1">
                     {title}
                 </span>
                 {open
-                    ? <ChevronDown size={10} className="text-white/25" />
-                    : <ChevronRight size={10} className="text-white/25" />
+                    ? <ChevronDown size={13} className="text-gray-400" />
+                    : <ChevronRight size={13} className="text-gray-400" />
                 }
             </button>
             <AnimatePresence initial={false}>
@@ -47,7 +46,7 @@ function AccordionSection({ title, icon, defaultOpen = false, children, accent =
                         transition={{ duration: 0.18 }}
                         className="overflow-hidden"
                     >
-                        <div className="px-4 py-3 border-t border-white/5">
+                        <div className="px-4 py-3 border-t border-gray-100 bg-white">
                             {children}
                         </div>
                     </motion.div>
@@ -135,45 +134,45 @@ function ReportPanel({ threadId }: { threadId: string }) {
     const steps = ["CEO", "SCR", "ANL", "VZN", "WRT", "QA", "SAVED", "HITL"];
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full bg-white">
             {/* Top bar */}
-            <div className="flex items-center gap-3 px-5 py-3 border-b border-white/6 shrink-0">
-                <FileText size={13} className="text-[#ff2d55]/70 shrink-0" />
+            <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-100 shrink-0">
+                <FileText size={13} className="text-amber-500 shrink-0" />
                 <div className="flex-1 min-w-0">
-                    <p className="font-mono text-[7px] text-[#ff2d55]/50 uppercase tracking-widest mb-0.5">HITL — Genehmigungstor</p>
-                    <p className="font-mono text-[10px] text-white/65 truncate">
+                    <p className="text-[11px] text-amber-500 uppercase tracking-wider mb-0.5 font-semibold">İnsan Onayı Gerekiyor</p>
+                    <p className="text-[13px] text-gray-700 truncate font-medium">
                         {missionMessage?.slice(0, 80) ?? `Thread: ${threadId.slice(0, 20)}...`}
                     </p>
                 </div>
-                <span className="font-mono text-[7px] text-[#ffb000]/60 bg-[#ffb000]/8 border border-[#ffb000]/20 px-2 py-1 rounded-full uppercase tracking-widest animate-pulse">
-                    Genehmigung ausstehend
+                <span className="text-[11px] font-semibold px-3 py-1 rounded-full border" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A" }}>
+                    ⏳ Onay Bekleniyor
                 </span>
             </div>
 
             {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 scrollbar-styled">
 
                 {/* A: Mission Brief */}
-                <AccordionSection title="Aufgabenübersicht" icon={<Activity size={10} />} defaultOpen={false}>
+                <AccordionSection title="Görev Özeti" icon={<Activity size={10} />} defaultOpen={false}>
                     {missionMessage && (
                         <div className="space-y-2">
-                            <p className="font-mono text-[8px] text-white/30 uppercase tracking-wider">Ursprüngliche Aufgabe</p>
-                            <p className="font-mono text-[10px] text-white/65 leading-relaxed bg-white/3 rounded-lg px-3 py-2.5 border border-white/6">
+                            <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Orijinal Görev</p>
+                            <p className="text-[12px] text-gray-700 leading-relaxed bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-200">
                                 {missionMessage}
                             </p>
                         </div>
                     )}
                     <div className="mt-3">
-                        <p className="font-mono text-[8px] text-white/30 uppercase tracking-wider mb-2">Workflow</p>
+                        <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-2 font-medium">İş Akışı</p>
                         <div className="flex items-center gap-1.5 flex-wrap">
                             {steps.map((s, i) => (
                                 <React.Fragment key={s}>
-                                    <span className={`font-mono text-[7px] px-2 py-1 rounded border
+                                    <span className={`text-[11px] px-2.5 py-1 rounded-lg border font-medium
                                         ${s === "HITL"
-                                            ? "text-[#ff2d55] border-[#ff2d55]/40 bg-[#ff2d55]/8 animate-pulse"
-                                            : "text-[#39ff14]/70 border-[#39ff14]/20 bg-[#39ff14]/5"
+                                            ? "text-amber-700 border-amber-200 bg-amber-50 animate-pulse"
+                                            : "text-green-700 border-green-200 bg-green-50"
                                         }`}>{s}</span>
-                                    {i < steps.length - 1 && <ChevronRight size={8} className="text-white/15" />}
+                                    {i < steps.length - 1 && <ChevronRight size={10} className="text-gray-300" />}
                                 </React.Fragment>
                             ))}
                         </div>
@@ -181,49 +180,42 @@ function ReportPanel({ threadId }: { threadId: string }) {
                 </AccordionSection>
 
                 {/* B: Content Editor */}
-                <div className="rounded-xl border border-white/8 overflow-hidden">
+                <div className="rounded-xl border border-gray-200 overflow-hidden">
                     {/* Toolbar */}
-                    <div className="flex items-center gap-2 px-4 py-2 bg-white/2 border-b border-white/6">
-                        <span className="font-mono text-[8px] text-white/35 uppercase tracking-widest flex-1">Inhalt</span>
-                        <div className="flex gap-1 bg-white/5 rounded-md p-0.5">
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+                        <span className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold flex-1">İçerik</span>
+                        <div className="flex gap-1 bg-gray-100 rounded-md p-0.5">
                             {(["preview", "edit"] as const).map(m => (
                                 <button
                                     key={m}
                                     onClick={() => setViewMode(m)}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded font-mono text-[7px] uppercase tracking-wider transition-all
-                                        ${viewMode === m ? "bg-white/12 text-white/80" : "text-white/30 hover:text-white/55"}`}
+                                    className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-all
+                                        ${viewMode === m ? "bg-white text-gray-800 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
                                 >
-                                    {m === "preview" ? <Eye size={8} /> : <Edit3 size={8} />}
-                                    {m === "preview" ? "Vorschau" : "Bearbeiten"}
+                                    {m === "preview" ? <Eye size={10} /> : <Edit3 size={10} />}
+                                    {m === "preview" ? "Önizleme" : "Düzenle"}
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     {/* Content area */}
-                    <div className="min-h-[300px] max-h-[420px] overflow-y-auto scrollbar-hide">
+                    <div className="min-h-[300px] max-h-[420px] overflow-y-auto scrollbar-styled">
                         {fetching ? (
-                            <div className="flex items-center justify-center h-40 gap-2 text-white/25">
-                                <Loader2 size={13} className="animate-spin" />
-                                <span className="font-mono text-[10px]">Bericht wird geladen...</span>
+                            <div className="flex items-center justify-center h-40 gap-2 text-gray-400">
+                                <Loader2 size={14} className="animate-spin" />
+                                <span className="text-[12px]">Rapor yükleniyor...</span>
                             </div>
                         ) : viewMode === "preview" ? (
-                            <div className="px-5 py-4 prose prose-invert prose-sm max-w-none
-                                prose-headings:font-mono prose-headings:text-white/80 prose-headings:text-xs prose-headings:tracking-wide
-                                prose-p:text-white/60 prose-p:text-[11px] prose-p:leading-relaxed
-                                prose-code:text-[#39ff14] prose-code:text-[9px] prose-code:bg-white/5 prose-code:px-1 prose-code:rounded
-                                prose-pre:bg-white/4 prose-pre:border prose-pre:border-white/8 prose-pre:rounded-lg
-                                prose-strong:text-white/85 prose-li:text-white/60 prose-li:text-[10px]
-                                prose-a:text-[#00f0ff] prose-blockquote:border-[#00f0ff]/30">
+                            <div className="px-5 py-4 prose-light">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayContent}</ReactMarkdown>
                             </div>
                         ) : (
                             <textarea
                                 value={displayContent}
                                 onChange={e => setEditedContent(e.target.value)}
-                                className="w-full h-full min-h-[300px] bg-transparent px-5 py-4 font-mono text-[10px] text-white/65
-                                           leading-relaxed resize-none outline-none placeholder:text-white/20"
-                                placeholder="Inhalt wird geladen..."
+                                className="w-full h-full min-h-[300px] bg-white px-5 py-4 text-[13px] text-gray-700 leading-relaxed resize-none outline-none placeholder:text-gray-400"
+                                placeholder="İçerik yükleniyor..."
                             />
                         )}
                     </div>
@@ -239,13 +231,12 @@ function ReportPanel({ threadId }: { threadId: string }) {
 
             {/* Decision Zone — fixed bottom */}
             {!isPublishing ? (
-                <div className="px-5 py-4 border-t border-white/8 shrink-0 space-y-2.5"
-                    style={{ background: "rgba(7,12,20,0.95)" }}>
+                <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2.5" style={{ background: "#FAFAFA" }}>
                     {rejectMode ? (
                         <>
                             <div className="flex items-center gap-2 mb-2">
-                                <AlertTriangle size={10} className="text-[#ff2d55]/60" />
-                                <span className="font-mono text-[8px] text-[#ff2d55]/60 uppercase tracking-widest">Ablehnungsgrund (Pflichtfeld)</span>
+                                <AlertTriangle size={13} className="text-red-400" />
+                                <span className="text-[12px] text-red-600 font-semibold">Red Gerekçesi (Zorunlu)</span>
                             </div>
                             {/* Preset reject butonları */}
                             <div className="flex flex-wrap gap-1.5 mb-2">
@@ -253,10 +244,10 @@ function ReportPanel({ threadId }: { threadId: string }) {
                                     <button
                                         key={p.label}
                                         onClick={() => setFeedback(p.feedback)}
-                                        className={`px-2.5 py-1 rounded-md font-mono text-[8px] border transition-all
+                                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all
                                             ${feedback === p.feedback
-                                                ? "border-[#ff2d55]/40 bg-[#ff2d55]/10 text-[#ff2d55]/80"
-                                                : "border-white/10 bg-white/3 text-white/40 hover:border-[#ff2d55]/25 hover:text-white/60"}`}
+                                                ? "border-red-300 bg-red-50 text-red-700"
+                                                : "border-gray-200 bg-white text-gray-600 hover:border-red-200 hover:text-red-600"}`}
                                     >
                                         {p.label}
                                     </button>
@@ -265,27 +256,24 @@ function ReportPanel({ threadId }: { threadId: string }) {
                             <textarea
                                 value={feedback}
                                 onChange={e => setFeedback(e.target.value)}
-                                placeholder="Was soll geändert werden? Feedback an den Autor..."
+                                placeholder="Ne değiştirilsin? Yazara geri bildirim..."
                                 rows={3}
-                                className="w-full bg-white/4 border border-[#ff2d55]/20 rounded-lg px-3 py-2.5 font-mono text-[10px] text-white/70
-                                           placeholder:text-white/20 outline-none focus:border-[#ff2d55]/40 resize-none"
+                                className="w-full bg-white border border-red-200 rounded-xl px-3 py-2.5 text-[13px] text-gray-700 placeholder:text-gray-400 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 resize-none"
                             />
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleReject}
                                     disabled={!feedback.trim() || submitting}
-                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-mono text-[9px] font-bold uppercase tracking-wider
-                                               bg-[#ff2d55]/10 border border-[#ff2d55]/40 text-[#ff2d55] hover:bg-[#ff2d55]/20
-                                               disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12px] font-semibold bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 disabled:opacity-40 transition-all"
                                 >
-                                    {submitting ? <Loader2 size={10} className="animate-spin" /> : <XCircle size={10} />}
-                                    Ablehnen — Neu schreiben
+                                    {submitting ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                                    Reddet — Yeniden Yaz
                                 </button>
                                 <button
                                     onClick={() => { setRejectMode(false); setFeedback(""); }}
-                                    className="px-4 rounded-lg font-mono text-[9px] text-white/35 border border-white/10 hover:border-white/20 transition-colors"
+                                    className="px-4 rounded-xl text-[12px] font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
                                 >
-                                    Abbrechen
+                                    İptal
                                 </button>
                             </div>
                         </>
@@ -294,39 +282,33 @@ function ReportPanel({ threadId }: { threadId: string }) {
                             <input
                                 value={feedback}
                                 onChange={e => setFeedback(e.target.value)}
-                                placeholder="Optionale Genehmigungsnotiz..."
-                                className="w-full bg-white/3 border border-white/8 rounded-lg px-3 py-2 font-mono text-[10px] text-white/65
-                                           placeholder:text-white/18 outline-none focus:border-[#39ff14]/25"
+                                placeholder="Opsiyonel onay notu..."
+                                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-[13px] text-gray-700 placeholder:text-gray-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                             />
                             <div className="flex gap-2">
                                 <motion.button
                                     whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
                                     onClick={handleApprove}
                                     disabled={submitting || fetching}
-                                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-mono text-[10px] font-bold uppercase tracking-wider
-                                               bg-[#39ff14]/10 border border-[#39ff14]/40 text-[#39ff14]
-                                               hover:bg-[#39ff14]/18 hover:border-[#39ff14]/60 hover:shadow-[0_0_24px_rgba(57,255,20,0.18)]
-                                               disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-bold bg-green-500 border border-green-400 text-white hover:bg-green-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
                                 >
-                                    {submitting ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
-                                    Autorisieren & Veröffentlichen
+                                    {submitting ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                                    Onayla & Yayınla
                                 </motion.button>
                                 <button
                                     onClick={() => setRejectMode(true)}
-                                    className="px-5 rounded-lg font-mono text-[9px] font-bold uppercase tracking-wider
-                                               border border-[#ff2d55]/25 text-[#ff2d55]/55
-                                               hover:bg-[#ff2d55]/8 hover:border-[#ff2d55]/45 transition-all"
+                                    className="px-5 rounded-xl text-[12px] font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-all"
                                 >
-                                    Override
+                                    Reddet
                                 </button>
                             </div>
                         </>
                     )}
                 </div>
             ) : (
-                <div className="px-5 py-4 border-t border-white/8 shrink-0 flex items-center justify-center gap-2">
-                    <Loader2 size={12} className="animate-spin text-[#00f0ff]" />
-                    <span className="font-mono text-[10px] text-[#00f0ff]/70">Wird übertragen...</span>
+                <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex items-center justify-center gap-2">
+                    <Loader2 size={13} className="animate-spin text-indigo-500" />
+                    <span className="text-[12px] text-indigo-600 font-medium">Gönderiliyor...</span>
                 </div>
             )}
         </div>
@@ -388,7 +370,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 scrollbar-hide">
 
                 {/* A: Original Message */}
-                <AccordionSection title="Originalnachricht" icon={<Mail size={10} />} defaultOpen={true} accent={accentColor}>
+                <AccordionSection title="Orijinal Mesaj" icon={<Mail size={10} />} defaultOpen={true}>
                     <div className="space-y-2">
                         <div className="flex gap-4">
                             <div>
@@ -414,7 +396,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
 
                 {/* B: RAG Sources */}
                 {ticket.ragSources?.length > 0 && (
-                    <AccordionSection title="RAG-Quellen" icon={<Database size={10} />} defaultOpen={false} accent="#39ff14">
+                    <AccordionSection title="RAG Kaynakları" icon={<Database size={10} />} defaultOpen={false}>
                         <div className="space-y-1.5">
                             {ticket.ragSources.map((src: { title: string; score: number }, i: number) => (
                                 <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/3 border border-white/6">
@@ -558,15 +540,15 @@ function EmptyState() {
 export const OperatingTable = () => {
     const { drawerItem, setDrawerItem } = useAgentStore();
 
-    const typeLabel = drawerItem?.type === "report"   ? "HITL-Bericht" :
-                      drawerItem?.type === "support"  ? "Support-Anfrage" :
-                      drawerItem?.type === "campaign" ? "CMO Studio" :
-                      "Aufgaben-Archiv";
+    const typeLabel = drawerItem?.type === "report"   ? "⏳ Onay Bekleyen Rapor" :
+                      drawerItem?.type === "support"  ? "💬 Destek Talebi" :
+                      drawerItem?.type === "campaign" ? "📣 Kampanya Taslağı" :
+                      "📄 Arşiv";
 
-    const typeAccent = drawerItem?.type === "report"   ? "#ff2d55" :
-                       drawerItem?.type === "support"  ? "#00f0ff" :
-                       drawerItem?.type === "campaign" ? "#ff6b35" :
-                       "rgba(255,255,255,0.3)";
+    const headerColor = drawerItem?.type === "report"   ? { bg: "#FFFBEB", border: "#FDE68A", text: "#92400E" } :
+                        drawerItem?.type === "support"  ? { bg: "#EFF6FF", border: "#BFDBFE", text: "#1D4ED8" } :
+                        drawerItem?.type === "campaign" ? { bg: "#FFF7ED", border: "#FED7AA", text: "#C2410C" } :
+                        { bg: "#F9FAFB", border: "#E5E7EB", text: "#374151" };
 
     return (
         <AnimatePresence>
@@ -581,7 +563,7 @@ export const OperatingTable = () => {
                         transition={{ duration: 0.2 }}
                         onClick={() => setDrawerItem(null)}
                         className="absolute inset-0 z-10"
-                        style={{ background: "rgba(0,0,0,0.35)" }}
+                        style={{ background: "rgba(17, 24, 39, 0.4)" }}
                     />
 
                     {/* Drawer */}
@@ -591,21 +573,22 @@ export const OperatingTable = () => {
                         animate={{ x: 0 }}
                         exit={{ x: "100%" }}
                         transition={{ type: "spring", damping: 32, stiffness: 300 }}
-                        className="absolute right-0 top-0 h-full w-[520px] z-20 flex flex-col overflow-hidden"
-                        style={{ background: "#0b1220", borderLeft: "1px solid rgba(255,255,255,0.09)" }}
+                        className="absolute right-0 top-0 h-full w-[540px] z-20 flex flex-col overflow-hidden"
+                        style={{ background: "#FFFFFF", borderLeft: "1px solid #E5E7EB", boxShadow: "-4px 0 24px rgba(0,0,0,0.08)" }}
                     >
                         {/* Drawer header */}
-                        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-white/8 shrink-0">
-                            <span
-                                className="w-2 h-2 rounded-full shrink-0"
-                                style={{ background: typeAccent, opacity: 0.8 }}
-                            />
-                            <span className="text-sm font-semibold text-white/80 flex-1">{typeLabel}</span>
+                        <div
+                            className="flex items-center gap-3 px-5 py-3.5 shrink-0"
+                            style={{ background: headerColor.bg, borderBottom: `1px solid ${headerColor.border}` }}
+                        >
+                            <span className="text-[14px] font-bold flex-1" style={{ color: headerColor.text }}>
+                                {typeLabel}
+                            </span>
                             <button
                                 onClick={() => setDrawerItem(null)}
-                                className="p-1.5 rounded-lg hover:bg-white/8 text-white/35 hover:text-white/70 transition-colors"
+                                className="p-1.5 rounded-lg hover:bg-black/5 text-gray-400 hover:text-gray-700 transition-colors"
                             >
-                                <X size={14} />
+                                <X size={16} />
                             </button>
                         </div>
 
@@ -635,20 +618,17 @@ export const OperatingTable = () => {
                                         <CmoStudio campaign={drawerItem.campaign} />
                                     )}
                                     {drawerItem.type === "mission" && (
-                                        <div className="flex flex-col h-full">
-                                            <div className="px-5 py-4 border-b border-white/6 shrink-0">
-                                                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1.5">
-                                                    Archiv — Vergangene Aufgabe
+                                        <div className="flex flex-col h-full bg-white">
+                                            <div className="px-5 py-4 border-b border-gray-100 shrink-0">
+                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1.5 font-medium">
+                                                    Arşiv — Geçmiş Görev
                                                 </p>
-                                                <p className="text-sm font-semibold text-white/75 truncate">
+                                                <p className="text-[15px] font-semibold text-gray-900 truncate">
                                                     {drawerItem.mission.task}
                                                 </p>
                                             </div>
-                                            <div className="flex-1 overflow-y-auto px-5 py-4 scrollbar-hide">
-                                                <div className="prose prose-invert prose-sm max-w-none
-                                                    prose-headings:font-mono prose-headings:text-white/70 prose-headings:text-xs
-                                                    prose-p:text-white/50 prose-p:text-[11px] prose-p:leading-relaxed
-                                                    prose-strong:text-white/70 prose-li:text-white/50 prose-li:text-[11px]">
+                                            <div className="flex-1 overflow-y-auto px-5 py-4 scrollbar-styled">
+                                                <div className="prose-light">
                                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                                         {drawerItem.mission.content ?? drawerItem.mission.contentPreview}
                                                     </ReactMarkdown>

@@ -1,15 +1,11 @@
-import { ChatBedrockConverse } from "@langchain/aws";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { trackLLMCost } from "../services/costTracker.js";
 import { SupplyChainEvent } from "../models/SupplyChainEvent.js";
 import { searchKnowledge } from "../services/ragService.js";
 
-const llm = new ChatBedrockConverse({
-    model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    }
+const llm = new ChatAnthropic({
+    model: "claude-sonnet-4-6",
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 const SUPPLY_CHAIN_SYSTEM_PROMPT = `Sie sind ein präziser KI-Lieferkettenplaner (Agent 14 — Der Planer).
@@ -60,10 +56,10 @@ export async function supplyChainNode(state, config) {
                          taskText.match(/produkt[:\s]+([^\n,]+)/i);
         if (skuMatch) {
             const searchTerm = skuMatch[1].trim();
-            const ragResults = await searchKnowledge(`${searchTerm} Lieferant Lieferzeit Bestellmenge`, clientId, 3);
-            if (ragResults && ragResults.length > 0) {
-                ragContext = ragResults.map(r => r.content).join("\n---\n");
-                console.log(`   -> RAG: "${searchTerm}" için ${ragResults.length} tedarikçi kaydı bulundu.`);
+            const ragResult = await searchKnowledge(clientId, `${searchTerm} Lieferant Lieferzeit Bestellmenge`);
+            if (ragResult && ragResult.context) {
+                ragContext = ragResult.context;
+                console.log(`   -> RAG: "${searchTerm}" için ${ragResult.sources?.length ?? 0} tedarikçi kaydı bulundu.`);
             }
         }
     } catch (err) {

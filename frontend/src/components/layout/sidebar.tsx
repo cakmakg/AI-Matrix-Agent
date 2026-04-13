@@ -3,56 +3,88 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    LayoutDashboard, BarChart3, BookOpen, Settings, Blocks,
-    Activity, Share2, ShieldAlert, ChevronDown, Plus, LogOut,
-    Check, Building2, Lock, FileSearch, Truck, Terminal, MessageSquare,
+    MessageSquare, LayoutDashboard, BarChart3, BookOpen,
+    Settings, Blocks, ShieldAlert,
+    Terminal, Building2, ChevronDown, Plus, LogOut, Check,
+    Activity, Headphones, TrendingUp, Lightbulb, Briefcase,
+    Cpu, Crown,
 } from "lucide-react";
 import { useAgentStore } from "@/store/agent-store";
-import type { ActiveView } from "@/store/agent-store";
-import { CronTimer } from "@/components/hud/cron-timer";
+import type { ActiveView, SaaSProduct } from "@/store/agent-store";
 import { getProductTheme } from "@/config/product-theme";
+import { PRODUCT_INPUT } from "@/components/layout/center-panel";
 
-const NAV_ITEMS: { view: ActiveView; label: string; icon: React.ReactNode; requiredPlan?: "pro" | "enterprise" }[] = [
-    { view: "chat",      label: "Command Center",   icon: <MessageSquare size={16} /> },
-    { view: "control",   label: "Übersicht",        icon: <LayoutDashboard size={16} /> },
-    { view: "cfo",       label: "CFO-Dashboard",    icon: <BarChart3 size={16} />,       requiredPlan: "pro" },
-    { view: "auditor",   label: "Rechnungsprüfung", icon: <FileSearch size={16} />,      requiredPlan: "enterprise" },
-    { view: "supply",    label: "Supply Chain",     icon: <Truck size={16} />,           requiredPlan: "enterprise" },
-    { view: "social",    label: "Soziale Medien",    icon: <Share2 size={16} />,          requiredPlan: "pro" },
-    { view: "knowledge", label: "Wissensdatenbank",  icon: <BookOpen size={16} /> },
-    { view: "skills",    label: "Skill Store",       icon: <Blocks size={16} />,          requiredPlan: "pro" },
-    { view: "settings",  label: "Einstellungen",     icon: <Settings size={16} /> },
-    { view: "security",  label: "Sicherheit",        icon: <ShieldAlert size={16} />,     requiredPlan: "enterprise" },
+/**
+ * Sidebar Nav Mimarisi:
+ *
+ * DEPARTMANLAR (Mega-Product) → SaaSProduct alanını değiştirir, CHAT view'ına geçer
+ * ARAÇLAR → activeView değiştirir, farklı sayfa gösterir
+ *
+ * Kaynak: AGENTS.md § SaaS Ürünleri → 6 Mega-Departman
+ */
+
+interface DepartmentItem {
+    product:  SaaSProduct;
+    label:    string;
+    icon:     React.ReactNode;
+    /** hangi plan gerekli */
+    plan?:    "pro" | "enterprise" | "holding";
+}
+
+const DEPARTMENTS: DepartmentItem[] = [
+    { product: "cx",          label: "CX & Destek",           icon: <Headphones size={15} /> },
+    { product: "growth",      label: "Büyüme & Gelir",        icon: <TrendingUp size={15} />,  plan: "pro" },
+    { product: "strategy",    label: "Strateji & İnovasyon",  icon: <Lightbulb size={15} />,   plan: "enterprise" },
+    { product: "backoffice",  label: "Finans & Operasyon",    icon: <Briefcase size={15} />,   plan: "enterprise" },
+    { product: "engineering", label: "Mühendislik & BT",      icon: <Cpu size={15} />,         plan: "enterprise" },
+    { product: "holding",     label: "Holding",               icon: <Crown size={15} />,        plan: "holding" },
 ];
 
-// Hangi plan hangi özelliklere erişebilir
+interface ToolItem {
+    view:   ActiveView;
+    label:  string;
+    icon:   React.ReactNode;
+    plan?:  "pro" | "enterprise";
+}
+
+const TOOLS: ToolItem[] = [
+    { view: "control",   label: "Görev Merkezi",    icon: <LayoutDashboard size={15} /> },
+    { view: "cfo",       label: "CFO Paneli",        icon: <BarChart3 size={15} />,     plan: "pro" },
+    { view: "knowledge", label: "Bilgi Tabanı (RAG)", icon: <BookOpen size={15} /> },
+    { view: "skills",    label: "Beceri Mağazası",   icon: <Blocks size={15} />,        plan: "pro" },
+    { view: "security",  label: "Güvenlik (MOAT)",   icon: <ShieldAlert size={15} />,   plan: "enterprise" },
+    { view: "settings",  label: "Ayarlar",           icon: <Settings size={15} /> },
+];
+
 const PLAN_ORDER: Record<string, number> = { free: 0, pro: 1, enterprise: 2, holding: 3 };
-function isPlanSufficient(clientPlan: string | null, required?: "pro" | "enterprise"): boolean {
+
+function isPlanOk(clientPlan: string | null, required?: string): boolean {
     if (!required) return true;
     return (PLAN_ORDER[clientPlan ?? "free"] ?? 0) >= (PLAN_ORDER[required] ?? 0);
 }
 
-const PLAN_BADGE: Record<string, { label: string; color: string }> = {
-    free:       { label: "Support",    color: "#00f0ff" },
-    pro:        { label: "Marketing",  color: "#39ff14" },
-    enterprise: { label: "Enterprise", color: "#ffb000" },
-    holding:    { label: "Holding",    color: "#d400ff" },
+const PLAN_BADGE: Record<string, { label: string; bg: string; text: string }> = {
+    free:       { label: "Free",       bg: "#DBEAFE", text: "#1D4ED8" },
+    pro:        { label: "Pro",        bg: "#D1FAE5", text: "#065F46" },
+    enterprise: { label: "Enterprise", bg: "#FEF3C7", text: "#92400E" },
+    holding:    { label: "Holding",    bg: "#EDE9FE", text: "#5B21B6" },
 };
 
-export const Sidebar = () => {
+export const AppSidebar = () => {
     const {
         activeView, setActiveView,
-        workflowPhase, supportTickets, campaignDrafts, threadId,
+        workflowPhase, supportTickets, campaignDrafts,
         clientName, clientSlug, apiKey, clientPlan, clientProduct, workspaces,
         switchWorkspace, logout, isAdmin,
+        setActiveTrack,
     } = useAgentStore();
 
-    const [mounted, setMounted] = useState(false);
+    const [mounted, setMounted]     = useState(false);
+    const [wsOpen,  setWsOpen]      = useState(false);
     useEffect(() => { setMounted(true); }, []);
-    // SSR sırasında her zaman varsayılan temayı kullan (hydration mismatch önleme)
-    const productTheme = getProductTheme(mounted ? clientProduct : null);
 
-    const [wsOpen, setWsOpen] = useState(false);
+    const safeProduct  = mounted ? (clientProduct ?? "cx") : "cx";
+    const productTheme = getProductTheme(mounted ? clientProduct : null);
 
     const pendingCount =
         (workflowPhase === "AWAITING_APPROVAL" ? 1 : 0) +
@@ -60,45 +92,60 @@ export const Sidebar = () => {
         campaignDrafts.filter(c => c.status === "AWAITING_APPROVAL").length;
 
     const isRunning    = workflowPhase !== "IDLE" && workflowPhase !== "DELIVERED";
-    // SSR sırasında localStorage değerleri yok — hydration mismatch önleme
-    const displayName  = mounted ? (clientName || "Default Tenant") : "Default Tenant";
-    const displaySlug  = mounted ? (clientSlug || "default") : "default";
+    const displayName  = mounted ? (clientName  || "Varsayılan Firma") : "Yükleniyor...";
+    const planBadge    = PLAN_BADGE[clientPlan ?? "free"] ?? PLAN_BADGE.free;
+
+    /** Departman tıklandığında: product değiştir, chat view aç, track güncelle */
+    const handleDepartmentClick = (product: SaaSProduct) => {
+        const cfg        = PRODUCT_INPUT[product];
+        const firstTrack = cfg.subTabs?.[0]?.track ?? cfg.track;
+        // Product store'u güncelle
+        useAgentStore.setState({ clientProduct: product });
+        setActiveTrack(firstTrack);
+        setActiveView("chat");
+    };
 
     return (
         <aside
-            className="w-[200px] shrink-0 flex flex-col h-screen"
-            style={{ background: "#0d1829", borderRight: "1px solid rgba(255,255,255,0.07)" }}
+            className="w-[240px] shrink-0 flex flex-col h-screen"
+            style={{ background: "#FFFFFF", borderRight: "1px solid #E5E7EB" }}
         >
-            {/* Logo */}
-            <div className="px-5 py-5 border-b border-white/8">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg border border-[#00f0ff]/40 flex items-center justify-center text-[#00f0ff] text-sm font-bold bg-[#00f0ff]/8">
+            {/* ── Logo ── */}
+            <div className="px-5 py-4 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                    <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0"
+                        style={{ background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)" }}
+                    >
                         ◈
                     </div>
                     <div>
-                        <div className="text-[13px] font-bold text-white tracking-wide">AI Orchestra</div>
-                        <div className="text-[9px] text-white/40 tracking-widest uppercase">Agent Matrix</div>
+                        <div className="text-[13px] font-bold text-gray-900 leading-tight">AI Orchestra</div>
+                        <div className="text-[10px] text-gray-400 font-medium">Agent Matrix</div>
                     </div>
                 </div>
             </div>
 
-            {/* Workspace Switcher */}
+            {/* ── Workspace Switcher ── */}
             <div className="px-3 pt-3 pb-1 relative">
                 <button
                     onClick={() => setWsOpen(v => !v)}
-                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white/3 border border-white/6 hover:border-white/14 transition-all"
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 hover:border-gray-200 hover:bg-gray-100 transition-all"
                 >
-                    <div className="w-5 h-5 rounded bg-[#00f0ff]/15 border border-[#00f0ff]/25 flex items-center justify-center shrink-0">
-                        <Building2 size={10} className="text-[#00f0ff]" />
+                    <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-sm"
+                        style={{ background: productTheme.accentLight }}
+                    >
+                        {productTheme.icon}
                     </div>
                     <div className="flex-1 min-w-0 text-left">
-                        <div className="font-mono text-[10px] font-semibold text-white/75 truncate">{displayName}</div>
-                        <div className="font-mono text-[8px] truncate flex items-center gap-1" style={{ color: productTheme.accent, opacity: 0.7 }}>
-                            <span>{productTheme.icon}</span>
-                            <span>{productTheme.slogan}</span>
-                        </div>
+                        <div className="text-[12px] font-semibold text-gray-800 truncate">{displayName}</div>
+                        <div className="text-[10px] text-gray-400 truncate">{productTheme.slogan}</div>
                     </div>
-                    <ChevronDown size={11} className={`text-white/30 shrink-0 transition-transform duration-200 ${wsOpen ? "rotate-180" : ""}`} />
+                    <ChevronDown
+                        size={12}
+                        className={`text-gray-400 shrink-0 transition-transform duration-200 ${wsOpen ? "rotate-180" : ""}`}
+                    />
                 </button>
 
                 <AnimatePresence>
@@ -107,77 +154,134 @@ export const Sidebar = () => {
                             initial={{ opacity: 0, y: -4 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -4 }}
-                            className="absolute left-3 right-3 top-[calc(100%-4px)] mt-1 bg-[#0a1120] border border-white/10 rounded-lg overflow-hidden shadow-2xl z-50"
+                            className="absolute left-3 right-3 top-[calc(100%-4px)] mt-1 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg z-50"
                         >
-                            {/* Kayıtlı workspace'ler */}
                             {workspaces.length > 0 && (
-                                <div className="p-1 border-b border-white/5">
+                                <div className="p-1 border-b border-gray-100">
                                     {workspaces.map(ws => (
                                         <button
                                             key={ws.slug}
                                             onClick={() => { switchWorkspace(ws.apiKey); setWsOpen(false); }}
-                                            className="w-full flex items-center gap-2 px-2.5 py-2 rounded hover:bg-white/5 transition-colors"
+                                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
                                         >
-                                            <Building2 size={9} className="text-[#00f0ff]/60 shrink-0" />
+                                            <Building2 size={10} className="text-gray-400 shrink-0" />
                                             <div className="flex-1 min-w-0 text-left">
-                                                <div className="font-mono text-[10px] text-white/65 truncate">{ws.name}</div>
+                                                <div className="text-[11px] text-gray-700 truncate font-medium">{ws.name}</div>
                                             </div>
                                             {ws.apiKey === apiKey && (
-                                                <Check size={10} className="text-[#39ff14] shrink-0" />
+                                                <Check size={10} className="text-green-500 shrink-0" />
                                             )}
                                         </button>
                                     ))}
                                 </div>
                             )}
-
-                            {/* Yeni workspace ekle → login modal'ı açar (logout ile tetiklenir) */}
                             <button
-                                onClick={() => { logout(); setWsOpen(false); }}
-                                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/4 transition-colors"
+                                onClick={() => { setWsOpen(false); }}
+                                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors"
                             >
-                                <Plus size={10} className="text-[#00f0ff]/50" />
-                                <span className="font-mono text-[10px] text-white/40">Workspace ekle</span>
+                                <Plus size={10} className="text-gray-400" />
+                                <span className="text-[11px] text-gray-500">Çalışma alanı ekle</span>
                             </button>
-
-                            {/* Logout */}
                             <button
                                 onClick={() => { logout(); setWsOpen(false); }}
-                                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-500/5 transition-colors border-t border-white/5"
+                                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 transition-colors border-t border-gray-100"
                             >
-                                <LogOut size={10} className="text-red-400/50" />
-                                <span className="font-mono text-[10px] text-red-400/45">Çıkış Yap</span>
+                                <LogOut size={10} className="text-red-400" />
+                                <span className="text-[11px] text-red-400">Çıkış Yap</span>
                             </button>
                         </motion.div>
                     )}
                 </AnimatePresence>
             </div>
 
-            {/* Nav */}
-            <nav className="flex flex-col gap-0.5 px-3 py-3 flex-1">
-                {NAV_ITEMS.map(({ view, label, icon, requiredPlan }) => {
-                    const isActive  = activeView === view;
-                    const isLocked  = !isPlanSufficient(clientPlan, requiredPlan);
-                    const badge     = view === "control" && pendingCount > 0 ? pendingCount : null;
+            {/* ── Plan Badge ── */}
+            {mounted && clientPlan && (
+                <div className="px-4 pt-1 pb-2">
+                    <span
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold"
+                        style={{ background: planBadge.bg, color: planBadge.text }}
+                    >
+                        {planBadge.label} plan
+                    </span>
+                </div>
+            )}
+
+            {/* ── Scroll Area ── */}
+            <nav className="flex flex-col gap-0.5 px-3 py-2 flex-1 overflow-y-auto scrollbar-hide">
+
+                {/* ─ DEPARTMANLAR ─ */}
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-2 py-1 mt-1 mb-0.5">
+                    Departmanlar
+                </p>
+
+                {DEPARTMENTS.map(({ product, label, icon, plan }) => {
+                    const isActive = (activeView === "chat") && safeProduct === product;
+                    const isLocked = !isPlanOk(clientPlan, plan);
+
+                    return (
+                        <motion.button
+                            key={product}
+                            whileHover={isLocked ? {} : { x: 2 }}
+                            onClick={() => !isLocked && handleDepartmentClick(product)}
+                            disabled={isLocked}
+                            title={isLocked ? `${plan === "holding" ? "Holding" : plan === "enterprise" ? "Enterprise" : "Pro"} plan gerektirir` : label}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 w-full ${
+                                isLocked
+                                    ? "opacity-40 cursor-not-allowed"
+                                    : isActive
+                                        ? "text-gray-900 font-semibold"
+                                        : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                            }`}
+                            style={isActive ? {
+                                background: productTheme.accentLight,
+                                color:      productTheme.accentText,
+                            } : {}}
+                        >
+                            <span
+                                className="shrink-0"
+                                style={isActive ? { color: productTheme.accent } : isLocked ? { color: "#D1D5DB" } : {}}
+                            >
+                                {icon}
+                            </span>
+                            <span className="text-[13px] flex-1 truncate">{label}</span>
+                            {isActive && workflowPhase !== "IDLE" && (
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0" />
+                            )}
+                        </motion.button>
+                    );
+                })}
+
+                {/* ─ ARAÇLAR ─ */}
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-2 py-1 mt-4 mb-0.5">
+                    Araçlar
+                </p>
+
+                {TOOLS.map(({ view, label, icon, plan }) => {
+                    const isActive = activeView === view;
+                    const isLocked = !isPlanOk(clientPlan, plan);
+                    const badge    = view === "control" && pendingCount > 0 ? pendingCount : null;
+
                     return (
                         <motion.button
                             key={view}
                             whileHover={isLocked ? {} : { x: 2 }}
-                            onClick={() => isLocked ? undefined : setActiveView(view)}
-                            title={isLocked ? `${requiredPlan === "enterprise" ? "Enterprise" : "Marketing"} paketi gerektirir` : undefined}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 w-full
-                                ${isLocked
-                                    ? "opacity-35 cursor-not-allowed border border-transparent"
+                            onClick={() => !isLocked && setActiveView(view)}
+                            disabled={isLocked}
+                            title={isLocked ? `${plan === "enterprise" ? "Enterprise" : "Pro"} plan gerektirir` : label}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 w-full ${
+                                isLocked
+                                    ? "opacity-40 cursor-not-allowed"
                                     : isActive
-                                        ? "bg-white/8 border border-white/10 text-white"
-                                        : "text-white/50 hover:text-white/80 hover:bg-white/4 border border-transparent"
-                                }`}
+                                        ? "bg-gray-100 text-gray-900 font-semibold"
+                                        : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                            }`}
                         >
-                            <span className={isLocked ? "text-white/20" : isActive ? "text-[#00f0ff]" : "text-white/35"}>{icon}</span>
-                            <span className="text-sm font-medium flex-1">{label}</span>
-                            {isLocked ? (
-                                <Lock size={10} className="text-white/20 shrink-0" />
-                            ) : badge !== null && (
-                                <span className="min-w-[18px] h-5 px-1.5 rounded-full bg-[#ff2d55] font-mono text-[9px] font-bold text-white flex items-center justify-center">
+                            <span className="shrink-0" style={isLocked ? { color: "#D1D5DB" } : {}}>
+                                {icon}
+                            </span>
+                            <span className="text-[13px] flex-1 truncate">{label}</span>
+                            {badge !== null && (
+                                <span className="min-w-[18px] h-5 px-1.5 rounded-full bg-red-500 font-bold text-[9px] text-white flex items-center justify-center shrink-0">
                                     {badge}
                                 </span>
                             )}
@@ -185,39 +289,48 @@ export const Sidebar = () => {
                     );
                 })}
 
-                {/* God Mode — Admin Only */}
+                {/* ─ GOD MODE ─ */}
                 {isAdmin && (
                     <motion.button
                         whileHover={{ x: 2 }}
                         onClick={() => setActiveView("admin")}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 w-full mt-2 border
-                            ${activeView === "admin"
-                                ? "bg-red-500/10 border-red-500/25 text-red-400"
-                                : "border-red-500/15 text-red-400/60 hover:text-red-400 hover:bg-red-500/5"
-                            }`}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 w-full mt-4 border ${
+                            activeView === "admin"
+                                ? "bg-red-50 border-red-200 text-red-700"
+                                : "border-red-100 text-red-400 hover:text-red-600 hover:bg-red-50"
+                        }`}
                     >
-                        <Terminal size={16} className={activeView === "admin" ? "text-red-400" : "text-red-400/40"} />
-                        <span className="text-sm font-bold tracking-wide">GOD MODE</span>
+                        <Terminal size={15} />
+                        <span className="text-[13px] font-bold">GOD MODE</span>
                     </motion.button>
                 )}
             </nav>
 
-            {/* System status + Cron */}
-            <div className="px-4 py-4 border-t border-white/8 space-y-2.5">
+            {/* ── Sistem Durumu ── */}
+            <div className="px-4 py-3 border-t border-gray-100">
                 <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${
-                    isRunning ? "bg-[#39ff14]/5 border-[#39ff14]/20" : "bg-white/2 border-white/6"
+                    isRunning
+                        ? "bg-green-50 border-green-200"
+                        : "bg-gray-50 border-gray-100"
                 }`}>
-                    <Activity size={12} className={isRunning ? "text-[#39ff14] animate-pulse" : "text-white/25"} />
+                    <Activity
+                        size={12}
+                        className={isRunning ? "text-green-500 animate-pulse" : "text-gray-300"}
+                    />
                     <div className="flex-1 min-w-0">
-                        <div className={`text-[11px] font-semibold ${isRunning ? "text-[#39ff14]/90" : "text-white/35"}`}>
-                            {isRunning ? "Agent läuft" : "System bereit"}
+                        <div className={`text-[11px] font-semibold ${isRunning ? "text-green-700" : "text-gray-400"}`}>
+                            {isRunning ? "Ajan çalışıyor" : "Sistem hazır"}
                         </div>
-                        {isRunning && threadId && (
-                            <div className="text-[9px] text-white/30 font-mono truncate">#{threadId.slice(0, 8)}</div>
-                        )}
                     </div>
+                    <div className={`w-2 h-2 rounded-full ${isRunning ? "bg-green-400 animate-pulse" : "bg-gray-200"}`} />
                 </div>
-                <CronTimer />
+            </div>
+
+            {/* ── Tenant slug ── */}
+            <div className="px-4 py-2 border-t border-gray-100">
+                <div className="text-[10px] text-gray-400 truncate">
+                    {mounted ? (clientSlug || "default") : "default"}
+                </div>
             </div>
         </aside>
     );
