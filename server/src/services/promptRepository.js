@@ -53,7 +53,7 @@ export async function savePrompt(agentName, promptText, clientId = "default") {
     await SystemPrompt.findOneAndUpdate(
         { agentName, clientId },
         { promptText },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: "after" }
     );
 }
 

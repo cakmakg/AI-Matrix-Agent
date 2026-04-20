@@ -40,8 +40,8 @@ export const searchClientKnowledge = async (req, res) => {
         if (!clientId || !query) {
             return res.status(400).json({ error: "clientId ve query zorunludur." });
         }
-        const context = await searchKnowledge(clientId, query);
-        res.json({ success: true, context });
+        const { context, sources } = await searchKnowledge(clientId, query);
+        res.json({ success: true, context, sources });
     } catch (err) {
         console.error("❌ /api/knowledge/search hatasi:", err.message);
         res.status(500).json({ error: err.message });

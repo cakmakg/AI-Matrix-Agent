@@ -64,7 +64,7 @@ export const listTenants = async (req, res) => {
             createdAt: c.createdAt,
         }));
 
-        res.json({ tenants, total: tenants.length });
+        res.json(tenants);
     } catch (err) {
         console.error("❌ admin/tenants hatası:", err.message);
         res.status(500).json({ error: err.message });
@@ -724,7 +724,7 @@ export const throttleTenant = async (req, res) => {
         await TenantConfig.findOneAndUpdate(
             { clientId: client._id },
             { $set: { "configObject.throttled": isThrottled } },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: "after" }
         );
 
         await logAdminAction(req.tenant.client._id,
@@ -803,7 +803,7 @@ export const getRecentWorkflows = async (req, res) => {
             ...dbList.filter((w) => !activeThreadIds.has(w.threadId)),
         ].slice(0, limit);
 
-        res.json({ workflows: combined, total: combined.length });
+        res.json(combined);
     } catch (err) {
         console.error("❌ admin/workflows/recent hatası:", err.message);
         res.status(500).json({ error: err.message });
@@ -823,7 +823,7 @@ export const getWorkflowSnapshots = async (req, res) => {
             .sort({ step: 1 })
             .lean();
 
-        res.json({ snapshots, stepCount: snapshots.length });
+        res.json(snapshots);
     } catch (err) {
         console.error("❌ admin/workflows/:threadId/snapshots hatası:", err.message);
         res.status(500).json({ error: err.message });

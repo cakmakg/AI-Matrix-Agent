@@ -36,7 +36,7 @@ const SecurityEventSchema = new mongoose.Schema({
     details:     { type: String, default: "" },      // insan okunabilir açıklama
     rawInput:    { type: String, default: "" },      // ilk 200 char (log için)
 
-    createdAt: { type: Date, default: Date.now, index: true },
+    createdAt: { type: Date, default: Date.now },
 }, { timestamps: false });
 
 // Son 1000 olay tutulsun (TTL index: 7 gün)

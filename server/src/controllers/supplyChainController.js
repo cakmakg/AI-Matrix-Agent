@@ -106,7 +106,7 @@ export const approveOrder = async (req, res) => {
                     ...(isApproved && { orderSentAt: new Date() }),
                 },
             },
-            { new: true }
+            { returnDocument: "after" }
         );
 
         if (!record) return res.status(404).json({ error: "Tedarik kaydı bulunamadı." });

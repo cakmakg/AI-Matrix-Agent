@@ -16,7 +16,7 @@ export async function fileNode(state, config) {
                 status: "AWAITING_APPROVAL",
                 confidenceScore: state.confidenceScore || 0,
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: "after" }
         );
 
         console.log(`✅ Dosya Ajanı: İçerik MongoDB'ye kaydedildi (threadId: ${threadId})`);

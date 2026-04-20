@@ -113,7 +113,7 @@ export const approveInvoice = async (req, res) => {
         const record = await InvoiceAudit.findOneAndUpdate(
             { threadId },
             { $set: { status: newStatus, humanFeedback: feedback || "" } },
-            { new: true }
+            { returnDocument: "after" }
         );
 
         if (!record) return res.status(404).json({ error: "Fatura kaydı bulunamadı." });

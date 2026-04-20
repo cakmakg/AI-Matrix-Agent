@@ -107,7 +107,7 @@ Analysieren Sie die Rechnung jetzt vollständig und geben Sie Ihre strukturierte
                     status: "AWAITING_APPROVAL",
                 },
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: "after" }
         );
     } catch (err) {
         console.warn("   -> InvoiceAudit kayıt hatası:", err.message);

@@ -123,7 +123,7 @@ Analysieren Sie den Bestand jetzt vollständig und erstellen Sie Ihre strukturie
                     eventType: urgencyLevel === "CRITICAL" ? "STOCKOUT_IMMINENT" : "INVENTORY_LOW",
                 },
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: "after" }
         );
     } catch (err) {
         console.warn("   -> SupplyChainEvent kayıt hatası:", err.message);

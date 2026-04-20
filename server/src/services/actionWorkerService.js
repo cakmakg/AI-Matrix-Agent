@@ -190,7 +190,7 @@ async function processNextAction() {
     const action = await ActionQueue.findOneAndUpdate(
         { status: "PENDING" },
         { $set: { status: "PROCESSING", processedAt: new Date() }, $inc: { attempts: 1 } },
-        { sort: { createdAt: 1 }, new: true }
+        { sort: { createdAt: 1 }, returnDocument: "after" }
     );
 
     if (!action) return;

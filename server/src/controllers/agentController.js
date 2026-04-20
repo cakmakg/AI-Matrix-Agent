@@ -35,36 +35,35 @@ export const streamEvents = (req, res) => {
     req.on("close", () => agentEventBus.removeListener(threadId, listener));
 };
 
-export const analyzeTask = async (req, res) => {
-    try {
-        if (!req.body.task) return res.status(400).json({ error: "Lütfen 'task' belirtin." });
+export const analyzeTask = (req, res) => {
+    if (!req.body.task) return res.status(400).json({ error: "Lütfen 'task' belirtin." });
 
-        // 🛡️ PLAN GUARD: Analiz akışı free (Support Desk) planında kapalıdır.
-        const clientPlan = req.tenant?.client?.plan || "free";
-        if (clientPlan === "free") {
-            const planRules = getPlanRules("free");
-            return res.status(403).json({
-                error: `Bu özellik [${planRules.label}] paketinde kullanılamaz.`,
-                requiredPlan: "pro",
-                currentPlan: clientPlan,
-            });
-        }
-
-        const clientId = req.clientId || "default";
-        const finalState = await app.invoke(
-            { task: req.body.task },
-            { configurable: { tenantConfig: req.tenant?.config, clientId, plan: clientPlan } }
-        );
-        res.json({ success: true, fileSaved: finalState.fileSaved, finalReport: finalState.finalContent });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+    // 🛡️ PLAN GUARD: Analiz akışı free (Support Desk) planında kapalıdır.
+    const clientPlan = req.tenant?.client?.plan || "free";
+    if (clientPlan === "free") {
+        const planRules = getPlanRules("free");
+        return res.status(403).json({
+            error: `Bu özellik [${planRules.label}] paketinde kullanılamaz.`,
+            requiredPlan: "pro",
+            currentPlan: clientPlan,
+        });
     }
+
+    const threadId = uuidv4();
+    const clientId = req.clientId || "default";
+
+    // SSE + HITL destekli async akış — app.invoke() yerine runHotLeadWorkflow kullan
+    runHotLeadWorkflow(threadId, req.body.task, req.tenant?.config, clientId, clientPlan).catch((err) =>
+        console.error("❌ analyzeTask workflow hatası:", err.message)
+    );
+
+    return res.json({ success: true, status: "PROCESSING", threadId });
 };
 
 export const runRndTask = (req, res) => {
     // 🛡️ PLAN GUARD: R&D / INNOVATION_RADAR yalnızca Enterprise planına açıktır.
     const clientPlan = req.tenant?.client?.plan || "free";
-    if (clientPlan !== "enterprise") {
+    if (!["enterprise", "holding"].includes(clientPlan)) {
         const planRules = getPlanRules(clientPlan);
         return res.status(403).json({
             error: `R&D Radar özelliği [${planRules.label}] paketinde kullanılamaz.`,

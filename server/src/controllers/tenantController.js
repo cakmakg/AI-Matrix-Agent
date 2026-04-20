@@ -16,7 +16,7 @@ export const updateTenantIntegrations = async (req, res) => {
         const config = await TenantConfig.findOneAndUpdate(
             { clientId: req.tenant.client._id },
             { $set: updateObj },
-            { new: true, upsert: true }
+            { returnDocument: "after", upsert: true }
         );
         res.json({ success: true, integrations: config.integrations });
     } catch (err) {
@@ -46,7 +46,7 @@ export const updateTenantConfig = async (req, res) => {
         const config = await TenantConfig.findOneAndUpdate(
             { clientId: req.tenant.client._id },
             { $set: updateObj },
-            { new: true, upsert: true }
+            { returnDocument: "after", upsert: true }
         );
         res.json({ success: true, config });
     } catch (err) {

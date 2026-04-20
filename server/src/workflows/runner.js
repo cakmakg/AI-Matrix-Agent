@@ -190,7 +190,7 @@ export async function runHotLeadWorkflow(threadId, task, tenantConfig, clientId 
                         content: pendingContent,
                         status: "AWAITING_APPROVAL",
                     },
-                    { upsert: true, new: true }
+                    { upsert: true, returnDocument: "after" }
                 );
                 console.log(`   💾 MongoDB upsert OK — threadId: ${threadId}, clientId: ${clientId}`);
             } catch (dbErr) {
@@ -314,7 +314,7 @@ export async function runRevisionWorkflow(threadId, tenantConfig, clientId = "de
             await Report.findOneAndUpdate(
                 { threadId, clientId },
                 { content: pendingContent, status: "AWAITING_APPROVAL" },
-                { upsert: true, new: true }
+                { upsert: true, returnDocument: "after" }
             );
 
             emitToThread(threadId, {

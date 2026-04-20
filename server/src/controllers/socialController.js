@@ -73,7 +73,7 @@ export async function connectAccount(req, res) {
                 isConnected: true,
                 lastSynced: new Date(),
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: "after" }
         );
 
         const { accessToken: _a, accessTokenSecret: _b, refreshToken: _c, ...safe } = doc.toObject();

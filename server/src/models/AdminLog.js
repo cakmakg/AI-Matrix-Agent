@@ -21,6 +21,7 @@ const AdminLogSchema = new mongoose.Schema(
                 "TENANT_DELETED",
                 "PLAN_CHANGED",
                 "TENANT_THROTTLED",
+                "TENANT_UNTHROTTLED",
                 "IP_BANNED",
                 "IP_UNBANNED",
                 "WORKFLOW_RETRIED",
