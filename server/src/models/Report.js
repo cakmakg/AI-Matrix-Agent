@@ -40,4 +40,6 @@ const ReportSchema = new mongoose.Schema(
     }
 );
 
+ReportSchema.index({ task: "text", content: "text" });
+
 export const Report = mongoose.model("Report", ReportSchema);

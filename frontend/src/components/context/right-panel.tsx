@@ -18,7 +18,7 @@ export const RightPanel = () => {
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 shrink-0">
                 <div className="flex items-center gap-2">
                     <PanelRight size={13} className="text-white/25" />
-                    <span className="font-mono text-[8px] text-white/25 uppercase tracking-widest">Context Panel</span>
+                    <span className="font-mono text-[8px] text-white/25 uppercase tracking-widest">Kontext-Panel</span>
                 </div>
                 {drawerItem && (
                     <button
@@ -47,10 +47,10 @@ export const RightPanel = () => {
                             </div>
                             <div>
                                 <p className="font-mono text-[10px] text-white/20 tracking-wide">
-                                    Select an item from Inbox
+                                    Wählen Sie einen Eintrag aus dem Posteingang
                                 </p>
                                 <p className="font-mono text-[8px] text-white/12 mt-1.5 leading-relaxed">
-                                    Reports, support tickets, and campaign<br />drafts will appear here for review
+                                    Berichte, Support-Tickets und Kampagnen-<br />entwürfe erscheinen hier zur Prüfung
                                 </p>
                             </div>
                         </motion.div>
@@ -76,7 +76,7 @@ export const RightPanel = () => {
                             )}
                             {drawerItem.type === "mission" && (
                                 <div className="flex flex-col h-full px-4 py-3">
-                                    <p className="font-mono text-[8px] text-white/30 uppercase tracking-widest mb-3">Mission Archive</p>
+                                    <p className="font-mono text-[8px] text-white/30 uppercase tracking-widest mb-3">Auftragsarchiv</p>
                                     <p className="font-mono text-[11px] text-white/70 mb-2">{drawerItem.mission.task}</p>
                                     <div className="flex-1 overflow-y-auto scrollbar-hide text-white/50 font-mono text-[10px] leading-relaxed">
                                         {drawerItem.mission.content ?? drawerItem.mission.contentPreview}

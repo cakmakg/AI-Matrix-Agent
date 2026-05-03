@@ -830,3 +830,19 @@ frontend/src/
 | **Frontend Component** | 13 (admin/ klasörü) | 2 (page.tsx, sidebar.tsx) |
 | **Frontend Store** | 1 (adminSlice.ts) | 1 (types.ts) |
 | **TOPLAM** | **21 yeni dosya** | **10 güncelleme** |
+
+
+ Gokhan@DESKTOP-C2EQ99P MINGW64 ~/Desktop/AI-Agents/Agent-Matrix-Claude/server (main)
+$ node scripts/create-admin.js
+[dotenv@17.3.1] injecting env (30) from .env -- tip: � encrypt with Dotenvx: htt
+ps://dotenvx.com
+✅ MongoDB bağlandı
+
+� Mevcut hesap admin olarak güncellendi:
+   E-posta : admin@agentmatrix.io
+   Slug    : admin
+   API Key : sk-admin-7242fb2a22f23e83
+   Şifre   : Admin1234!  (değiştirildi)
+
+� Frontend'de bu e-posta + şifre ile giriş yap.
+   Sidebar'da kırmızı 'GOD MODE' butonu görünecek.

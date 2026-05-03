@@ -63,7 +63,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
                     if (prev && prev !== skipFirst) get().setAgentStatus(prev, "SUCCESS");
                     get().setAgentStatus("hitl", "ACTIVE");
                     get().setActiveAgent("hitl");
-                    get().addChatMessage({ role: "alert", content: "Rapor hazır — HITL onayı bekleniyor. Inbox'tan inceleyin.", timestamp: getTimestamp(), phase: "AWAITING_APPROVAL" });
+                    get().addChatMessage({ role: "alert", content: "Bericht bereit — wartet auf HITL-Genehmigung. Im Posteingang prüfen.", timestamp: getTimestamp(), phase: "AWAITING_APPROVAL" });
 
                     const content = event.pendingContent?.trim();
                     const currentThreadId = get().threadId;
@@ -80,14 +80,14 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
                             .then((r) => r.json())
                             .then((artifact) => {
                                 if (get().threadId !== currentThreadId) return; // stale response — new workflow started
-                                const fetched = artifact.content?.trim() || "*(İçerik hazır — yeniden yükleyin)*";
+                                const fetched = artifact.content?.trim() || "*(Inhalt bereit — bitte neu laden)*";
                                 set({ pendingContent: fetched, workflowPhase: "AWAITING_APPROVAL", drawerItem: { type: "report", threadId: currentThreadId! } });
                                 get().fetchMissions();
                                 get().addAlert({ message: "MISSION COMPLETE — AWAITING YOUR AUTHORIZATION", type: "warning" });
                             })
                             .catch(() => {
                                 if (get().threadId !== currentThreadId) return;
-                                set({ pendingContent: "*(Blueprint hazır — Pull Intel ile yükleyin)*", workflowPhase: "AWAITING_APPROVAL", drawerItem: { type: "report", threadId: currentThreadId! } });
+                                set({ pendingContent: "*(Blueprint bereit — mit Pull Intel laden)*", workflowPhase: "AWAITING_APPROVAL", drawerItem: { type: "report", threadId: currentThreadId! } });
                                 get().addAlert({ message: "MISSION COMPLETE — AWAITING YOUR AUTHORIZATION", type: "warning" });
                             });
                     }
@@ -323,7 +323,7 @@ export const createWorkflowSlice: StateCreator<AgentStore, [], [], WorkflowSlice
             try {
                 let data = await tryFetch(primaryUrl);
                 if (!data && threadId) {
-                    addLog({ timestamp: getTimestamp(), agent: "SYSTEM", message: "ThreadId ile bulunamadı — /latest deneniyor...", level: "WARN" });
+                    addLog({ timestamp: getTimestamp(), agent: "SYSTEM", message: "Nicht über ThreadId gefunden — versuche /latest...", level: "WARN" });
                     data = await tryFetch("/api/artifact/latest");
                 }
                 if (!data) {

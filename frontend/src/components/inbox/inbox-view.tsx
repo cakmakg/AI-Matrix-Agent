@@ -63,10 +63,10 @@ export const InboxView = () => {
     const totalCount    = hitlCount + supportCount + campaignCount;
 
     const tabs: { key: FilterTab; label: string; count: number }[] = [
-        { key: "all",      label: "All",      count: totalCount    },
-        { key: "hitl",     label: "HITL",     count: hitlCount     },
-        { key: "support",  label: "Support",  count: supportCount  },
-        { key: "campaign", label: "Campaign", count: campaignCount },
+        { key: "all",      label: "Alle",      count: totalCount    },
+        { key: "hitl",     label: "HITL",      count: hitlCount     },
+        { key: "support",  label: "Support",   count: supportCount  },
+        { key: "campaign", label: "Kampagne",  count: campaignCount },
     ];
 
     return (
@@ -76,7 +76,7 @@ export const InboxView = () => {
                 <div className="flex items-center gap-3">
                     <Inbox size={16} className="text-neon-blue/70" />
                     <span className="font-mono text-[13px] font-bold text-white/85 uppercase tracking-widest">
-                        Inbox
+                        Posteingang
                     </span>
                     {totalCount > 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-alert-red font-mono text-[9px] font-bold text-white">
@@ -158,16 +158,16 @@ export const InboxView = () => {
                     <div className="flex flex-col items-center justify-center flex-1 gap-4 text-center py-16">
                         <Inbox size={40} className="text-white/20" />
                         <div>
-                            <p className="font-mono text-[13px] text-white/45 font-semibold">Bekleyen öğe yok</p>
+                            <p className="font-mono text-[13px] text-white/45 font-semibold">Keine offenen Einträge</p>
                             <p className="font-mono text-[10px] text-white/30 mt-2">
-                                Yeni görevler ve destek talepleri burada görünecek
+                                Neue Aufgaben und Support-Tickets erscheinen hier
                             </p>
                         </div>
                         <button
                             onClick={() => setActiveView("control")}
                             className="font-mono text-[10px] text-neon-blue/60 hover:text-neon-blue transition-colors mt-1 font-semibold"
                         >
-                            ← Command Center&apos;a Dön
+                            ← Zurück zur Aufgabenzentrale
                         </button>
                     </div>
                 )}

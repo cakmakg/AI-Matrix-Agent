@@ -25,7 +25,7 @@ cd frontend && npm run lint   # ESLint
 
 ### Environment Setup
 Copy `server/.env.example` → `server/.env` and fill in:
-- `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` — AWS Bedrock LLM
+- `ANTHROPIC_API_KEY` — Anthropic API (Claude models)
 - `MONGODB` — MongoDB Atlas connection string
 - `TAVILY_API_KEY` — Web search
 - `GEMINI_API_KEY` — Vector embeddings (Gemini `gemini-embedding-001`, 1536-dim)
@@ -108,8 +108,8 @@ START → guardrail (🛡️ threat detection + input sanitization)
 - **Live workflow**: `pendingContent` set in Zustand store from SSE `workflow_complete` event
 - **After state reset / page reload**: `ReportViewer` auto-fetches from `GET /api/artifact/:threadId` when `pendingContent` is empty; syncs `threadId` + `workflowPhase` back to store
 
-### LLM Model (AWS Bedrock Cross-Region EU)
-All agents use: `eu.anthropic.claude-sonnet-4-5-20250929-v1:0`
+### LLM Model (Anthropic API)
+All agents use: `claude-sonnet-4-6`
 Vector embeddings: Google Gemini `gemini-embedding-001` (1536-dim, free tier)
 
 ---
@@ -170,7 +170,7 @@ Defined in `server/src/config/plans.js`. Each tenant has a `plan` and a `product
 | **SupportTicket.js** | `platform, from, subject, category, draftResponse, ragSources, aiSummary` | n8n webhook integration: incoming support tickets from email, YouTube, Slack, etc. |
 | **SystemPrompt.js** | `agentName (ANALYZER/CRITIC/WRITER), promptText, clientId` | Per-tenant customizable agent instructions. Unique index: `(agentName, clientId)`. Cached in-memory with 60s TTL. |
 | **TenantConfig.js** | `clientId, configObject` | Multi-tenant configuration overrides (skills, feature flags, persona). `configObject.throttled` disables LLM calls for that tenant. `configObject.socialAuto` enables social autopilot: `{ enabled, platform, topics[], postCount, requireHITL, integrations: { telegramBotToken, telegramChatId } }`. |
-| **Transaction.js** | `clientId, agentId, inputTokens, outputTokens, costUsd, model` | LLM token cost tracking for Bedrock. |
+| **Transaction.js** | `clientId, agentId, inputTokens, outputTokens, costUsd, model` | LLM token cost tracking for Anthropic API. |
 | **WorkflowSnapshot.js** | `threadId, step, nodeName, clientId, tenantSlug, output (truncated), keyState` | Zaman Makinesi: per-node LangGraph state snapshot. Unique index: `(threadId, step)`. TTL: 7 days. |
 
 ---
@@ -426,7 +426,7 @@ A highly autonomous Multi-Agent AI System designed to operate as a complete digi
 **Backend:**
 - Runtime & Framework: Node.js (v18+), Express.js
 - AI Orchestration: LangGraph (StateGraph), LangChain
-- LLM: Anthropic Claude 3.5 Sonnet via AWS Bedrock (EU cross-region)
+- LLM: Anthropic Claude Sonnet 4.6 via Anthropic API (`claude-sonnet-4-6`)
 - Embeddings: Google Gemini `gemini-embedding-001`
 - Tools: Tavily Search API, node-cron
 - Database: MongoDB Atlas

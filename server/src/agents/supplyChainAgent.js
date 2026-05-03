@@ -99,7 +99,7 @@ Analysieren Sie den Bestand jetzt vollständig und erstellen Sie Ihre strukturie
         response.usage_metadata?.input_tokens || 0,
         response.usage_metadata?.output_tokens || 0,
         "SUPPLY_CHAIN", state.threadId || "SYSTEM", clientId,
-        "eu.anthropic.claude-sonnet-4-5-20250929-v1:0"
+        "claude-sonnet-4-6"
     ).catch(() => {});
 
     // MongoDB'ye kaydet

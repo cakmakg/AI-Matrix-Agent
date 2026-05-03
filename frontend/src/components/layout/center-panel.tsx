@@ -11,6 +11,14 @@ import {
     Inbox, Info,
 } from "lucide-react";
 import { TaskBoard } from "@/components/mission-control/task-board";
+import { AnalyticsHub } from "@/components/analytics/analytics-hub";
+import { BerichteView } from "@/components/reports/berichte-view";
+import { KnowledgeView } from "@/components/knowledge/knowledge-view";
+import { SkillsView } from "@/components/skills/skills-view";
+import { SocialView } from "@/components/social/social-view";
+import { SecurityView } from "@/components/security/security-view";
+import { SettingsView } from "@/components/settings/settings-view";
+import { CfoDashboard } from "@/components/finance/cfo-dashboard";
 
 /* ══════════════════════════════════════════════════════════════
    PRODUCT INPUT CONFIG
@@ -63,19 +71,19 @@ export type TrackId =
     | "holding";     // Tüm ajanlar
 
 export const PRODUCT_INPUT: Record<SaaSProduct, ProductInputConfig> = {
-    /* ── CX & Destek ───────────────────────────────────────────── */
+    /* ── CX & Support ──────────────────────────────────────────── */
     cx: {
-        label:       "Müşteri Deneyimi",
+        label:       "Customer Experience",
         inputType:   "text",
-        placeholder: "Müşteri mesajını yapıştırın — Ajan RAG bilgi tabanından yanıt üretir",
+        placeholder: "Kundennachricht einfügen — Agent erzeugt Antwort aus RAG-Wissensdatenbank",
         taskPrefix:  "",
         track:       "cx",
-        hint:        "💡 Gelen n8n pipeline mesajları otomatik işlenir. Burada manuel test yapabilirsiniz.",
+        hint:        "💡 Eingehende n8n-Pipeline-Nachrichten werden automatisch verarbeitet. Hier können Sie manuell testen.",
     },
 
-    /* ── Growth & Revenue ──────────────────────────────────────── */
+    /* ── Wachstum & Umsatz ─────────────────────────────────────── */
     growth: {
-        label:      "Büyüme & Gelir",
+        label:      "Wachstum & Umsatz",
         inputType:  "text",
         placeholder: "",
         taskPrefix:  "",
@@ -86,47 +94,47 @@ export const PRODUCT_INPUT: Record<SaaSProduct, ProductInputConfig> = {
                 label:       "Twitter/X",
                 icon:        "🐦",
                 inputType:   "text",
-                placeholder: "Thread konusu — Ajan web araştırması yapar ve 5-7 tweet üretir",
+                placeholder: "Thread-Thema — Agent recherchiert im Web und erzeugt 5-7 Tweets",
                 taskPrefix:  "TWITTER: ",
                 track:       "social",
-                hint:        "Çıktı: Her tweet max 280 karakter, --- ile ayrılmış thread formatında",
+                hint:        "Ausgabe: jeder Tweet max. 280 Zeichen, im Thread-Format mit --- getrennt",
             },
             {
                 key:         "linkedin",
                 label:       "LinkedIn",
                 icon:        "💼",
                 inputType:   "text",
-                placeholder: "Post konusu — Ajan hook + 200 kelime gövde + hashtag üretir",
+                placeholder: "Post-Thema — Agent erzeugt Hook + 200-Wörter-Body + Hashtags",
                 taskPrefix:  "LINKEDIN: ",
                 track:       "social",
-                hint:        "Çıktı: B2B hedefli, CTO/Founder kitlesine yönelik profesyonel içerik",
+                hint:        "Ausgabe: B2B-Zielgruppe, professioneller Inhalt für CTO/Founder",
             },
             {
                 key:         "outreach",
-                label:       "Soğuk Satış",
+                label:       "Cold Outreach",
                 icon:        "🎯",
                 inputType:   "url",
-                placeholder: "https://hedef-sirket.com — Ajan siteyi analiz ederek kişisel outreach yazar",
+                placeholder: "https://ziel-firma.de — Agent analysiert die Website und schreibt personalisiertes Outreach",
                 taskPrefix:  "COLD_OUTREACH: ",
                 track:       "outreach",
-                hint:        "Ajan: Web Araştırma → İçerik Yazarı → Kalite QA → Onay",
+                hint:        "Pipeline: Web-Recherche → Content-Writer → QA → Genehmigung",
             },
             {
                 key:         "rfp",
-                label:       "İhale Yanıtı",
+                label:       "RFP-Antwort",
                 icon:        "📋",
                 inputType:   "file",
-                placeholder: "İhale belgesini yükle (.pdf, .docx) — RAG bilgi tabanından yanıt üretilir",
+                placeholder: "Ausschreibungsdokument hochladen (.pdf, .docx) — Antwort aus RAG-Wissensdatenbank",
                 taskPrefix:  "RFP_RESPONSE: ",
                 track:       "rfp",
-                hint:        "⚡ Scraper kullanılmaz — RAG bilgi tabanınız bu yanıtın kalitesini belirler",
+                hint:        "⚡ Kein Scraper — die Qualität Ihrer RAG-Wissensdatenbank bestimmt das Ergebnis",
             },
         ],
     },
 
-    /* ── Strategy & Innovation ─────────────────────────────────── */
+    /* ── Strategie & Innovation ────────────────────────────────── */
     strategy: {
-        label:      "Strateji & İnovasyon",
+        label:      "Strategie & Innovation",
         inputType:  "text",
         placeholder: "",
         taskPrefix:  "",
@@ -134,40 +142,40 @@ export const PRODUCT_INPUT: Record<SaaSProduct, ProductInputConfig> = {
         subTabs: [
             {
                 key:         "competitor",
-                label:       "Rakip Radar",
+                label:       "Wettbewerbs-Radar",
                 icon:        "⚔️",
                 inputType:   "url",
-                placeholder: "https://rakip-sirket.com — Ajan siteyi tarar, mimari blueprint üretir",
+                placeholder: "https://wettbewerber.com — Agent scannt die Site und erstellt Architektur-Blueprint",
                 taskPrefix:  "INNOVATION_RADAR: ",
                 track:       "innovation",
-                hint:        "⚡ Yazar & Kalite QA KULLANILMAZ — Mimar Ajan direkt blueprint oluşturur",
+                hint:        "⚡ Writer & QA NICHT verwendet — Architect erstellt direkt das Blueprint",
             },
             {
                 key:         "trend",
-                label:       "Trend Radar",
+                label:       "Trend-Radar",
                 icon:        "🌊",
                 inputType:   "text",
-                placeholder: "Hangi sektör taransın? — Örn: Wearable Sağlık Teknolojisi 2025",
+                placeholder: "Welche Branche soll gescannt werden? — Bsp.: Wearable Health Tech 2026",
                 taskPrefix:  "TREND_RADAR: ",
                 track:       "trend",
-                hint:        "Ajan: Web Araştırma → Meta-trend → İnovatör → 3 yeni ürün konsepti",
+                hint:        "Pipeline: Web-Recherche → Meta-Trend → Innovator → 3 neue Produktkonzepte",
             },
             {
                 key:         "stress",
-                label:       "Stres Testi",
+                label:       "Stresstest",
                 icon:        "💥",
                 inputType:   "file",
-                placeholder: "İş planı veya pitch deck yükle (.pdf, .docx)",
+                placeholder: "Businessplan oder Pitch Deck hochladen (.pdf, .docx)",
                 taskPrefix:  "BUSINESS_STRESS_TEST: ",
                 track:       "stress",
-                hint:        "⚡ Web araştırması YAPILMAZ — Analizci doğrudan dökümanı analiz eder",
+                hint:        "⚡ Keine Web-Recherche — Analyzer prüft direkt das Dokument",
             },
         ],
     },
 
-    /* ── Finance & Operations ──────────────────────────────────── */
+    /* ── Finanzen & Operations ─────────────────────────────────── */
     backoffice: {
-        label:      "Finans & Operasyon",
+        label:      "Finanzen & Operations",
         inputType:  "text",
         placeholder: "",
         taskPrefix:  "",
@@ -175,45 +183,45 @@ export const PRODUCT_INPUT: Record<SaaSProduct, ProductInputConfig> = {
         subTabs: [
             {
                 key:         "audit",
-                label:       "Fatura Denetim",
+                label:       "Rechnungsaudit",
                 icon:        "🧾",
                 inputType:   "text",
-                placeholder: "Denetim talimatı — Örn: Q1 faturaları anomali ve vergi riski için tara",
+                placeholder: "Audit-Anweisung — Bsp.: Q1-Rechnungen auf Anomalien und Steuerrisiken prüfen",
                 taskPrefix:  "INVOICE_PROCESSING: ",
                 track:       "finance",
-                hint:        "Ajan: Denetçi → Kayıt → Onay bekleniyor (Analizci/Yazar kullanılmaz)",
+                hint:        "Pipeline: Auditor → Speicher → Wartet auf Genehmigung (Analyzer/Writer nicht aktiv)",
             },
             {
                 key:         "supply",
-                label:       "Tedarik Zinciri",
+                label:       "Lieferkette",
                 icon:        "📦",
                 inputType:   "text",
-                placeholder: "Stok durumu talimatı — Örn: Kritik parçalarda minimum stok uyarısı ver",
+                placeholder: "Lagerstatus-Anweisung — Bsp.: Mindestbestandswarnung für kritische Teile",
                 taskPrefix:  "STOCK_CHECK: ",
                 track:       "supply",
-                hint:        "Ajan: Tedarik Zinciri → Kayıt → Onay (tedarikçiye otomatik e-posta seçeneği)",
+                hint:        "Pipeline: SupplyChain → Speicher → Genehmigung (optionale automatische Lieferanten-E-Mail)",
             },
         ],
     },
 
     /* ── Engineering & IT ──────────────────────────────────────── */
     engineering: {
-        label:      "Mühendislik & BT",
+        label:      "Engineering & IT",
         inputType:  "text",
-        placeholder: "Proje gereksinimlerini girin — Örn: Next.js + MongoDB B2B SaaS mimarisi tasarla",
+        placeholder: "Projektanforderungen eingeben — Bsp.: Architektur für Next.js + MongoDB B2B-SaaS entwerfen",
         taskPrefix:  "",
         track:       "engineering",
-        hint:        "⚡ Yazar/Kalite QA KULLANILMAZ — Mimar Ajan direkt Master Blueprint üretir",
+        hint:        "⚡ Writer/QA NICHT verwendet — Architect erzeugt direkt das Master-Blueprint",
     },
 
     /* ── The Holding ───────────────────────────────────────────── */
     holding: {
         label:      "Holding / God Mode",
         inputType:  "text",
-        placeholder: "Tüm departmanlara komut gönderin — 16 ajan hazır",
+        placeholder: "Befehle an alle Abteilungen senden — 16 Agenten verfügbar",
         taskPrefix:  "",
         track:       "holding",
-        hint:        "Tüm FREN track'leri aktif. Prefix kullanarak doğrudan yönlendirebilirsiniz.",
+        hint:        "Alle FREN-Tracks aktiv. Mit Prefix können Sie direkt routen.",
     },
 };
 
@@ -221,13 +229,13 @@ export const PRODUCT_INPUT: Record<SaaSProduct, ProductInputConfig> = {
    PHASE BADGE CONFIG
 ══════════════════════════════════════════════════════════════ */
 const PHASE_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
-    IDLE:              { label: "Hazır",             bg: "#F9FAFB", text: "#6B7280", border: "#E5E7EB" },
-    DISPATCHING:       { label: "Gönderiliyor...",   bg: "#EEF2FF", text: "#6366F1", border: "#C7D2FE" },
-    RUNNING:           { label: "⚡ Çalışıyor",      bg: "#D1FAE5", text: "#059669", border: "#6EE7B7" },
-    AWAITING_APPROVAL: { label: "⏳ Onay Bekliyor",  bg: "#FEF3C7", text: "#D97706", border: "#FCD34D" },
-    PUBLISHING:        { label: "Yayınlanıyor...",   bg: "#DBEAFE", text: "#2563EB", border: "#93C5FD" },
-    DELIVERED:         { label: "✓ Tamamlandı",      bg: "#D1FAE5", text: "#059669", border: "#6EE7B7" },
-    REVISING:          { label: "↩ Revize ediliyor", bg: "#FEE2E2", text: "#DC2626", border: "#FCA5A5" },
+    IDLE:              { label: "Bereit",                    bg: "#F9FAFB", text: "#6B7280", border: "#E5E7EB" },
+    DISPATCHING:       { label: "Wird gesendet...",          bg: "#EEF2FF", text: "#6366F1", border: "#C7D2FE" },
+    RUNNING:           { label: "⚡ Aktiv",                  bg: "#D1FAE5", text: "#059669", border: "#6EE7B7" },
+    AWAITING_APPROVAL: { label: "⏳ Wartet auf Genehmigung", bg: "#FEF3C7", text: "#D97706", border: "#FCD34D" },
+    PUBLISHING:        { label: "Wird veröffentlicht...",    bg: "#DBEAFE", text: "#2563EB", border: "#93C5FD" },
+    DELIVERED:         { label: "✓ Abgeschlossen",           bg: "#D1FAE5", text: "#059669", border: "#6EE7B7" },
+    REVISING:          { label: "↩ Wird überarbeitet",       bg: "#FEE2E2", text: "#DC2626", border: "#FCA5A5" },
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -292,6 +300,20 @@ export function CenterPanel() {
     const phase       = PHASE_CONFIG[workflowPhase] ?? PHASE_CONFIG.IDLE;
     const isChatView  = activeView === "chat";
     const isCtrlView  = activeView === "control";
+    const isWorkView  = isChatView || isCtrlView;
+
+    /** Header-Titel & Slogan je nach Active View */
+    const VIEW_HEADERS: Partial<Record<typeof activeView, { title: string; subtitle: string; icon: string }>> = {
+        analytics:  { title: "Analytics & Diagramme",      subtitle: "Cross-Departmental Visualisierungen", icon: "📊" },
+        berichte:   { title: "Berichte-Archiv",            subtitle: "Volltext-Suche · Filter · Export",    icon: "📁" },
+        cfo:        { title: "CFO-Konsole",                subtitle: "Finanzen & Token-Kosten",             icon: "💰" },
+        knowledge:  { title: "Wissensdatenbank (RAG)",     subtitle: "PDF · URL · Vektorsuche",             icon: "📚" },
+        skills:     { title: "Skill-Marktplatz",           subtitle: "Plugins & Tools für Agenten",         icon: "🧩" },
+        social:     { title: "Social Media",               subtitle: "Geplante Posts & Kanäle",             icon: "📱" },
+        security:   { title: "Sicherheit (MOAT)",          subtitle: "Bedrohungserkennung & Audit",         icon: "🛡️" },
+        settings:   { title: "Einstellungen",              subtitle: "Persona · Prompts · Konfiguration",   icon: "⚙️" },
+    };
+    const viewHeader  = VIEW_HEADERS[activeView];
 
     const handleSend = async () => {
         if (!input.trim() || sending) return;
@@ -326,44 +348,52 @@ export function CenterPanel() {
                 <div className="flex items-center gap-3 min-w-0">
                     <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0"
-                        style={{ background: theme.accentLight }}
+                        style={{ background: viewHeader ? "#F3F4F6" : theme.accentLight }}
                     >
-                        {theme.icon}
+                        {viewHeader?.icon ?? theme.icon}
                     </div>
                     <div className="min-w-0">
-                        <h1 className="text-[14px] font-bold text-gray-900 leading-tight truncate">{cfg.label}</h1>
-                        <p className="text-[11px] text-gray-400">{theme.slogan}</p>
+                        <h1 className="text-[14px] font-bold text-gray-900 leading-tight truncate">
+                            {viewHeader?.title ?? cfg.label}
+                        </h1>
+                        <p className="text-[11px] text-gray-400">
+                            {viewHeader?.subtitle ?? theme.slogan}
+                        </p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                    {/* Phase badge */}
-                    <span
-                        className="text-[11px] font-semibold px-3 py-1 rounded-full border"
-                        style={{ background: phase.bg, color: phase.text, borderColor: phase.border }}
-                    >
-                        {phase.label}
-                    </span>
-                    {/* View switcher */}
-                    <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
-                        <button
-                            onClick={() => setActiveView("chat")}
-                            className={`px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
-                                isChatView ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"
-                            }`}
+                    {/* Phase badge — nur in Workflow-Views */}
+                    {isWorkView && (
+                        <span
+                            className="text-[11px] font-semibold px-3 py-1 rounded-full border"
+                            style={{ background: phase.bg, color: phase.text, borderColor: phase.border }}
                         >
-                            💬 Chat
-                        </button>
-                        <button
-                            onClick={() => setActiveView("control")}
-                            className={`px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
-                                isCtrlView ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"
-                            }`}
-                        >
-                            📋 Görevler
-                            {loading && <RefreshCw size={9} className="inline ml-1 animate-spin" />}
-                        </button>
-                    </div>
+                            {phase.label}
+                        </span>
+                    )}
+                    {/* View switcher — nur in Workflow-Views (Chat / Aufgaben) */}
+                    {isWorkView && (
+                        <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+                            <button
+                                onClick={() => setActiveView("chat")}
+                                className={`px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
+                                    isChatView ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"
+                                }`}
+                            >
+                                💬 Chat
+                            </button>
+                            <button
+                                onClick={() => setActiveView("control")}
+                                className={`px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
+                                    isCtrlView ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"
+                                }`}
+                            >
+                                📋 Aufgaben
+                                {loading && <RefreshCw size={9} className="inline ml-1 animate-spin" />}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </header>
 
@@ -445,7 +475,7 @@ export function CenterPanel() {
                                     style={{ background: "#FEF3C7", borderColor: "#FCD34D", color: "#92400E" }}
                                 >
                                     <Inbox size={13} />
-                                    Görevi incele ve onayla →
+                                    Aufgabe prüfen und genehmigen →
                                 </button>
                             </motion.div>
                         )}
@@ -524,7 +554,7 @@ export function CenterPanel() {
                                     onKeyDown={e => {
                                         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
                                     }}
-                                    placeholder={placeholder || "Görevinizi yazın ve Enter'a basın..."}
+                                    placeholder={placeholder || "Aufgabe eingeben und Enter drücken..."}
                                     rows={3}
                                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-12 text-sm text-gray-800 placeholder:text-gray-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 resize-none transition-all leading-relaxed"
                                 />
@@ -557,14 +587,14 @@ export function CenterPanel() {
                                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all"
                             >
                                 <Zap size={12} />
-                                Ar-Ge Radar
+                                R&D-Radar
                             </button>
                             <button
                                 onClick={pullLatestArtifact}
                                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all"
                             >
                                 <Download size={12} />
-                                Son Rapor
+                                Letzter Bericht
                             </button>
                         </div>
 
@@ -586,29 +616,41 @@ export function CenterPanel() {
                         className="flex items-center justify-between px-5 py-2.5 shrink-0"
                         style={{ background: "#FFFFFF", borderBottom: "1px solid #F3F4F6" }}
                     >
-                        <p className="text-[12px] font-semibold text-gray-700">Bekleyen Görevler & Arşiv</p>
+                        <p className="text-[12px] font-semibold text-gray-700">Offene Aufgaben & Archiv</p>
                         <button
                             onClick={handleRefresh}
                             disabled={loading}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all disabled:opacity-50"
                         >
                             <RefreshCw size={11} className={loading ? "animate-spin" : ""} />
-                            Yenile
+                            Aktualisieren
                         </button>
                     </div>
                     <TaskBoard activeTab={activeTaskTab} onTabChange={setActiveTaskTab} />
                 </div>
             )}
 
-            {/* ── OTHER VIEWS ── */}
-            {!isChatView && !isCtrlView && (
+            {/* ── ANALYTICS HUB VIEW ── */}
+            {activeView === "analytics" && <AnalyticsHub />}
+
+            {/* ── BERICHTE-ARCHIV VIEW ── */}
+            {activeView === "berichte" && <BerichteView />}
+
+            {/* ── FAZ 5: WEITERE VIEWS ── */}
+            {activeView === "cfo"      && <div className="flex-1 overflow-y-auto scrollbar-styled"><CfoDashboard /></div>}
+            {activeView === "knowledge" && <div className="flex-1 overflow-y-auto scrollbar-styled"><KnowledgeView /></div>}
+            {activeView === "skills"   && <div className="flex-1 overflow-y-auto scrollbar-styled"><SkillsView /></div>}
+            {activeView === "social"   && <div className="flex-1 overflow-y-auto scrollbar-styled"><SocialView /></div>}
+            {activeView === "security" && <div className="flex-1 overflow-y-auto scrollbar-styled"><SecurityView /></div>}
+            {activeView === "settings" && <div className="flex-1 overflow-y-auto scrollbar-styled"><SettingsView /></div>}
+            {(activeView === "auditor" || activeView === "supply") && (
                 <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center">
-                        <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-2xl mx-auto mb-3">
-                            📄
+                    <div className="text-center space-y-2">
+                        <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl mx-auto">
+                            {activeView === "auditor" ? "🔍" : "📦"}
                         </div>
-                        <p className="text-[13px] font-medium text-gray-500">Bu panel yakında geliyor</p>
-                        <p className="text-[11px] text-gray-400 mt-1">Soldaki navigasyondan farklı bir görünüm seçin</p>
+                        <p className="font-mono text-[13px] text-white/40">Diese Konsole erscheint in Kürze</p>
+                        <p className="font-mono text-[10px] text-white/25">Nutzbar über Analytics &gt; Rechnungs-Audit / Lager</p>
                     </div>
                 </div>
             )}

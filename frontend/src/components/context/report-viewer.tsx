@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, XCircle, Loader2, FileText } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MermaidBlock } from "@/components/markdown/mermaid-block";
 import { useAgentStore } from "@/store/agent-store";
 import { getProductTheme } from "@/config/product-theme";
 
@@ -90,13 +91,13 @@ export const ReportViewer = ({ threadId }: Props) => {
                 if (data.status) setReportStatus(data.status);
                 if (!pendingContent?.trim()) {
                     const text = (data.content || "").trim();
-                    setFetchedContent(text || "*(Icerik bulunamadi)*");
+                    setFetchedContent(text || "*(Inhalt nicht gefunden)*");
                     if (text) {
                         useAgentStore.setState({ pendingContent: text, workflowPhase: "AWAITING_APPROVAL" });
                     }
                 }
             })
-            .catch(() => { if (!pendingContent?.trim()) setFetchedContent("*(Icerik yuklenemedi)*"); })
+            .catch(() => { if (!pendingContent?.trim()) setFetchedContent("*(Inhalt konnte nicht geladen werden)*"); })
             .finally(() => setFetching(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [threadId]);
@@ -177,7 +178,7 @@ export const ReportViewer = ({ threadId }: Props) => {
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 shrink-0">
                 <FileText size={13} className="text-alert-red/70 shrink-0" />
                 <div className="flex-1 min-w-0">
-                    <p className="font-mono text-[8px] text-alert-red/60 uppercase tracking-widest">HITL Gate</p>
+                    <p className="font-mono text-[8px] text-alert-red/60 uppercase tracking-widest">HITL-Gate</p>
                     <p className="font-mono text-[10px] text-white/70 truncate mt-0.5">
                         Thread: {threadId.slice(0, 16)}...
                     </p>
@@ -198,7 +199,7 @@ export const ReportViewer = ({ threadId }: Props) => {
                 {fetching ? (
                     <div className="flex items-center justify-center h-32 gap-2 text-white/25">
                         <Loader2 size={14} className="animate-spin" />
-                        <span className="font-mono text-[10px]">Loading report from database...</span>
+                        <span className="font-mono text-[10px]">Bericht wird aus der Datenbank geladen...</span>
                     </div>
                 ) : content ? (
                     <div className="prose prose-invert prose-sm max-w-none
@@ -208,14 +209,14 @@ export const ReportViewer = ({ threadId }: Props) => {
                         prose-pre:bg-white/4 prose-pre:border prose-pre:border-white/8 prose-pre:rounded-lg
                         prose-strong:text-white/85 prose-li:text-white/60 prose-li:text-[11px]
                         prose-a:text-neon-blue prose-blockquote:border-neon-blue/30 prose-blockquote:text-white/40">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code: MermaidBlock as React.ComponentType<React.ComponentProps<"code">> }}>
                             {content}
                         </ReactMarkdown>
                     </div>
                 ) : (
                     <div className="flex items-center justify-center h-32 gap-2 text-white/25">
                         <Loader2 size={14} className="animate-spin" />
-                        <span className="font-mono text-[10px]">Loading report...</span>
+                        <span className="font-mono text-[10px]">Bericht wird geladen...</span>
                     </div>
                 )}
             </div>
@@ -257,13 +258,13 @@ export const ReportViewer = ({ threadId }: Props) => {
                                                disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                 >
                                     {submitting ? <Loader2 size={10} className="animate-spin" /> : <XCircle size={10} />}
-                                    Override
+                                    Ablehnen
                                 </button>
                                 <button
                                     onClick={() => { setRejectMode(false); setFeedback(""); }}
                                     className="px-4 py-2 rounded font-mono text-[9px] text-white/40 border border-white/10 hover:border-white/20 transition-colors"
                                 >
-                                    Cancel
+                                    Abbrechen
                                 </button>
                             </div>
                         </>
@@ -272,7 +273,7 @@ export const ReportViewer = ({ threadId }: Props) => {
                             <input
                                 value={feedback}
                                 onChange={(e) => setFeedback(e.target.value)}
-                                placeholder="Optional feedback note..."
+                                placeholder="Optionale Notiz..."
                                 className="w-full bg-white/4 border border-white/10 rounded px-3 py-2 font-mono text-[10px] text-white/70
                                            placeholder:text-white/20 outline-none focus:border-neon-green/30"
                             />
@@ -295,7 +296,7 @@ export const ReportViewer = ({ threadId }: Props) => {
                                     className="px-4 py-2.5 rounded font-mono text-[9px] font-bold uppercase tracking-wider
                                                border border-alert-red/30 text-alert-red/60 hover:bg-alert-red/8 hover:border-alert-red/50 transition-all"
                                 >
-                                    Override
+                                    Ablehnen
                                 </button>
                             </div>
                         </>
@@ -306,7 +307,7 @@ export const ReportViewer = ({ threadId }: Props) => {
             {isActivelyPublishing && (
                 <div className="px-4 py-4 border-t border-white/5 shrink-0 flex items-center justify-center gap-2">
                     <Loader2 size={12} className="animate-spin text-neon-blue" />
-                    <span className="font-mono text-[10px] text-neon-blue">Publishing payload...</span>
+                    <span className="font-mono text-[10px] text-neon-blue">Wird veröffentlicht...</span>
                 </div>
             )}
 

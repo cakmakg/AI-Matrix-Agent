@@ -1,7 +1,7 @@
 // ── Primitive Types ──
 export type AgentStatus = "IDLE" | "THINKING" | "ACTIVE" | "SUCCESS" | "ERROR";
 export type WorkflowPhase = "IDLE" | "DISPATCHING" | "RUNNING" | "AWAITING_APPROVAL" | "PUBLISHING" | "DELIVERED" | "REVISING";
-export type ActiveView = "chat" | "control" | "cfo" | "knowledge" | "settings" | "skills" | "social" | "security" | "auditor" | "supply" | "admin";
+export type ActiveView = "chat" | "control" | "analytics" | "berichte" | "cfo" | "knowledge" | "settings" | "skills" | "social" | "security" | "auditor" | "supply" | "admin";
 export type SocialPlatform = "twitter" | "instagram" | "linkedin" | "facebook" | "google_ads";
 export type SaaSProduct = "cx" | "growth" | "strategy" | "backoffice" | "engineering" | "holding";
 

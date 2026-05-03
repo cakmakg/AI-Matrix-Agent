@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     ChevronDown, ChevronRight, CheckCircle2, XCircle,
     Loader2, Eye, Edit3, FileText, Mail, AlertTriangle,
-    Database, Clock, Activity, X,
+    Database, Clock, Activity, X, Zap, ShieldAlert, BookCheck,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -56,6 +56,35 @@ function AccordionSection({ title, icon, defaultOpen = false, children }: {
     );
 }
 
+/* FREN track detection from task prefix */
+function detectFren(task: string | null | undefined): { label: string; color: string } | null {
+    if (!task) return null;
+    if (/^INVOICE_PROCESSING:/i.test(task))       return { label: "⚡ FREN A — Auditor",       color: "#ffb000" };
+    if (/^STOCK_CHECK:/i.test(task))              return { label: "⚡ FREN B — Lieferkette",   color: "#ff6b35" };
+    if (/^RFP_RESPONSE:/i.test(task))             return { label: "⚡ FREN R — RFP",            color: "#bf5fff" };
+    if (/^COLD_OUTREACH:/i.test(task))            return { label: "⚡ FREN C — Outreach",       color: "#39ff14" };
+    if (/^BUSINESS_STRESS_TEST:/i.test(task))     return { label: "⚡ FREN T — Stresstest",     color: "#00f0ff" };
+    if (/^(TWITTER|LINKEDIN):/i.test(task))       return { label: "⚡ FREN S — Social Media",   color: "#00f0ff" };
+    return null;
+}
+
+/* Anomaly detection from content keywords */
+function detectAnomaly(content: string): boolean {
+    return /FRAUD|ANOMALIE|BETRUG|SUSPICIOUS|PRICE_MISMATCH|DUPLICATE_INVOICE/i.test(content);
+}
+
+/* RAG match extraction from content */
+function extractRagMatch(content: string): string | null {
+    const m = content.match(/#VENDOR-[A-Z0-9-]+/i);
+    return m ? m[0] : null;
+}
+
+/* Days-to-stockout extraction */
+function extractDaysToStockout(content: string): number | null {
+    const m = content.match(/(\d+)\s*(?:Tage?|days?)\s*(?:bis\s*)?(?:Nullbestand|Stockout|stockout)/i);
+    return m ? parseInt(m[1]) : null;
+}
+
 /* ══════════════════════════════════════════════════════════════
    REPORT PANEL (HITL)
 ═══════════════════════════════════════════════════════════════ */
@@ -75,6 +104,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
     const [submitting, setSubmitting] = useState(false);
     const [fetching, setFetching] = useState(false);
     const [fetchedContent, setFetchedContent] = useState<string | null>(null);
+    const [confidenceScore, setConfidenceScore] = useState<number | null>(null);
 
     // Sync store threadId
     useEffect(() => {
@@ -94,6 +124,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
             .then(data => {
                 const text = (data.content || "").trim();
                 setFetchedContent(text || "*(Inhalt nicht gefunden)*");
+                if (data.confidenceScore !== undefined) setConfidenceScore(data.confidenceScore);
                 if (text) useAgentStore.setState({ pendingContent: text, workflowPhase: "AWAITING_APPROVAL" });
             })
             .catch(() => setFetchedContent("*(Inhalt konnte nicht geladen werden)*"))
@@ -133,37 +164,96 @@ function ReportPanel({ threadId }: { threadId: string }) {
     // Workflow step trace
     const steps = ["CEO", "SCR", "ANL", "VZN", "WRT", "QA", "SAVED", "HITL"];
 
+    // Faz 6 metadata
+    const fren        = detectFren(missionMessage);
+    const hasAnomaly  = detectAnomaly(displayContent);
+    const ragMatch    = extractRagMatch(displayContent);
+    const daysToStockout = extractDaysToStockout(displayContent);
+    const confColor   = confidenceScore !== null
+        ? confidenceScore >= 80 ? "#39ff14" : confidenceScore >= 60 ? "#ffb000" : "#ff2d55"
+        : null;
+
     return (
         <div className="flex flex-col h-full bg-white">
+            {/* Anomaly alert banner */}
+            {hasAnomaly && (
+                <div className="flex items-center gap-2.5 px-5 py-2.5 bg-red-50 border-b border-red-200 shrink-0">
+                    <ShieldAlert size={14} className="text-red-600 shrink-0 animate-pulse" />
+                    <span className="text-[12px] font-bold text-red-700 uppercase tracking-wider">
+                        ⚠️ FRAUD ERKANNT — Manuelle Prüfung erforderlich
+                    </span>
+                </div>
+            )}
+
+            {/* Days-to-stockout banner */}
+            {daysToStockout !== null && daysToStockout <= 7 && (
+                <div className="flex items-center gap-2.5 px-5 py-2 bg-orange-50 border-b border-orange-200 shrink-0">
+                    <Clock size={12} className="text-orange-600 shrink-0" />
+                    <span className="text-[11px] font-bold text-orange-700">
+                        Nullbestand in <span className="text-lg font-black">{daysToStockout}</span> Tagen
+                    </span>
+                </div>
+            )}
+
             {/* Top bar */}
             <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-100 shrink-0">
                 <FileText size={13} className="text-amber-500 shrink-0" />
                 <div className="flex-1 min-w-0">
-                    <p className="text-[11px] text-amber-500 uppercase tracking-wider mb-0.5 font-semibold">İnsan Onayı Gerekiyor</p>
+                    <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-[11px] text-amber-500 uppercase tracking-wider font-semibold">Genehmigung erforderlich</p>
+                        {/* FREN badge */}
+                        {fren && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold border font-mono"
+                                style={{ background: `${fren.color}15`, color: fren.color, borderColor: `${fren.color}40` }}>
+                                <Zap size={8} />{fren.label}
+                            </span>
+                        )}
+                    </div>
                     <p className="text-[13px] text-gray-700 truncate font-medium">
                         {missionMessage?.slice(0, 80) ?? `Thread: ${threadId.slice(0, 20)}...`}
                     </p>
                 </div>
-                <span className="text-[11px] font-semibold px-3 py-1 rounded-full border" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A" }}>
-                    ⏳ Onay Bekleniyor
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                    {/* Confidence gauge */}
+                    {confidenceScore !== null && (
+                        <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-[8px] text-gray-400 uppercase tracking-wider">Konfidenz</span>
+                            <span className="text-[14px] font-black font-mono" style={{ color: confColor ?? "#999" }}>
+                                {confidenceScore}%
+                            </span>
+                        </div>
+                    )}
+                    {/* RAG match badge */}
+                    {ragMatch ? (
+                        <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold border font-mono bg-green-50 text-green-700 border-green-200">
+                            <BookCheck size={9} /> {ragMatch}
+                        </span>
+                    ) : fren?.label.includes("Auditor") ? (
+                        <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold border font-mono bg-red-50 text-red-600 border-red-200">
+                            <XCircle size={9} /> Kein Vertrag
+                        </span>
+                    ) : null}
+                    <span className="text-[11px] font-semibold px-3 py-1 rounded-full border" style={{ background: "#FEF3C7", color: "#B45309", borderColor: "#FDE68A" }}>
+                        ⏳ Wartet
+                    </span>
+                </div>
             </div>
 
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 scrollbar-styled">
 
                 {/* A: Mission Brief */}
-                <AccordionSection title="Görev Özeti" icon={<Activity size={10} />} defaultOpen={false}>
+                <AccordionSection title="Aufgaben-Briefing" icon={<Activity size={10} />} defaultOpen={false}>
                     {missionMessage && (
                         <div className="space-y-2">
-                            <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Orijinal Görev</p>
+                            <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Originalauftrag</p>
                             <p className="text-[12px] text-gray-700 leading-relaxed bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-200">
                                 {missionMessage}
                             </p>
                         </div>
                     )}
                     <div className="mt-3">
-                        <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-2 font-medium">İş Akışı</p>
+                        <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-2 font-medium">Workflow</p>
                         <div className="flex items-center gap-1.5 flex-wrap">
                             {steps.map((s, i) => (
                                 <React.Fragment key={s}>
@@ -183,7 +273,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
                 <div className="rounded-xl border border-gray-200 overflow-hidden">
                     {/* Toolbar */}
                     <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-                        <span className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold flex-1">İçerik</span>
+                        <span className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold flex-1">Inhalt</span>
                         <div className="flex gap-1 bg-gray-100 rounded-md p-0.5">
                             {(["preview", "edit"] as const).map(m => (
                                 <button
@@ -193,18 +283,18 @@ function ReportPanel({ threadId }: { threadId: string }) {
                                         ${viewMode === m ? "bg-white text-gray-800 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
                                 >
                                     {m === "preview" ? <Eye size={10} /> : <Edit3 size={10} />}
-                                    {m === "preview" ? "Önizleme" : "Düzenle"}
+                                    {m === "preview" ? "Vorschau" : "Bearbeiten"}
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     {/* Content area */}
-                    <div className="min-h-[300px] max-h-[420px] overflow-y-auto scrollbar-styled">
+                    <div className="min-h-75 max-h-105 overflow-y-auto scrollbar-styled">
                         {fetching ? (
                             <div className="flex items-center justify-center h-40 gap-2 text-gray-400">
                                 <Loader2 size={14} className="animate-spin" />
-                                <span className="text-[12px]">Rapor yükleniyor...</span>
+                                <span className="text-[12px]">Bericht wird geladen...</span>
                             </div>
                         ) : viewMode === "preview" ? (
                             <div className="px-5 py-4 prose-light">
@@ -214,8 +304,8 @@ function ReportPanel({ threadId }: { threadId: string }) {
                             <textarea
                                 value={displayContent}
                                 onChange={e => setEditedContent(e.target.value)}
-                                className="w-full h-full min-h-[300px] bg-white px-5 py-4 text-[13px] text-gray-700 leading-relaxed resize-none outline-none placeholder:text-gray-400"
-                                placeholder="İçerik yükleniyor..."
+                                className="w-full h-full min-h-75 bg-white px-5 py-4 text-[13px] text-gray-700 leading-relaxed resize-none outline-none placeholder:text-gray-400"
+                                placeholder="Inhalt wird geladen..."
                             />
                         )}
                     </div>
@@ -236,7 +326,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
                         <>
                             <div className="flex items-center gap-2 mb-2">
                                 <AlertTriangle size={13} className="text-red-400" />
-                                <span className="text-[12px] text-red-600 font-semibold">Red Gerekçesi (Zorunlu)</span>
+                                <span className="text-[12px] text-red-600 font-semibold">Ablehnungsgrund (erforderlich)</span>
                             </div>
                             {/* Preset reject butonları */}
                             <div className="flex flex-wrap gap-1.5 mb-2">
@@ -256,7 +346,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
                             <textarea
                                 value={feedback}
                                 onChange={e => setFeedback(e.target.value)}
-                                placeholder="Ne değiştirilsin? Yazara geri bildirim..."
+                                placeholder="Was soll geändert werden? Feedback an den Writer..."
                                 rows={3}
                                 className="w-full bg-white border border-red-200 rounded-xl px-3 py-2.5 text-[13px] text-gray-700 placeholder:text-gray-400 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 resize-none"
                             />
@@ -267,13 +357,13 @@ function ReportPanel({ threadId }: { threadId: string }) {
                                     className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12px] font-semibold bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 disabled:opacity-40 transition-all"
                                 >
                                     {submitting ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
-                                    Reddet — Yeniden Yaz
+                                    Ablehnen — Neu schreiben
                                 </button>
                                 <button
                                     onClick={() => { setRejectMode(false); setFeedback(""); }}
                                     className="px-4 rounded-xl text-[12px] font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
                                 >
-                                    İptal
+                                    Abbrechen
                                 </button>
                             </div>
                         </>
@@ -282,7 +372,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
                             <input
                                 value={feedback}
                                 onChange={e => setFeedback(e.target.value)}
-                                placeholder="Opsiyonel onay notu..."
+                                placeholder="Optionale Genehmigungsnotiz..."
                                 className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-[13px] text-gray-700 placeholder:text-gray-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                             />
                             <div className="flex gap-2">
@@ -293,13 +383,13 @@ function ReportPanel({ threadId }: { threadId: string }) {
                                     className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-bold bg-green-500 border border-green-400 text-white hover:bg-green-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
                                 >
                                     {submitting ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                                    Onayla & Yayınla
+                                    Genehmigen & Veröffentlichen
                                 </motion.button>
                                 <button
                                     onClick={() => setRejectMode(true)}
                                     className="px-5 rounded-xl text-[12px] font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-all"
                                 >
-                                    Reddet
+                                    Ablehnen
                                 </button>
                             </div>
                         </>
@@ -308,7 +398,7 @@ function ReportPanel({ threadId }: { threadId: string }) {
             ) : (
                 <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex items-center justify-center gap-2">
                     <Loader2 size={13} className="animate-spin text-indigo-500" />
-                    <span className="text-[12px] text-indigo-600 font-medium">Gönderiliyor...</span>
+                    <span className="text-[12px] text-indigo-600 font-medium">Wird gesendet...</span>
                 </div>
             )}
         </div>
@@ -370,7 +460,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 scrollbar-hide">
 
                 {/* A: Original Message */}
-                <AccordionSection title="Orijinal Mesaj" icon={<Mail size={10} />} defaultOpen={true}>
+                <AccordionSection title="Originalnachricht" icon={<Mail size={10} />} defaultOpen={true}>
                     <div className="space-y-2">
                         <div className="flex gap-4">
                             <div>
@@ -381,7 +471,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
                                 <p className="font-mono text-[7px] text-white/25 uppercase tracking-wider mb-0.5">Datum</p>
                                 <p className="font-mono text-[9px] text-white/60 flex items-center gap-1">
                                     <Clock size={8} />
-                                    {new Date(ticket.createdAt).toLocaleString("tr-TR")}
+                                    {new Date(ticket.createdAt).toLocaleString("de-DE")}
                                 </p>
                             </div>
                         </div>
@@ -396,7 +486,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
 
                 {/* B: RAG Sources */}
                 {ticket.ragSources?.length > 0 && (
-                    <AccordionSection title="RAG Kaynakları" icon={<Database size={10} />} defaultOpen={false}>
+                    <AccordionSection title="RAG-Quellen" icon={<Database size={10} />} defaultOpen={false}>
                         <div className="space-y-1.5">
                             {ticket.ragSources.map((src: { title: string; score: number }, i: number) => (
                                 <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/3 border border-white/6">
@@ -423,7 +513,7 @@ function SupportPanel({ ticket }: { ticket: SupportTicketSummary }) {
                         rows={8}
                         className="w-full bg-transparent px-4 py-3 font-mono text-[10px] text-white/65 leading-relaxed
                                    resize-none outline-none placeholder:text-white/20"
-                        placeholder="AI taslak yanıtı burada görünecek..."
+                        placeholder="KI-Antwortentwurf erscheint hier..."
                     />
                 </div>
             </div>
@@ -524,7 +614,7 @@ function EmptyState() {
                         <p className="font-mono text-[11px] font-semibold mb-2" style={{ color: `${theme.accent}88` }}>
                             {theme.emptyTitle}
                         </p>
-                        <p className="font-mono text-[9px] text-white/18 leading-relaxed max-w-[280px]">
+                        <p className="font-mono text-[9px] text-white/18 leading-relaxed max-w-70">
                             {theme.emptyDescription}
                         </p>
                     </div>
@@ -540,10 +630,10 @@ function EmptyState() {
 export const OperatingTable = () => {
     const { drawerItem, setDrawerItem } = useAgentStore();
 
-    const typeLabel = drawerItem?.type === "report"   ? "⏳ Onay Bekleyen Rapor" :
-                      drawerItem?.type === "support"  ? "💬 Destek Talebi" :
-                      drawerItem?.type === "campaign" ? "📣 Kampanya Taslağı" :
-                      "📄 Arşiv";
+    const typeLabel = drawerItem?.type === "report"   ? "⏳ Bericht zur Genehmigung" :
+                      drawerItem?.type === "support"  ? "💬 Support-Ticket" :
+                      drawerItem?.type === "campaign" ? "📣 Kampagnenentwurf" :
+                      "📄 Archiv";
 
     const headerColor = drawerItem?.type === "report"   ? { bg: "#FFFBEB", border: "#FDE68A", text: "#92400E" } :
                         drawerItem?.type === "support"  ? { bg: "#EFF6FF", border: "#BFDBFE", text: "#1D4ED8" } :
@@ -573,7 +663,7 @@ export const OperatingTable = () => {
                         animate={{ x: 0 }}
                         exit={{ x: "100%" }}
                         transition={{ type: "spring", damping: 32, stiffness: 300 }}
-                        className="absolute right-0 top-0 h-full w-[540px] z-20 flex flex-col overflow-hidden"
+                        className="absolute right-0 top-0 h-full w-135 z-20 flex flex-col overflow-hidden"
                         style={{ background: "#FFFFFF", borderLeft: "1px solid #E5E7EB", boxShadow: "-4px 0 24px rgba(0,0,0,0.08)" }}
                     >
                         {/* Drawer header */}
@@ -621,7 +711,7 @@ export const OperatingTable = () => {
                                         <div className="flex flex-col h-full bg-white">
                                             <div className="px-5 py-4 border-b border-gray-100 shrink-0">
                                                 <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1.5 font-medium">
-                                                    Arşiv — Geçmiş Görev
+                                                    Archiv — Vergangener Auftrag
                                                 </p>
                                                 <p className="text-[15px] font-semibold text-gray-900 truncate">
                                                     {drawerItem.mission.task}

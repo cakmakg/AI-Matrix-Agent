@@ -33,10 +33,10 @@ export const ApiKeyModal = () => {
                 body: JSON.stringify(loginForm),
             });
             const data = await res.json();
-            if (!res.ok) { setError(data.error || "Giriş başarısız."); return; }
+            if (!res.ok) { setError(data.error || "Anmeldung fehlgeschlagen."); return; }
             setWorkspaceInfo({ name: data.client.name, slug: data.client.slug, email: data.client.email, apiKey: data.apiKey, plan: data.client.plan, product: data.client.product, isAdmin: data.client.isAdmin });
         } catch {
-            setError("Sunucuya ulaşılamadı.");
+            setError("Server nicht erreichbar.");
         } finally {
             setLoading(false);
         }
@@ -53,10 +53,10 @@ export const ApiKeyModal = () => {
                 body: JSON.stringify(regForm),
             });
             const data = await res.json();
-            if (!res.ok) { setError(data.error || "Kayıt başarısız."); return; }
+            if (!res.ok) { setError(data.error || "Registrierung fehlgeschlagen."); return; }
             setWorkspaceInfo({ name: data.client.name, slug: data.client.slug, email: data.client.email, apiKey: data.apiKey, plan: data.client.plan });
         } catch {
-            setError("Sunucuya ulaşılamadı.");
+            setError("Server nicht erreichbar.");
         } finally {
             setLoading(false);
         }
@@ -68,7 +68,7 @@ export const ApiKeyModal = () => {
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#070c14]/90 backdrop-blur-sm">
+            <div className="fixed inset-0 z-100 flex items-center justify-center bg-[#070c14]/90 backdrop-blur-sm">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -91,7 +91,7 @@ export const ApiKeyModal = () => {
 
                     {/* Tabs */}
                     <div className="flex border-b border-white/5">
-                        {([ ["login", "Giriş Yap"], ["register", "Kayıt Ol"] ] as [Tab, string][]).map(([id, label]) => (
+                        {([ ["login", "Anmelden"], ["register", "Registrieren"] ] as [Tab, string][]).map(([id, label]) => (
                             <button
                                 key={id}
                                 onClick={() => { setTab(id); setError(""); }}
@@ -123,7 +123,7 @@ export const ApiKeyModal = () => {
                                         type="email"
                                         value={loginForm.email}
                                         onChange={e => setLoginForm({ ...loginForm, email: e.target.value })}
-                                        placeholder="E-posta adresi"
+                                        placeholder="E-Mail-Adresse"
                                         required
                                         autoFocus
                                         className="w-full bg-white/3 border border-white/10 rounded-lg px-3 py-2.5 font-mono text-[12px] text-white/80 placeholder:text-white/20 focus:border-[#00f0ff]/50 focus:outline-none transition-colors"
@@ -133,7 +133,7 @@ export const ApiKeyModal = () => {
                                             type={showPassword ? "text" : "password"}
                                             value={loginForm.password}
                                             onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
-                                            placeholder="Şifre"
+                                            placeholder="Passwort"
                                             required
                                             className="w-full bg-white/3 border border-white/10 rounded-lg px-3 py-2.5 pr-9 font-mono text-[12px] text-white/80 placeholder:text-white/20 focus:border-[#00f0ff]/50 focus:outline-none transition-colors"
                                         />
@@ -147,7 +147,7 @@ export const ApiKeyModal = () => {
 
                                     <button type="submit" disabled={loading || !loginForm.email || !loginForm.password}
                                         className="w-full py-2.5 flex items-center justify-center gap-2 bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/30 rounded-lg font-mono text-[11px] font-bold tracking-wider transition-all disabled:opacity-40">
-                                        {loading ? "GİRİŞ YAPILIYOR..." : <><LogIn size={13} /> WORKSPACE&apos;E GİR</>}
+                                        {loading ? "WIRD ANGEMELDET..." : <><LogIn size={13} /> ZUM WORKSPACE</>}
                                     </button>
                                 </motion.form>
                             ) : (
@@ -163,7 +163,7 @@ export const ApiKeyModal = () => {
                                         type="text"
                                         value={regForm.name}
                                         onChange={e => setRegForm({ ...regForm, name: e.target.value })}
-                                        placeholder="Şirket / Organizasyon adı"
+                                        placeholder="Firmen-/Organisationsname"
                                         required
                                         autoFocus
                                         className="w-full bg-white/3 border border-white/10 rounded-lg px-3 py-2.5 font-mono text-[12px] text-white/80 placeholder:text-white/20 focus:border-[#39ff14]/50 focus:outline-none transition-colors"
@@ -172,7 +172,7 @@ export const ApiKeyModal = () => {
                                         type="email"
                                         value={regForm.email}
                                         onChange={e => setRegForm({ ...regForm, email: e.target.value })}
-                                        placeholder="E-posta adresi"
+                                        placeholder="E-Mail-Adresse"
                                         required
                                         className="w-full bg-white/3 border border-white/10 rounded-lg px-3 py-2.5 font-mono text-[12px] text-white/80 placeholder:text-white/20 focus:border-[#39ff14]/50 focus:outline-none transition-colors"
                                     />
@@ -181,7 +181,7 @@ export const ApiKeyModal = () => {
                                             type={showPassword ? "text" : "password"}
                                             value={regForm.password}
                                             onChange={e => setRegForm({ ...regForm, password: e.target.value })}
-                                            placeholder="Şifre (min. 6 karakter)"
+                                            placeholder="Passwort (mind. 6 Zeichen)"
                                             required minLength={6}
                                             className="w-full bg-white/3 border border-white/10 rounded-lg px-3 py-2.5 pr-9 font-mono text-[12px] text-white/80 placeholder:text-white/20 focus:border-[#39ff14]/50 focus:outline-none transition-colors"
                                         />
@@ -192,20 +192,20 @@ export const ApiKeyModal = () => {
                                     </div>
                                     <select value={regForm.sector} onChange={e => setRegForm({ ...regForm, sector: e.target.value })}
                                         className="w-full bg-white/3 border border-white/10 rounded-lg px-3 py-2.5 font-mono text-[12px] text-white/50 focus:border-[#39ff14]/50 focus:outline-none transition-colors">
-                                        <option value="">Sektör seç (opsiyonel)</option>
-                                        <option value="fintech">Fintech / Bankacılık</option>
-                                        <option value="healthcare">Sağlık / Healthcare</option>
-                                        <option value="security">Siber Güvenlik / MSSP</option>
-                                        <option value="ecommerce">E-Ticaret</option>
-                                        <option value="saas">SaaS / Teknoloji</option>
-                                        <option value="general">Diğer</option>
+                                        <option value="">Branche wählen (optional)</option>
+                                        <option value="fintech">Fintech / Bankwesen</option>
+                                        <option value="healthcare">Gesundheit / Healthcare</option>
+                                        <option value="security">Cybersicherheit / MSSP</option>
+                                        <option value="ecommerce">E-Commerce</option>
+                                        <option value="saas">SaaS / Technologie</option>
+                                        <option value="general">Sonstige</option>
                                     </select>
 
                                     {error && <p className="font-mono text-[10px] text-red-400/80 bg-red-500/5 border border-red-500/15 rounded px-2.5 py-1.5">{error}</p>}
 
                                     <button type="submit" disabled={loading || !regForm.name || !regForm.email || !regForm.password}
                                         className="w-full py-2.5 flex items-center justify-center gap-2 bg-[#39ff14]/10 hover:bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]/30 rounded-lg font-mono text-[11px] font-bold tracking-wider transition-all disabled:opacity-40">
-                                        {loading ? "KAYIT OLUŞTURULUYOR..." : <><UserPlus size={13} /> WORKSPACE OLUŞTUR <ChevronRight size={12} /></>}
+                                        {loading ? "WIRD REGISTRIERT..." : <><UserPlus size={13} /> WORKSPACE ERSTELLEN <ChevronRight size={12} /></>}
                                     </button>
                                 </motion.form>
                             )}

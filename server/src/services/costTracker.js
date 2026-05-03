@@ -1,18 +1,22 @@
 import Transaction from "../models/Transaction.js";
 import { costEventBus } from "./costEventBus.js";
 
-// AWS Bedrock fiyatları — 1 Milyon token başına USD
+// Anthropic direct API fiyatları — 1 Milyon token başına USD
 const MODEL_PRICING = {
+    "claude-sonnet-4-6":           { input: 3.00,  output: 15.00 },
+    "claude-opus-4-7":             { input: 15.00, output: 75.00 },
+    "claude-haiku-4-5-20251001":   { input: 0.80,  output: 4.00  },
+    // Eski Bedrock model ID'leri — geriye dönük uyumluluk
     "eu.anthropic.claude-sonnet-4-5-20250929-v1:0": { input: 3.00, output: 15.00 },
-    "eu.anthropic.claude-haiku-3-5-20251001-v1:0": { input: 0.80, output: 4.00 },
+    "eu.anthropic.claude-haiku-3-5-20251001-v1:0":  { input: 0.80, output: 4.00  },
 };
-const DEFAULT_PRICING = MODEL_PRICING["eu.anthropic.claude-sonnet-4-5-20250929-v1:0"];
+const DEFAULT_PRICING = MODEL_PRICING["claude-sonnet-4-6"];
 
 /**
  * Gerçek token sayılarıyla maliyet kaydeder.
  * llm.invoke() sonuçlarında response.usage_metadata kullanılabildiğinde çağır.
  */
-export async function trackLLMCost(inputTokens, outputTokens, agentName, threadId = "SYSTEM", clientId = "default", modelName = "eu.anthropic.claude-sonnet-4-5-20250929-v1:0") {
+export async function trackLLMCost(inputTokens, outputTokens, agentName, threadId = "SYSTEM", clientId = "default", modelName = "claude-sonnet-4-6") {
     try {
         const pricing = MODEL_PRICING[modelName] ?? DEFAULT_PRICING;
         const cost = (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
@@ -56,7 +60,7 @@ export async function trackLLMCost(inputTokens, outputTokens, agentName, threadI
  * withStructuredOutput gibi token bilgisi dönmeyen çağrılar için tahmini maliyet kaydeder.
  * 1 token ≈ 4 karakter tahmine dayanır.
  */
-export async function trackLLMCostFromStrings(inputText, outputText, agentName, threadId = "SYSTEM", clientId = "default", modelName = "eu.anthropic.claude-sonnet-4-5-20250929-v1:0") {
+export async function trackLLMCostFromStrings(inputText, outputText, agentName, threadId = "SYSTEM", clientId = "default", modelName = "claude-sonnet-4-6") {
     const inputTokens = Math.ceil((inputText || "").length / 4);
     const outputTokens = Math.ceil((outputText || "").length / 4);
     return trackLLMCost(inputTokens, outputTokens, agentName, threadId, clientId, modelName);

@@ -11,8 +11,15 @@
 
 import { enqueueAction } from "../services/actionWorkerService.js";
 
-// Twitter thread içeriğini ≤280 char tweet dizisine böler
+// Twitter thread içeriğini ≤280 char tweet dizisine böler.
+// Writer "---" ayırıcı kullanıyor; socialMediaService "\n---\n" bekliyor.
 function parseTweets(content) {
+    // Önce writer'ın "---" ayırıcısına göre böl
+    const byDash = content.split(/\n?---\n?/).map(p => p.trim()).filter(Boolean);
+    if (byDash.length > 1) {
+        return byDash.map(t => t.slice(0, 280)).slice(0, 10);
+    }
+    // Ayırıcı yoksa çift satır sonuna göre böl ve uzun parçaları kes
     const parts = content.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
     const tweets = [];
     for (const part of parts) {
@@ -36,10 +43,8 @@ export async function publisherNode(state, config) {
     console.log("🚀 Dağıtım Koordinatörü (Ajan 9): Eylemler kuyruğa ekleniyor...");
 
     const threadId = state.threadId || "unknown";
-    // SaaS: clientId LangGraph configurable'dan okunur (CLAUDE.md gereği config 2. param)
     const clientId = config?.configurable?.clientId || "default";
 
-    // Platform tespiti — n8n bu alanı kullanarak kendi flow'unu yönlendirir
     const PLATFORM_PREFIXES = [
         { prefix: /^TWITTER:/i,        platform: "twitter" },
         { prefix: /^LINKEDIN:/i,        platform: "linkedin" },
@@ -52,7 +57,48 @@ export async function publisherNode(state, config) {
     const taskText = state.task || "";
     const detectedPlatform = PLATFORM_PREFIXES.find(p => p.prefix.test(taskText))?.platform || null;
 
-    // 1. n8n webhook eylemi — per-tenant veya global env
+    // 1. Twitter/LinkedIn: bağlı hesap varsa direkt API kullan (thread desteği).
+    //    Bağlı hesap bulunursa n8nPlatform=null yapılır → n8n bu platforma göndermez (çift paylaşım önlenir).
+    //    Bağlı hesap yoksa n8nPlatform olduğu gibi kalır → n8n üzerinden gönderilir.
+    const isTwitter  = /^TWITTER:\s*/i.test(taskText);
+    const isLinkedIn = /^LINKEDIN:\s*/i.test(taskText);
+    let n8nPlatform = detectedPlatform;
+
+    if (isTwitter || isLinkedIn) {
+        const platform = isTwitter ? "twitter" : "linkedin";
+        try {
+            const { SocialAccount } = await import("../models/SocialAccount.js");
+            const account = await SocialAccount.findOne({ clientId, platform, isConnected: true }).lean();
+            if (account) {
+                n8nPlatform = null; // n8n bu platformu atlar
+                if (isTwitter) {
+                    const tweets = parseTweets(state.finalContent || "");
+                    await enqueueAction({
+                        threadId, clientId,
+                        agentId:    "publisher",
+                        actionType: "TWITTER",
+                        payload:    { tweets, accountId: account._id.toString() },
+                    });
+                    console.log(`   -> Twitter direkt eylemi kuyruğa eklendi (${tweets.length} tweet, thread destekli).`);
+                } else {
+                    await enqueueAction({
+                        threadId, clientId,
+                        agentId:    "publisher",
+                        actionType: "LINKEDIN",
+                        payload:    { content: (state.finalContent || "").slice(0, 3000), accountId: account._id.toString() },
+                    });
+                    console.log("   -> LinkedIn direkt eylemi kuyruğa eklendi.");
+                }
+            } else {
+                console.warn(`   ⚠️ Bağlı ${platform} hesabı bulunamadı — n8n üzerinden gönderilecek.`);
+            }
+        } catch (err) {
+            console.warn(`   ⚠️ Sosyal medya hesabı sorgulanamadı: ${err.message}`);
+        }
+    }
+
+    // 2. n8n webhook — Instagram/Email/TikTok gibi platformlar + genel bildirim.
+    //    Twitter/LinkedIn için bağlı hesap varsa n8nPlatform=null → n8n routing yapmaz.
     await enqueueAction({
         threadId,
         clientId,
@@ -64,12 +110,12 @@ export async function publisherNode(state, config) {
             content:       state.finalContent  || "",
             humanFeedback: state.humanFeedback || "Onaylandı ✓",
             fileSaved:     state.fileSaved      || false,
-            platform:      detectedPlatform,   // n8n routing için
+            platform:      n8nPlatform,
         },
     });
     console.log("   -> n8n eylemi kuyruğa eklendi.");
 
-    // 2. Telegram bildirimi — per-tenant veya global env
+    // 3. Telegram bildirimi
     const preview = (state.finalContent || "").slice(0, 300);
     await enqueueAction({
         threadId,
@@ -82,7 +128,7 @@ export async function publisherNode(state, config) {
     });
     console.log("   -> Telegram eylemi kuyruğa eklendi.");
 
-    // 3. Discord bildirimi — per-tenant veya global env
+    // 4. Discord bildirimi
     await enqueueAction({
         threadId,
         clientId,
@@ -93,42 +139,6 @@ export async function publisherNode(state, config) {
         },
     });
     console.log("   -> Discord eylemi kuyruğa eklendi.");
-
-    // 4. Twitter veya LinkedIn direkt post (bağlı hesap varsa actionWorkerService üzerinden)
-    const isTwitter  = /^TWITTER:\s*/i.test(state.task || "");
-    const isLinkedIn = /^LINKEDIN:\s*/i.test(state.task || "");
-
-    if (isTwitter || isLinkedIn) {
-        const platform = isTwitter ? "twitter" : "linkedin";
-        try {
-            const { SocialAccount } = await import("../models/SocialAccount.js");
-            const account = await SocialAccount.findOne({ clientId, platform, isConnected: true }).lean();
-            if (account) {
-                if (isTwitter) {
-                    const tweets = parseTweets(state.finalContent || "");
-                    await enqueueAction({
-                        threadId, clientId,
-                        agentId:    "publisher",
-                        actionType: "TWITTER",
-                        payload:    { tweets, accountId: account._id.toString() },
-                    });
-                    console.log(`   -> Twitter eylemi kuyruğa eklendi (${tweets.length} tweet).`);
-                } else {
-                    await enqueueAction({
-                        threadId, clientId,
-                        agentId:    "publisher",
-                        actionType: "LINKEDIN",
-                        payload:    { content: (state.finalContent || "").slice(0, 3000), accountId: account._id.toString() },
-                    });
-                    console.log("   -> LinkedIn eylemi kuyruğa eklendi.");
-                }
-            } else {
-                console.warn(`   ⚠️ Bağlı ${platform} hesabı bulunamadı (clientId: ${clientId}) — atlanıyor.`);
-            }
-        } catch (err) {
-            console.warn(`   ⚠️ Sosyal medya eylemi eklenemedi: ${err.message}`);
-        }
-    }
 
     console.log("✅ Publisher: Tüm eylemler ActionQueue'ya teslim edildi. Worker arka planda işleyecek.");
     return { isPublished: true };

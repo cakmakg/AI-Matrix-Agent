@@ -124,7 +124,7 @@ ${tacticInstruction}`;
     // BANT satırını çıktıdan temizle — müşteriye gitmesin
     const salesMessage = rawOutput.replace(bantLine, "").trim();
 
-    trackLLMCost(response.usage_metadata?.input_tokens || 0, response.usage_metadata?.output_tokens || 0, "SALES_REP", state.threadId || "SYSTEM", clientId, "eu.anthropic.claude-sonnet-4-5-20250929-v1:0").catch(() => {});
+    trackLLMCost(response.usage_metadata?.input_tokens || 0, response.usage_metadata?.output_tokens || 0, "SALES_REP", state.threadId || "SYSTEM", clientId, "claude-sonnet-4-6").catch(() => {});
 
     console.log(`   -> 💼 Satış Mesajı üretildi (${salesMessage.length} karakter). BANT: ${bantLine}`);
 

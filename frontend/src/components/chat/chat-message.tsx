@@ -6,23 +6,23 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatMessage, AgentId } from "@/store/types";
 
-// Türkçe agent etiketleri
+// Deutsche Agent-Etiketten
 const AGENT_LABELS: Partial<Record<AgentId, string>> = {
-    ceo:         "Orkestratör",
-    cto:         "Mimar (CTO)",
-    scraper:     "Web Araştırma",
-    analyst:     "Analizci",
-    innovator:   "İnovatör",
-    writer:      "İçerik Yazarı",
-    qa:          "Kalite Kontrolü",
-    hitl:        "İnsan Onayı",
-    publisher:   "Yayımcı",
-    cmo:         "Pazarlama (CMO)",
-    cfo:         "Finans (CFO)",
-    auditor:     "Denetçi",
-    supplyChain: "Tedarik Zinciri",
-    salesRep:    "Satış Temsilcisi",
-    customerBot: "Müşteri Botu",
+    ceo:         "Orchestrator",
+    cto:         "Architekt (CTO)",
+    scraper:     "Web-Recherche",
+    analyst:     "Analyst",
+    innovator:   "Innovator",
+    writer:      "Content-Autor",
+    qa:          "Qualitätskontrolle",
+    hitl:        "Menschliche Genehmigung",
+    publisher:   "Publisher",
+    cmo:         "Marketing (CMO)",
+    cfo:         "Finanzen (CFO)",
+    auditor:     "Auditor",
+    supplyChain: "Lieferkette",
+    salesRep:    "Vertriebsmitarbeiter",
+    customerBot: "Kunden-Bot",
     radar:       "Radar",
 };
 
@@ -43,7 +43,7 @@ const AGENT_COLORS: Partial<Record<AgentId, { bg: string; text: string; border: 
 
 const ROLE_CONFIG = {
     user: {
-        label: "Siz",
+        label: "Sie",
         avatar: "👤",
         side: "right" as const,
         bubbleBg: "#6366F1",
@@ -51,7 +51,7 @@ const ROLE_CONFIG = {
         bubbleBorder: "transparent",
     },
     agent: {
-        label: "AI Ajan",
+        label: "KI-Agent",
         avatar: "🤖",
         side: "left" as const,
         bubbleBg: "#FFFFFF",
@@ -59,7 +59,7 @@ const ROLE_CONFIG = {
         bubbleBorder: "#E5E7EB",
     },
     system: {
-        label: "Sistem",
+        label: "System",
         avatar: "⚙️",
         side: "left" as const,
         bubbleBg: "#F9FAFB",
@@ -67,7 +67,7 @@ const ROLE_CONFIG = {
         bubbleBorder: "#E5E7EB",
     },
     alert: {
-        label: "Uyarı",
+        label: "Hinweis",
         avatar: "⚠️",
         side: "left" as const,
         bubbleBg: "#FEF3C7",
@@ -94,7 +94,7 @@ export function ChatMessageBubble({ message }: Props) {
         message.content.includes("- ") ||
         message.content.includes("|");
 
-    const formattedTime = new Date(message.timestamp).toLocaleTimeString("tr-TR", {
+    const formattedTime = new Date(message.timestamp).toLocaleTimeString("de-DE", {
         hour: "2-digit",
         minute: "2-digit",
     });

@@ -48,7 +48,7 @@ export async function analyzerNode(state, config) {
         response.usage_metadata?.input_tokens || 0,
         response.usage_metadata?.output_tokens || 0,
         "ANALYZER", state.threadId || "SYSTEM", clientId,
-        "eu.anthropic.claude-sonnet-4-5-20250929-v1:0"
+        "claude-sonnet-4-6"
     ).catch(() => { });
 
     console.log("✅ Analiz Motoru: Rapor hazırlandı!");

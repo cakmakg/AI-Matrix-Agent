@@ -9,168 +9,168 @@ import { PRODUCT_INPUT } from "@/components/layout/center-panel";
 
 /* ══════════════════════════════════════════════════════════════
    TRACK → PIPELINE STEPS
-   Her FREN routing track için hangi adımların çalıştığını tanımlar.
-   Kaynak: AGENTS.md § Routing Tracks + server/README.md § FREN System
+   Definiert die Pipeline-Schritte für jede FREN-Routing-Track.
+   Quelle: AGENTS.md § Routing Tracks + server/README.md § FREN System
 ══════════════════════════════════════════════════════════════ */
 
 interface PipelineStep {
-    id:       string;   // Agent ID veya sahte ID (ör: "rag")
+    id:       string;
     label:    string;
-    agentId?: AgentId;  // Gerçek store agent ID (status için)
-    isGate?:  boolean;  // HITL kapısı mı?
+    agentId?: AgentId;
+    isGate?:  boolean;
 }
 
 const TRACK_PIPELINE: Record<TrackId, PipelineStep[]> = {
     /* CX: customerBot → RAG → writer → HITL → publisher */
     cx: [
-        { id: "guardrail",   label: "Güvenlik Kalkanı",   agentId: "ceo" },
-        { id: "customerBot", label: "Müşteri Botu",        agentId: "customerBot" },
-        { id: "rag",         label: "RAG Bilgi Tabanı",    agentId: "ceo" },
-        { id: "writer",      label: "Yanıt Yazarı",        agentId: "writer" },
-        { id: "hitl",        label: "İnsan Onayı",         agentId: "hitl", isGate: true },
-        { id: "publisher",   label: "Yayımcı",             agentId: "publisher" },
+        { id: "guardrail",   label: "Sicherheits-Schutzschild",  agentId: "ceo" },
+        { id: "customerBot", label: "Kunden-Bot",                agentId: "customerBot" },
+        { id: "rag",         label: "RAG-Wissensdatenbank",      agentId: "ceo" },
+        { id: "writer",      label: "Antwort-Autor",             agentId: "writer" },
+        { id: "hitl",        label: "Menschliche Genehmigung",   agentId: "hitl", isGate: true },
+        { id: "publisher",   label: "Publisher",                 agentId: "publisher" },
     ],
 
     /* SOCIAL: scraper → writer ↔ critic → fileSaver → HITL → publisher */
     social: [
-        { id: "guardrail", label: "Güvenlik Kalkanı", agentId: "ceo" },
-        { id: "ceo",       label: "Orkestratör",      agentId: "ceo" },
-        { id: "scraper",   label: "Web Araştırma",    agentId: "scraper" },
-        { id: "writer",    label: "İçerik Yazarı",    agentId: "writer" },
-        { id: "qa",        label: "Kalite QA",         agentId: "qa" },
-        { id: "hitl",      label: "İnsan Onayı",      agentId: "hitl", isGate: true },
-        { id: "publisher", label: "Yayımcı",           agentId: "publisher" },
+        { id: "guardrail", label: "Sicherheits-Schutzschild",  agentId: "ceo" },
+        { id: "ceo",       label: "Orchestrator",              agentId: "ceo" },
+        { id: "scraper",   label: "Web-Recherche",             agentId: "scraper" },
+        { id: "writer",    label: "Content-Autor",             agentId: "writer" },
+        { id: "qa",        label: "Qualitäts-QA",              agentId: "qa" },
+        { id: "hitl",      label: "Menschliche Genehmigung",   agentId: "hitl", isGate: true },
+        { id: "publisher", label: "Publisher",                 agentId: "publisher" },
     ],
 
     /* OUTREACH: COLD_OUTREACH — scraper → writer ↔ critic → fileSaver → HITL */
     outreach: [
-        { id: "guardrail", label: "Güvenlik Kalkanı",  agentId: "ceo" },
-        { id: "ceo",       label: "Orkestratör",       agentId: "ceo" },
-        { id: "scraper",   label: "Şirket Araştırması", agentId: "scraper" },
-        { id: "writer",    label: "Outreach Yazarı",   agentId: "writer" },
-        { id: "qa",        label: "Kalite QA",          agentId: "qa" },
-        { id: "hitl",      label: "İnsan Onayı",       agentId: "hitl", isGate: true },
-        { id: "publisher", label: "Yayımcı",            agentId: "publisher" },
+        { id: "guardrail", label: "Sicherheits-Schutzschild",  agentId: "ceo" },
+        { id: "ceo",       label: "Orchestrator",              agentId: "ceo" },
+        { id: "scraper",   label: "Firmen-Recherche",          agentId: "scraper" },
+        { id: "writer",    label: "Outreach-Autor",            agentId: "writer" },
+        { id: "qa",        label: "Qualitäts-QA",              agentId: "qa" },
+        { id: "hitl",      label: "Menschliche Genehmigung",   agentId: "hitl", isGate: true },
+        { id: "publisher", label: "Publisher",                 agentId: "publisher" },
     ],
 
-    /* RFP: RFP_RESPONSE — Scraper YOK — RAG → writer ↔ critic → fileSaver */
+    /* RFP: RFP_RESPONSE — Kein Scraper — RAG → writer ↔ critic → fileSaver */
     rfp: [
-        { id: "guardrail", label: "Güvenlik Kalkanı", agentId: "ceo" },
-        { id: "ceo",       label: "Orkestratör",      agentId: "ceo" },
-        { id: "rag",       label: "RAG Bilgi Tabanı", agentId: "ceo" },
-        { id: "writer",    label: "İhale Yazarı",     agentId: "writer" },
-        { id: "qa",        label: "Kalite QA",         agentId: "qa" },
-        { id: "hitl",      label: "İnsan Onayı",      agentId: "hitl", isGate: true },
-        { id: "publisher", label: "Yayımcı",           agentId: "publisher" },
+        { id: "guardrail", label: "Sicherheits-Schutzschild",  agentId: "ceo" },
+        { id: "ceo",       label: "Orchestrator",              agentId: "ceo" },
+        { id: "rag",       label: "RAG-Wissensdatenbank",      agentId: "ceo" },
+        { id: "writer",    label: "RFP-Autor",                 agentId: "writer" },
+        { id: "qa",        label: "Qualitäts-QA",              agentId: "qa" },
+        { id: "hitl",      label: "Menschliche Genehmigung",   agentId: "hitl", isGate: true },
+        { id: "publisher", label: "Publisher",                 agentId: "publisher" },
     ],
 
-    /* INNOVATION: INNOVATION_RADAR — scraper → architect → fileSaved (Writer/Critic YOK!) */
+    /* INNOVATION: INNOVATION_RADAR — scraper → architect → fileSaved (Kein Writer/Critic!) */
     innovation: [
-        { id: "guardrail", label: "Güvenlik Kalkanı",      agentId: "ceo" },
-        { id: "ceo",       label: "Orkestratör",           agentId: "ceo" },
-        { id: "scraper",   label: "Web Araştırma",         agentId: "scraper" },
-        { id: "architect", label: "Mimar Ajan (Blueprint)", agentId: "cto" },
-        { id: "fileSaver", label: "Kayıt",                 agentId: "ceo" },
-        { id: "hitl",      label: "İnsan Onayı",           agentId: "hitl", isGate: true },
-        { id: "publisher", label: "Yayımcı",                agentId: "publisher" },
+        { id: "guardrail", label: "Sicherheits-Schutzschild",  agentId: "ceo" },
+        { id: "ceo",       label: "Orchestrator",              agentId: "ceo" },
+        { id: "scraper",   label: "Web-Recherche",             agentId: "scraper" },
+        { id: "architect", label: "Architekt (Blueprint)",     agentId: "cto" },
+        { id: "fileSaver", label: "Speicherung",               agentId: "ceo" },
+        { id: "hitl",      label: "Menschliche Genehmigung",   agentId: "hitl", isGate: true },
+        { id: "publisher", label: "Publisher",                 agentId: "publisher" },
     ],
 
-    /* TREND: TREND_RADAR — tam Research döngüsü */
+    /* TREND: TREND_RADAR — vollständige Research-Schleife */
     trend: [
-        { id: "guardrail", label: "Güvenlik Kalkanı", agentId: "ceo" },
-        { id: "ceo",       label: "Orkestratör",      agentId: "ceo" },
-        { id: "scraper",   label: "Sektör Taraması",  agentId: "scraper" },
-        { id: "analyst",   label: "Meta-Trend Analiz", agentId: "analyst" },
-        { id: "innovator", label: "3 Ürün Konsepti",  agentId: "innovator" },
-        { id: "writer",    label: "Trend Raporu",     agentId: "writer" },
-        { id: "qa",        label: "Kalite QA",         agentId: "qa" },
-        { id: "hitl",      label: "İnsan Onayı",      agentId: "hitl", isGate: true },
-        { id: "publisher", label: "Yayımcı",           agentId: "publisher" },
+        { id: "guardrail", label: "Sicherheits-Schutzschild",  agentId: "ceo" },
+        { id: "ceo",       label: "Orchestrator",              agentId: "ceo" },
+        { id: "scraper",   label: "Branchen-Scan",             agentId: "scraper" },
+        { id: "analyst",   label: "Meta-Trend-Analyse",        agentId: "analyst" },
+        { id: "innovator", label: "3 Produktkonzepte",         agentId: "innovator" },
+        { id: "writer",    label: "Trend-Bericht",             agentId: "writer" },
+        { id: "qa",        label: "Qualitäts-QA",              agentId: "qa" },
+        { id: "hitl",      label: "Menschliche Genehmigung",   agentId: "hitl", isGate: true },
+        { id: "publisher", label: "Publisher",                 agentId: "publisher" },
     ],
 
-    /* STRESS: BUSINESS_STRESS_TEST — Scraper YOK — analyzer → innovator → writer ↔ critic */
+    /* STRESS: BUSINESS_STRESS_TEST — Kein Scraper — analyzer → innovator → writer ↔ critic */
     stress: [
-        { id: "guardrail", label: "Güvenlik Kalkanı",       agentId: "ceo" },
-        { id: "ceo",       label: "Orkestratör",            agentId: "ceo" },
-        { id: "analyst",   label: "Pitch Deck Analizi",     agentId: "analyst" },
-        { id: "innovator", label: "Pivot Önerisi",          agentId: "innovator" },
-        { id: "writer",    label: "Stres Testi Raporu",     agentId: "writer" },
-        { id: "qa",        label: "Kalite QA",               agentId: "qa" },
-        { id: "hitl",      label: "İnsan Onayı",            agentId: "hitl", isGate: true },
-        { id: "publisher", label: "Yayımcı",                 agentId: "publisher" },
+        { id: "guardrail", label: "Sicherheits-Schutzschild",  agentId: "ceo" },
+        { id: "ceo",       label: "Orchestrator",              agentId: "ceo" },
+        { id: "analyst",   label: "Pitch-Deck-Analyse",        agentId: "analyst" },
+        { id: "innovator", label: "Pivot-Empfehlung",          agentId: "innovator" },
+        { id: "writer",    label: "Stresstest-Bericht",        agentId: "writer" },
+        { id: "qa",        label: "Qualitäts-QA",              agentId: "qa" },
+        { id: "hitl",      label: "Menschliche Genehmigung",   agentId: "hitl", isGate: true },
+        { id: "publisher", label: "Publisher",                 agentId: "publisher" },
     ],
 
     /* FINANCE: INVOICE_PROCESSING — auditor → fileSaver → HITL */
     finance: [
-        { id: "guardrail", label: "Güvenlik Kalkanı", agentId: "ceo" },
-        { id: "ceo",       label: "Orkestratör",      agentId: "ceo" },
-        { id: "auditor",   label: "Denetçi Ajan",     agentId: "auditor" },
-        { id: "fileSaver", label: "Kayıt",            agentId: "ceo" },
-        { id: "hitl",      label: "İnsan Onayı",      agentId: "hitl", isGate: true },
-        { id: "publisher", label: "Yayımcı",           agentId: "publisher" },
+        { id: "guardrail", label: "Sicherheits-Schutzschild",  agentId: "ceo" },
+        { id: "ceo",       label: "Orchestrator",              agentId: "ceo" },
+        { id: "auditor",   label: "Auditor-Agent",             agentId: "auditor" },
+        { id: "fileSaver", label: "Speicherung",               agentId: "ceo" },
+        { id: "hitl",      label: "Menschliche Genehmigung",   agentId: "hitl", isGate: true },
+        { id: "publisher", label: "Publisher",                 agentId: "publisher" },
     ],
 
     /* SUPPLY: STOCK_CHECK — supplyChain → fileSaver → HITL */
     supply: [
-        { id: "guardrail",   label: "Güvenlik Kalkanı",     agentId: "ceo" },
-        { id: "ceo",         label: "Orkestratör",          agentId: "ceo" },
-        { id: "supplyChain", label: "Tedarik Zinciri Ajan", agentId: "supplyChain" },
-        { id: "fileSaver",   label: "Kayıt",                agentId: "ceo" },
-        { id: "hitl",        label: "İnsan Onayı",          agentId: "hitl", isGate: true },
-        { id: "publisher",   label: "Yayımcı",               agentId: "publisher" },
+        { id: "guardrail",   label: "Sicherheits-Schutzschild", agentId: "ceo" },
+        { id: "ceo",         label: "Orchestrator",             agentId: "ceo" },
+        { id: "supplyChain", label: "Lieferketten-Agent",       agentId: "supplyChain" },
+        { id: "fileSaver",   label: "Speicherung",              agentId: "ceo" },
+        { id: "hitl",        label: "Menschliche Genehmigung",  agentId: "hitl", isGate: true },
+        { id: "publisher",   label: "Publisher",                agentId: "publisher" },
     ],
 
-    /* ENGINEERING: architect → fileSaved → HITL  (Writer/Critic/Analyst YOK!) */
+    /* ENGINEERING: architect → fileSaved → HITL (Kein Writer/Critic/Analyst!) */
     engineering: [
-        { id: "guardrail", label: "Güvenlik Kalkanı",       agentId: "ceo" },
-        { id: "ceo",       label: "Orkestratör",            agentId: "ceo" },
-        { id: "architect", label: "Mimar Ajan (CTO)",       agentId: "cto" },
-        { id: "fileSaver", label: "Blueprint Kaydedildi",   agentId: "ceo" },
-        { id: "hitl",      label: "İnsan Onayı",            agentId: "hitl", isGate: true },
-        { id: "publisher", label: "Yayımcı / GitHub Push",  agentId: "publisher" },
+        { id: "guardrail", label: "Sicherheits-Schutzschild",  agentId: "ceo" },
+        { id: "ceo",       label: "Orchestrator",              agentId: "ceo" },
+        { id: "architect", label: "Architekt (CTO)",           agentId: "cto" },
+        { id: "fileSaver", label: "Blueprint gespeichert",     agentId: "ceo" },
+        { id: "hitl",      label: "Menschliche Genehmigung",   agentId: "hitl", isGate: true },
+        { id: "publisher", label: "Publisher / GitHub Push",   agentId: "publisher" },
     ],
 
     /* RESEARCH: default full loop */
     research: [
-        { id: "guardrail", label: "Güvenlik Kalkanı", agentId: "ceo" },
-        { id: "ceo",       label: "Orkestratör",      agentId: "ceo" },
-        { id: "scraper",   label: "Web Araştırma",    agentId: "scraper" },
-        { id: "analyst",   label: "Stratejik Analiz", agentId: "analyst" },
-        { id: "innovator", label: "İnovatör (4. Yol)", agentId: "innovator" },
-        { id: "writer",    label: "B2B Rapor Yazarı", agentId: "writer" },
-        { id: "qa",        label: "Kalite QA",         agentId: "qa" },
-        { id: "hitl",      label: "İnsan Onayı",      agentId: "hitl", isGate: true },
-        { id: "publisher", label: "Yayımcı",           agentId: "publisher" },
+        { id: "guardrail", label: "Sicherheits-Schutzschild",  agentId: "ceo" },
+        { id: "ceo",       label: "Orchestrator",              agentId: "ceo" },
+        { id: "scraper",   label: "Web-Recherche",             agentId: "scraper" },
+        { id: "analyst",   label: "Strategische Analyse",      agentId: "analyst" },
+        { id: "innovator", label: "Innovator (4. Weg)",        agentId: "innovator" },
+        { id: "writer",    label: "B2B-Bericht-Autor",         agentId: "writer" },
+        { id: "qa",        label: "Qualitäts-QA",              agentId: "qa" },
+        { id: "hitl",      label: "Menschliche Genehmigung",   agentId: "hitl", isGate: true },
+        { id: "publisher", label: "Publisher",                 agentId: "publisher" },
     ],
 
-    /* HOLDING: tüm ajanlar */
+    /* HOLDING: alle Agenten */
     holding: [
-        { id: "guardrail", label: "Güvenlik Kalkanı",  agentId: "ceo" },
-        { id: "ceo",       label: "Orkestratör",       agentId: "ceo" },
-        { id: "scraper",   label: "Web Araştırma",     agentId: "scraper" },
-        { id: "analyst",   label: "Analizci",          agentId: "analyst" },
-        { id: "innovator", label: "İnovatör",          agentId: "innovator" },
-        { id: "writer",    label: "İçerik Yazarı",     agentId: "writer" },
-        { id: "qa",        label: "Kalite QA / Critic", agentId: "qa" },
-        { id: "hitl",      label: "İnsan Onayı",       agentId: "hitl", isGate: true },
-        { id: "publisher", label: "Yayımcı",            agentId: "publisher" },
+        { id: "guardrail", label: "Sicherheits-Schutzschild",  agentId: "ceo" },
+        { id: "ceo",       label: "Orchestrator",              agentId: "ceo" },
+        { id: "scraper",   label: "Web-Recherche",             agentId: "scraper" },
+        { id: "analyst",   label: "Analyst",                   agentId: "analyst" },
+        { id: "innovator", label: "Innovator",                 agentId: "innovator" },
+        { id: "writer",    label: "Content-Autor",             agentId: "writer" },
+        { id: "qa",        label: "Qualitäts-QA / Critic",     agentId: "qa" },
+        { id: "hitl",      label: "Menschliche Genehmigung",   agentId: "hitl", isGate: true },
+        { id: "publisher", label: "Publisher",                 agentId: "publisher" },
     ],
 };
 
-/* ── Track Açıklamaları ───────────────────────────────────────── */
+/* ── Track-Beschriftungen ─────────────────────────────────────── */
 const TRACK_META: Record<TrackId, { label: string; color: string; bg: string }> = {
-    cx:          { label: "Müşteri Destek",      color: "#0369A1", bg: "#E0F2FE" },
-    social:      { label: "Sosyal Medya",        color: "#15803D", bg: "#D1FAE5" },
-    outreach:    { label: "Soğuk Satış",         color: "#15803D", bg: "#D1FAE5" },
-    rfp:         { label: "İhale Yanıtı (RAG)",  color: "#92400E", bg: "#FEF3C7" },
-    innovation:  { label: "İnovasyon Radar",     color: "#5B21B6", bg: "#EDE9FE" },
-    trend:       { label: "Trend Radar",         color: "#155E75", bg: "#CFFAFE" },
-    stress:      { label: "Stres Testi",         color: "#9D174D", bg: "#FCE7F3" },
-    finance:     { label: "Fatura Denetim",      color: "#92400E", bg: "#FEF3C7" },
-    supply:      { label: "Tedarik Zinciri",     color: "#92400E", bg: "#FEF3C7" },
-    engineering: { label: "Mimar Blueprint",     color: "#155E75", bg: "#CFFAFE" },
-    research:    { label: "Araştırma Döngüsü",   color: "#1D4ED8", bg: "#DBEAFE" },
-    holding:     { label: "Holding / God Mode",  color: "#3730A3", bg: "#EEF2FF" },
+    cx:          { label: "Kunden-Support",        color: "#0369A1", bg: "#E0F2FE" },
+    social:      { label: "Social Media",          color: "#15803D", bg: "#D1FAE5" },
+    outreach:    { label: "Cold Outreach",         color: "#15803D", bg: "#D1FAE5" },
+    rfp:         { label: "RFP-Antwort (RAG)",     color: "#92400E", bg: "#FEF3C7" },
+    innovation:  { label: "Innovations-Radar",     color: "#5B21B6", bg: "#EDE9FE" },
+    trend:       { label: "Trend-Radar",           color: "#155E75", bg: "#CFFAFE" },
+    stress:      { label: "Stresstest",            color: "#9D174D", bg: "#FCE7F3" },
+    finance:     { label: "Rechnungs-Audit",       color: "#92400E", bg: "#FEF3C7" },
+    supply:      { label: "Lieferkette",           color: "#92400E", bg: "#FEF3C7" },
+    engineering: { label: "Architekt-Blueprint",   color: "#155E75", bg: "#CFFAFE" },
+    research:    { label: "Recherche-Schleife",    color: "#1D4ED8", bg: "#DBEAFE" },
+    holding:     { label: "Holding / God Mode",    color: "#3730A3", bg: "#EEF2FF" },
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -180,26 +180,26 @@ const TRACK_META: Record<TrackId, { label: string; color: string; bg: string }> 
 interface AgentChipDef {
     id:    AgentId;
     label: string;
-    /** Bu track için aktif mi? */
+    /** Aktiv für diesen Track? */
     activeInTracks: TrackId[];
 }
 
 const ALL_AGENT_CHIPS: AgentChipDef[] = [
-    { id: "ceo",         label: "Orkestratör",    activeInTracks: ["cx","social","outreach","rfp","innovation","trend","stress","finance","supply","engineering","research","holding"] },
-    { id: "cto",         label: "Mimar (CTO)",    activeInTracks: ["engineering","innovation","holding"] },
-    { id: "scraper",     label: "Web Araştırma",  activeInTracks: ["social","outreach","innovation","trend","research","holding"] },
-    { id: "analyst",     label: "Analizci",       activeInTracks: ["trend","stress","research","holding"] },
-    { id: "innovator",   label: "İnovatör",       activeInTracks: ["trend","stress","research","holding"] },
-    { id: "writer",      label: "İçerik Yazarı",  activeInTracks: ["cx","social","outreach","rfp","trend","stress","research","holding"] },
-    { id: "qa",          label: "Kalite QA",       activeInTracks: ["social","outreach","rfp","trend","stress","research","holding"] },
-    { id: "auditor",     label: "Denetçi",        activeInTracks: ["finance","holding"] },
-    { id: "supplyChain", label: "Tedarik",        activeInTracks: ["supply","holding"] },
-    { id: "salesRep",    label: "Satış Temsilcisi", activeInTracks: ["holding"] },
-    { id: "customerBot", label: "Müşteri Botu",   activeInTracks: ["cx","holding"] },
-    { id: "hitl",        label: "İnsan Onayı",    activeInTracks: ["cx","social","outreach","rfp","innovation","trend","stress","finance","supply","engineering","research","holding"] },
-    { id: "publisher",   label: "Yayımcı",        activeInTracks: ["cx","social","outreach","rfp","innovation","trend","stress","finance","supply","engineering","research","holding"] },
-    { id: "cmo",         label: "CMO",            activeInTracks: ["social","outreach","holding"] },
-    { id: "cfo",         label: "CFO",            activeInTracks: ["finance","supply","holding"] },
+    { id: "ceo",         label: "Orchestrator",          activeInTracks: ["cx","social","outreach","rfp","innovation","trend","stress","finance","supply","engineering","research","holding"] },
+    { id: "cto",         label: "Architekt (CTO)",       activeInTracks: ["engineering","innovation","holding"] },
+    { id: "scraper",     label: "Web-Recherche",         activeInTracks: ["social","outreach","innovation","trend","research","holding"] },
+    { id: "analyst",     label: "Analyst",               activeInTracks: ["trend","stress","research","holding"] },
+    { id: "innovator",   label: "Innovator",             activeInTracks: ["trend","stress","research","holding"] },
+    { id: "writer",      label: "Content-Autor",         activeInTracks: ["cx","social","outreach","rfp","trend","stress","research","holding"] },
+    { id: "qa",          label: "Qualitäts-QA",          activeInTracks: ["social","outreach","rfp","trend","stress","research","holding"] },
+    { id: "auditor",     label: "Auditor",               activeInTracks: ["finance","holding"] },
+    { id: "supplyChain", label: "Lieferkette",           activeInTracks: ["supply","holding"] },
+    { id: "salesRep",    label: "Vertriebsmitarbeiter",  activeInTracks: ["holding"] },
+    { id: "customerBot", label: "Kunden-Bot",            activeInTracks: ["cx","holding"] },
+    { id: "hitl",        label: "Menschl. Genehmigung",  activeInTracks: ["cx","social","outreach","rfp","innovation","trend","stress","finance","supply","engineering","research","holding"] },
+    { id: "publisher",   label: "Publisher",             activeInTracks: ["cx","social","outreach","rfp","innovation","trend","stress","finance","supply","engineering","research","holding"] },
+    { id: "cmo",         label: "CMO",                   activeInTracks: ["social","outreach","holding"] },
+    { id: "cfo",         label: "CFO",                   activeInTracks: ["finance","supply","holding"] },
 ];
 
 /* ══════════════════════════════════════════════════════════════
@@ -217,7 +217,7 @@ function WorkflowPipelineSection({ track }: { track: TrackId }) {
         <div>
             {/* Track badge */}
             <div className="flex items-center justify-between mb-3">
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">İş Akışı</p>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Workflow</p>
                 <span
                     className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                     style={{ background: meta.bg, color: meta.color }}
@@ -239,7 +239,7 @@ function WorkflowPipelineSection({ track }: { track: TrackId }) {
             {isIdle ? (
                 <div className="flex items-center gap-2 py-3 px-3 bg-gray-50 rounded-lg border border-gray-100">
                     <div className="w-2 h-2 rounded-full bg-gray-300" />
-                    <span className="text-[12px] text-gray-400">Sistem hazır — görev bekleniyor</span>
+                    <span className="text-[12px] text-gray-400">System bereit — wartet auf Aufgabe</span>
                 </div>
             ) : (
                 <div className="space-y-0.5">
@@ -310,7 +310,7 @@ function WorkflowPipelineSection({ track }: { track: TrackId }) {
                                             : { background: "#EEF2FF", color: "#6366F1" }
                                         }
                                     >
-                                        {agentStatus === "THINKING" ? "düşünüyor" : isGate ? "bekliyor" : "aktif"}
+                                        {agentStatus === "THINKING" ? "denkt nach" : isGate ? "wartet" : "aktiv"}
                                     </span>
                                 )}
                                 {isDone && <span className="text-[10px] text-gray-300 shrink-0">✓</span>}
@@ -338,15 +338,15 @@ function AgentChipsSection({ track }: { track: TrackId }) {
     return (
         <div>
             <div className="flex items-center justify-between mb-3">
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Ajanlar</p>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Agenten</p>
                 <span className={`text-[11px] font-semibold ${activeCount > 0 ? "text-indigo-600" : "text-gray-400"}`}>
-                    {activeCount > 0 ? `${activeCount} Aktif` : "Hazır"}
+                    {activeCount > 0 ? `${activeCount} aktiv` : "Bereit"}
                 </span>
             </div>
 
             {/* Active in this track */}
             <div className="mb-2">
-                <p className="text-[10px] text-gray-400 font-medium mb-1.5 pl-0.5">Bu track'te çalışır</p>
+                <p className="text-[10px] text-gray-400 font-medium mb-1.5 pl-0.5">Aktiv in diesem Track</p>
                 <div className="flex flex-wrap gap-1.5">
                     {activeChips.map(({ id, label }) => {
                         const agent     = agents[id];
@@ -380,7 +380,7 @@ function AgentChipsSection({ track }: { track: TrackId }) {
             {/* NOT active in this track */}
             {inactiveChips.length > 0 && (
                 <div>
-                    <p className="text-[10px] text-gray-300 font-medium mb-1.5 pl-0.5">Bu track'te çalışmaz</p>
+                    <p className="text-[10px] text-gray-300 font-medium mb-1.5 pl-0.5">Nicht aktiv in diesem Track</p>
                     <div className="flex flex-wrap gap-1.5">
                         {inactiveChips.map(({ id, label }) => (
                             <div
@@ -418,11 +418,11 @@ function EventLogSection() {
         <div>
             <div className="flex items-center gap-2 mb-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Son Aktiviteler</p>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Letzte Aktivitäten</p>
             </div>
 
             {displayed.length === 0 ? (
-                <p className="text-[11px] text-gray-400 text-center py-4">Henüz aktivite yok</p>
+                <p className="text-[11px] text-gray-400 text-center py-4">Noch keine Aktivität</p>
             ) : (
                 <div className="space-y-1.5">
                     {displayed.map((log) => {
@@ -475,8 +475,8 @@ export function RightPanel() {
         >
             {/* Header */}
             <div className="px-4 py-3.5 shrink-0" style={{ borderBottom: "1px solid #E5E7EB" }}>
-                <h2 className="text-[13px] font-bold text-gray-900">Sistem Durumu</h2>
-                <p className="text-[11px] text-gray-400 mt-0.5">Gerçek zamanlı ajan takibi</p>
+                <h2 className="text-[13px] font-bold text-gray-900">Systemstatus</h2>
+                <p className="text-[11px] text-gray-400 mt-0.5">Echtzeit Agenten-Tracking</p>
             </div>
 
             {/* Scrollable content */}
@@ -502,9 +502,9 @@ export function RightPanel() {
                     <div className="flex items-start gap-2 px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
                         <Info size={12} className="text-blue-400 shrink-0 mt-0.5" />
                         <p className="text-[11px] text-blue-600 leading-relaxed">
-                            Aktif track:{" "}
+                            Aktiver Track:{" "}
                             <strong>{TRACK_META[activeTrack]?.label}</strong>
-                            {" "}— Ajanlar ve pipeline adımları departmana ve seçilen işleme göre değişir.
+                            {" "}— Agenten und Pipeline-Schritte ändern sich je nach Abteilung und gewähltem Prozess.
                         </p>
                     </div>
                 )}

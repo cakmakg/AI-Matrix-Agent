@@ -35,7 +35,7 @@ function HitlCard({
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#FEF3C7", color: "#B45309" }}>
-                            ⏳ Onay Bekliyor
+                            ⏳ Wartet auf Genehmigung
                         </span>
                         <span className="text-[10px] text-gray-400">
                             #{threadId.slice(0, 8)}
@@ -45,7 +45,7 @@ function HitlCard({
                     <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{preview}</p>
                     <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
                         <Clock size={9} />
-                        {new Date(createdAt).toLocaleString("tr-TR")}
+                        {new Date(createdAt).toLocaleString("de-DE")}
                     </p>
                 </div>
             </div>
@@ -87,7 +87,7 @@ function SupportCard({ ticket }: { ticket: SupportTicketSummary }) {
                                 color: isBug ? "#B91C1C" : "#1D4ED8",
                             }}
                         >
-                            {isBug ? "🐛 Teknik Destek" : "💬 Fiyat Teklifi"}
+                            {isBug ? "🐛 Tech-Support" : "💬 Preisanfrage"}
                         </span>
                         <span className="text-[10px] text-gray-400 capitalize">{ticket.platform}</span>
                     </div>
@@ -95,7 +95,7 @@ function SupportCard({ ticket }: { ticket: SupportTicketSummary }) {
                     <p className="text-[11px] text-gray-500">{ticket.from}</p>
                     <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
                         <Clock size={9} />
-                        {new Date(ticket.createdAt).toLocaleString("tr-TR")}
+                        {new Date(ticket.createdAt).toLocaleString("de-DE")}
                     </p>
                 </div>
             </div>
@@ -124,13 +124,13 @@ function CampaignCard({ campaign }: { campaign: CampaignDraftSummary }) {
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#FFEDD5", color: "#C2410C" }}>
-                            📣 Kampanya Taslağı
+                            📣 Kampagnenentwurf
                         </span>
                     </div>
                     <p className="text-[13px] font-semibold text-gray-900 truncate mb-1">{campaign.reportTitle}</p>
                     <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
                         <Clock size={9} />
-                        {new Date(campaign.createdAt).toLocaleString("tr-TR")}
+                        {new Date(campaign.createdAt).toLocaleString("de-DE")}
                     </p>
                 </div>
             </div>
@@ -158,11 +158,11 @@ function ArchiveCard({ mission }: { mission: MissionSummary }) {
                 <p className="text-[12px] font-medium text-gray-700 truncate">{mission.task}</p>
                 <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-100">
-                        ✓ Yayınlandı
+                        ✓ Veröffentlicht
                     </span>
                     <span className="text-[10px] text-gray-400 flex items-center gap-1">
                         <Clock size={8} />
-                        {new Date(mission.createdAt).toLocaleString("tr-TR")}
+                        {new Date(mission.createdAt).toLocaleString("de-DE")}
                     </span>
                 </div>
             </div>
@@ -195,10 +195,10 @@ export function TaskBoard({ activeTab, onTabChange }: TaskBoardProps) {
     const showCampaign = activeTab === "all" || activeTab === "campaign";
 
     const tabs: { key: FilterTab; label: string; count: number }[] = [
-        { key: "all",      label: "Tümü",       count: total           },
-        { key: "hitl",     label: "Onay",        count: counts.hitl     },
-        { key: "support",  label: "Destek",       count: counts.support  },
-        { key: "campaign", label: "Kampanya",     count: counts.campaign  },
+        { key: "all",      label: "Alle",       count: total           },
+        { key: "hitl",     label: "Genehmigung", count: counts.hitl     },
+        { key: "support",  label: "Support",     count: counts.support  },
+        { key: "campaign", label: "Kampagne",    count: counts.campaign  },
     ];
 
     return (
@@ -237,8 +237,8 @@ export function TaskBoard({ activeTab, onTabChange }: TaskBoardProps) {
                         <HitlCard
                             key={`live-${threadId}`}
                             threadId={threadId}
-                            task={missionMessage ?? "Aktif — onay bekleniyor"}
-                            preview={pendingContent?.slice(0, 200) ?? "Rapor hazırlanıyor..."}
+                            task={missionMessage ?? "Aktiv — wartet auf Genehmigung"}
+                            preview={pendingContent?.slice(0, 200) ?? "Bericht wird erstellt..."}
                             createdAt={new Date().toISOString()}
                         />
                     )}
@@ -269,8 +269,8 @@ export function TaskBoard({ activeTab, onTabChange }: TaskBoardProps) {
                             ✅
                         </div>
                         <div>
-                            <p className="text-[14px] font-medium text-gray-500">Bekleyen görev yok</p>
-                            <p className="text-[12px] text-gray-400 mt-1">Yeni bir görev gönderin</p>
+                            <p className="text-[14px] font-medium text-gray-500">Keine offenen Aufgaben</p>
+                            <p className="text-[12px] text-gray-400 mt-1">Senden Sie eine neue Aufgabe</p>
                         </div>
                     </div>
                 )}
@@ -281,7 +281,7 @@ export function TaskBoard({ activeTab, onTabChange }: TaskBoardProps) {
                         <div className="flex items-center gap-2 mt-2 mb-1">
                             <div className="flex-1 h-px bg-gray-200" />
                             <span className="text-[10px] text-gray-400 uppercase tracking-widest flex items-center gap-1 font-medium">
-                                <Clock size={9} /> Arşiv
+                                <Clock size={9} /> Archiv
                             </span>
                             <div className="flex-1 h-px bg-gray-200" />
                         </div>

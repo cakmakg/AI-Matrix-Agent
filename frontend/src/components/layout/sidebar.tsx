@@ -7,7 +7,7 @@ import {
     Settings, Blocks, ShieldAlert,
     Terminal, Building2, ChevronDown, Plus, LogOut, Check,
     Activity, Headphones, TrendingUp, Lightbulb, Briefcase,
-    Cpu, Crown,
+    Cpu, Crown, FileText, PieChart,
 } from "lucide-react";
 import { useAgentStore } from "@/store/agent-store";
 import type { ActiveView, SaaSProduct } from "@/store/agent-store";
@@ -32,12 +32,12 @@ interface DepartmentItem {
 }
 
 const DEPARTMENTS: DepartmentItem[] = [
-    { product: "cx",          label: "CX & Destek",           icon: <Headphones size={15} /> },
-    { product: "growth",      label: "Büyüme & Gelir",        icon: <TrendingUp size={15} />,  plan: "pro" },
-    { product: "strategy",    label: "Strateji & İnovasyon",  icon: <Lightbulb size={15} />,   plan: "enterprise" },
-    { product: "backoffice",  label: "Finans & Operasyon",    icon: <Briefcase size={15} />,   plan: "enterprise" },
-    { product: "engineering", label: "Mühendislik & BT",      icon: <Cpu size={15} />,         plan: "enterprise" },
-    { product: "holding",     label: "Holding",               icon: <Crown size={15} />,        plan: "holding" },
+    { product: "cx",          label: "CX & Support",            icon: <Headphones size={15} /> },
+    { product: "growth",      label: "Wachstum & Umsatz",       icon: <TrendingUp size={15} />,  plan: "pro" },
+    { product: "strategy",    label: "Strategie & Innovation",  icon: <Lightbulb size={15} />,   plan: "enterprise" },
+    { product: "backoffice",  label: "Finanzen & Operations",   icon: <Briefcase size={15} />,   plan: "enterprise" },
+    { product: "engineering", label: "Engineering & IT",        icon: <Cpu size={15} />,         plan: "enterprise" },
+    { product: "holding",     label: "Holding",                 icon: <Crown size={15} />,       plan: "holding" },
 ];
 
 interface ToolItem {
@@ -48,12 +48,14 @@ interface ToolItem {
 }
 
 const TOOLS: ToolItem[] = [
-    { view: "control",   label: "Görev Merkezi",    icon: <LayoutDashboard size={15} /> },
-    { view: "cfo",       label: "CFO Paneli",        icon: <BarChart3 size={15} />,     plan: "pro" },
-    { view: "knowledge", label: "Bilgi Tabanı (RAG)", icon: <BookOpen size={15} /> },
-    { view: "skills",    label: "Beceri Mağazası",   icon: <Blocks size={15} />,        plan: "pro" },
-    { view: "security",  label: "Güvenlik (MOAT)",   icon: <ShieldAlert size={15} />,   plan: "enterprise" },
-    { view: "settings",  label: "Ayarlar",           icon: <Settings size={15} /> },
+    { view: "control",   label: "Aufgabenzentrale",       icon: <LayoutDashboard size={15} /> },
+    { view: "analytics", label: "Analytics & Diagramme",  icon: <PieChart size={15} />,      plan: "pro" },
+    { view: "berichte",  label: "Berichte",               icon: <FileText size={15} /> },
+    { view: "cfo",       label: "CFO-Konsole",            icon: <BarChart3 size={15} />,     plan: "pro" },
+    { view: "knowledge", label: "Wissensdatenbank (RAG)", icon: <BookOpen size={15} /> },
+    { view: "skills",    label: "Skill-Marktplatz",       icon: <Blocks size={15} />,        plan: "pro" },
+    { view: "security",  label: "Sicherheit (MOAT)",      icon: <ShieldAlert size={15} />,   plan: "enterprise" },
+    { view: "settings",  label: "Einstellungen",          icon: <Settings size={15} /> },
 ];
 
 const PLAN_ORDER: Record<string, number> = { free: 0, pro: 1, enterprise: 2, holding: 3 };
@@ -92,7 +94,7 @@ export const AppSidebar = () => {
         campaignDrafts.filter(c => c.status === "AWAITING_APPROVAL").length;
 
     const isRunning    = workflowPhase !== "IDLE" && workflowPhase !== "DELIVERED";
-    const displayName  = mounted ? (clientName  || "Varsayılan Firma") : "Yükleniyor...";
+    const displayName  = mounted ? (clientName  || "Standard-Unternehmen") : "Wird geladen...";
     const planBadge    = PLAN_BADGE[clientPlan ?? "free"] ?? PLAN_BADGE.free;
 
     /** Departman tıklandığında: product değiştir, chat view aç, track güncelle */
@@ -180,14 +182,14 @@ export const AppSidebar = () => {
                                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors"
                             >
                                 <Plus size={10} className="text-gray-400" />
-                                <span className="text-[11px] text-gray-500">Çalışma alanı ekle</span>
+                                <span className="text-[11px] text-gray-500">Workspace hinzufügen</span>
                             </button>
                             <button
                                 onClick={() => { logout(); setWsOpen(false); }}
                                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 transition-colors border-t border-gray-100"
                             >
                                 <LogOut size={10} className="text-red-400" />
-                                <span className="text-[11px] text-red-400">Çıkış Yap</span>
+                                <span className="text-[11px] text-red-400">Abmelden</span>
                             </button>
                         </motion.div>
                     )}
@@ -209,9 +211,9 @@ export const AppSidebar = () => {
             {/* ── Scroll Area ── */}
             <nav className="flex flex-col gap-0.5 px-3 py-2 flex-1 overflow-y-auto scrollbar-hide">
 
-                {/* ─ DEPARTMANLAR ─ */}
+                {/* ─ ABTEILUNGEN ─ */}
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-2 py-1 mt-1 mb-0.5">
-                    Departmanlar
+                    Abteilungen
                 </p>
 
                 {DEPARTMENTS.map(({ product, label, icon, plan }) => {
@@ -224,7 +226,7 @@ export const AppSidebar = () => {
                             whileHover={isLocked ? {} : { x: 2 }}
                             onClick={() => !isLocked && handleDepartmentClick(product)}
                             disabled={isLocked}
-                            title={isLocked ? `${plan === "holding" ? "Holding" : plan === "enterprise" ? "Enterprise" : "Pro"} plan gerektirir` : label}
+                            title={isLocked ? `${plan === "holding" ? "Holding" : plan === "enterprise" ? "Enterprise" : "Pro"}-Plan erforderlich` : label}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 w-full ${
                                 isLocked
                                     ? "opacity-40 cursor-not-allowed"
@@ -251,9 +253,9 @@ export const AppSidebar = () => {
                     );
                 })}
 
-                {/* ─ ARAÇLAR ─ */}
+                {/* ─ WERKZEUGE ─ */}
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-2 py-1 mt-4 mb-0.5">
-                    Araçlar
+                    Werkzeuge
                 </p>
 
                 {TOOLS.map(({ view, label, icon, plan }) => {
@@ -267,7 +269,7 @@ export const AppSidebar = () => {
                             whileHover={isLocked ? {} : { x: 2 }}
                             onClick={() => !isLocked && setActiveView(view)}
                             disabled={isLocked}
-                            title={isLocked ? `${plan === "enterprise" ? "Enterprise" : "Pro"} plan gerektirir` : label}
+                            title={isLocked ? `${plan === "enterprise" ? "Enterprise" : "Pro"}-Plan erforderlich` : label}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 w-full ${
                                 isLocked
                                     ? "opacity-40 cursor-not-allowed"
@@ -319,7 +321,7 @@ export const AppSidebar = () => {
                     />
                     <div className="flex-1 min-w-0">
                         <div className={`text-[11px] font-semibold ${isRunning ? "text-green-700" : "text-gray-400"}`}>
-                            {isRunning ? "Ajan çalışıyor" : "Sistem hazır"}
+                            {isRunning ? "Agent aktiv" : "System bereit"}
                         </div>
                     </div>
                     <div className={`w-2 h-2 rounded-full ${isRunning ? "bg-green-400 animate-pulse" : "bg-gray-200"}`} />
