@@ -644,13 +644,26 @@ export function CenterPanel() {
             {activeView === "security" && <div className="flex-1 overflow-y-auto scrollbar-styled"><SecurityView /></div>}
             {activeView === "settings" && <div className="flex-1 overflow-y-auto scrollbar-styled"><SettingsView /></div>}
             {(activeView === "auditor" || activeView === "supply") && (
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center space-y-2">
-                        <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl mx-auto">
-                            {activeView === "auditor" ? "🔍" : "📦"}
+                <div className="flex-1 flex items-center justify-center bg-gray-50">
+                    <div className="text-center space-y-4 max-w-md px-6">
+                        <div className="w-14 h-14 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-3xl mx-auto shadow-sm">
+                            {activeView === "auditor" ? "🧾" : "📦"}
                         </div>
-                        <p className="font-mono text-[13px] text-white/40">Diese Konsole erscheint in Kürze</p>
-                        <p className="font-mono text-[10px] text-white/25">Nutzbar über Analytics &gt; Rechnungs-Audit / Lager</p>
+                        <div>
+                            <h3 className="text-[15px] font-bold text-gray-800 mb-1">
+                                {activeView === "auditor" ? "Rechnungs-Audit" : "Lager & Lieferkette"}
+                            </h3>
+                            <p className="text-[12px] text-gray-500 leading-relaxed">
+                                Operativer Workflow läuft über die <strong>Finanzen &amp; Operations</strong>-Abteilung.
+                                Aggregierte Analysen finden Sie in der Analytics-Konsole.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setActiveView("analytics")}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all"
+                        >
+                            Analytics öffnen →
+                        </button>
                     </div>
                 </div>
             )}
