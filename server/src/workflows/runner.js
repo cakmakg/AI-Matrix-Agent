@@ -4,7 +4,29 @@ import { app } from "./graph.js";
 import { Report } from "../models/Report.js";
 import { CampaignDraft } from "../models/CampaignDraft.js";
 import { WorkflowSnapshot } from "../models/WorkflowSnapshot.js";
+import { Client } from "../models/Client.js";
+import { TenantConfig } from "../models/TenantConfig.js";
 import { generateCampaign } from "../agents/cmoAgent.js";
+
+/**
+ * HITL sonrası akışlar (publish/revision) guardrail'i tekrar geçmez; throttle kill-switch'i
+ * burada DB'den doğrulamak gerekir. clientId _id VEYA slug olabilir → ikisini de tolere et.
+ */
+async function isTenantThrottled(clientIdOrSlug) {
+    if (!clientIdOrSlug || clientIdOrSlug === "default") return false;
+    try {
+        let client = null;
+        if (/^[a-f0-9]{24}$/i.test(String(clientIdOrSlug))) {
+            client = await Client.findById(clientIdOrSlug).catch(() => null);
+        }
+        if (!client) client = await Client.findOne({ slug: clientIdOrSlug });
+        const cid = client?._id || clientIdOrSlug;
+        const cfg = await TenantConfig.findOne({ clientId: cid });
+        return cfg?.configObject?.throttled === true;
+    } catch {
+        return false;
+    }
+}
 
 // ─── Snapshot Yardımcıları ────────────────────────────────────────────────────
 /** Node output'undaki büyük string'leri kırp (MongoDB doc boyutunu sınırla) */
@@ -149,6 +171,19 @@ export async function runHotLeadWorkflow(threadId, task, tenantConfig, clientId 
         const currentState = await app.getState(config);
         console.log(`   🔍 getState → next: [${currentState.next.join(", ")}], tasks: ${currentState.tasks?.length ?? 0}`);
 
+        // 🚫 Guardrail blok kararı (throttle kill-switch VEYA yüksek tehdit) → "report ready"
+        //    yerine net bir hata yay. Throttle durumunda graf hiç çalışmadığı için token harcanmaz.
+        const blockedReason = currentState.values?.blockedReason;
+        if (blockedReason) {
+            activeWorkflows.delete(threadId);
+            const message = blockedReason === "TENANT_THROTTLED"
+                ? "Tenant geçici olarak kısıtlandı (throttled). Workflow başlatılmadı — LLM çağrısı yapılmadı."
+                : `Workflow güvenlik nedeniyle engellendi (${blockedReason}).`;
+            emitToThread(threadId, { type: "error", message });
+            console.warn(`   🚫 Workflow blocked → ${blockedReason}`);
+            return;
+        }
+
         const awaitingHITL =
             interruptDetected ||
             currentState.next.includes("human_approval") ||
@@ -223,6 +258,14 @@ export async function runPublishWorkflow(threadId, feedbackNote) {
         console.log(`   📤 Publisher başladı — threadId: ${threadId}`);
 
         const report = await Report.findOne({ threadId });
+
+        // ⚡ KILL-SWITCH: throttled tenant → publish (publisher LLM çağrısı) yapma.
+        if (await isTenantThrottled(report?.clientId)) {
+            console.warn(`   ⚡ THROTTLED: yayın atlandı (tenant kısıtlı) — ${threadId}`);
+            emitToThread(threadId, { type: "error", message: "Tenant kısıtlandı (throttled) — yayın yapılmadı." });
+            return;
+        }
+
         const finalContent = report?.content || '';
 
         if (!finalContent) {
@@ -282,6 +325,13 @@ export async function runRevisionWorkflow(threadId, tenantConfig, clientId = "de
     let interruptDetected = false;
 
     try {
+        // ⚡ KILL-SWITCH: throttled tenant → revizyon (writer↔critic LLM döngüsü) çalıştırma.
+        if (tenantConfig?.configObject?.throttled === true) {
+            console.warn(`   ⚡ THROTTLED: revizyon atlandı (tenant kısıtlı) — ${threadId}`);
+            emitToThread(threadId, { type: "error", message: "Tenant kısıtlandı (throttled) — revizyon yapılmadı." });
+            return;
+        }
+
         console.log(`   ♻️ Revizyon başladı — threadId: ${threadId}`);
         for await (const chunk of await app.stream(null, config)) {
             const nodeName = Object.keys(chunk)[0];

@@ -8,16 +8,21 @@
  * holding    → AI Holding Brain    ($3.000+/ay) — Tüm departmanlar + sınırsız revizyon + öncelikli destek
  */
 
+// budgetUsd: Aylık LLM-MALİYET tavanı (USD). Aşılınca tenant otomatik throttle edilir
+// (maliyet patlaması koruması — kullanıcı kotası değil, runaway-koruma tavanıdır; tunable).
+// 0 = otomatik trip kapalı (sınırsız).
 export const PLAN_LIMITS = {
     free: {
         label: "AI Destek Masası",
         allowedAgents: ["fileSaver", "human_approval", "publisher"],
         maxRevisions: 1,
+        budgetUsd: 5,
     },
     pro: {
         label: "Growth & Revenue",
         allowedAgents: ["scraper", "analyzer", "innovator", "writer", "critic", "fileSaver", "human_approval", "publisher"],
         maxRevisions: 3,
+        budgetUsd: 30,
     },
     enterprise: {
         label: "Enterprise Brain",
@@ -27,6 +32,7 @@ export const PLAN_LIMITS = {
             "auditor", "supplyChain"
         ],
         maxRevisions: 5,
+        budgetUsd: 100,
     },
     holding: {
         label: "AI Holding Brain",
@@ -37,6 +43,7 @@ export const PLAN_LIMITS = {
             "auditor", "supplyChain"
         ],
         maxRevisions: 999,
+        budgetUsd: 0,   // god mode — otomatik trip yok
     },
 };
 

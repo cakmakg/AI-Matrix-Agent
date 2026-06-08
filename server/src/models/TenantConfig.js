@@ -15,6 +15,13 @@ const TenantConfigSchema = new mongoose.Schema(
         enabledSkills: { type: [String], default: [] },
         skillConfigs: { type: Object, default: {} },
 
+        // Dinamik tenant konfigürasyonu (admin/feature-flag çantası).
+        // ÖNEMLİ: Bu alan şemada TANIMLI OLMADAN, adminController'ın
+        // `$set: { "configObject.throttled": ... }` yazımı Mongoose strict mode
+        // tarafından SESSİZCE siliniyordu → throttle flag'i hiç persist olmuyordu.
+        // Mixed alan, throttle kill-switch'in uçtan uca çalışmasını sağlar.
+        configObject: { type: mongoose.Schema.Types.Mixed, default: {} },
+
         // Per-Tenant-Integrationspunkte (Schritt 3: n8n + Benachrichtigungs-Routing)
         integrations: {
             n8nWebhookUrl:    { type: String, default: "" },

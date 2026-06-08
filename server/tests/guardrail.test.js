@@ -172,6 +172,56 @@ describe("GuardrailAgent — MOAT Layer 1", () => {
         });
     });
 
+    // ─── TENANT THROTTLE KILL-SWITCH (config-driven) ──────────────────
+    // Bu testler GERÇEK guardrailNode'u çalıştırır — configObject.throttled
+    // flag'inin artık gerçekten grafı kestiğini doğrular (eskiden write-only no-op'tu).
+    describe("Tenant throttle kill-switch", () => {
+        const throttledConfig = {
+            configurable: { tenantConfig: { configObject: { throttled: true } } },
+        };
+
+        it("should BLOCK the graph when tenant is throttled (zero LLM calls)", async () => {
+            const result = await guardrailNode(
+                { task: "Analyze competitor pricing for Q2 2025" },
+                throttledConfig
+            );
+            expect(result.nextAgent).toBe("END");
+            expect(result.blockedReason).toBe("TENANT_THROTTLED");
+        });
+
+        it("should block even a perfectly clean task when throttled", async () => {
+            const result = await guardrailNode(
+                { task: "Write a friendly company newsletter" },
+                throttledConfig
+            );
+            expect(result.nextAgent).toBe("END");
+            expect(result.threatScore).toBe(0);
+        });
+
+        it("should NOT block when throttled is explicitly false", async () => {
+            const result = await guardrailNode(
+                { task: "Analyze competitor pricing for Q2 2025" },
+                { configurable: { tenantConfig: { configObject: { throttled: false } } } }
+            );
+            expect(result.nextAgent).not.toBe("END");
+            expect(result.blockedReason).toBe("");
+        });
+
+        it("should NOT block when no config is provided (backward compatible)", async () => {
+            const result = await guardrailNode({ task: "Analyze competitor pricing for Q2 2025" });
+            expect(result.blockedReason).toBe("");
+            expect(result.nextAgent).toBeUndefined();
+        });
+
+        it("should ignore throttle when tenantConfig is absent", async () => {
+            const result = await guardrailNode(
+                { task: "Analyze competitor pricing for Q2 2025" },
+                { configurable: {} }
+            );
+            expect(result.blockedReason).toBe("");
+        });
+    });
+
     // ─── SCORE CAPPING Test ───────────────────────────────────────────
     describe("Score capping", () => {
         it("should cap threat score at 10", async () => {

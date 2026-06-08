@@ -148,8 +148,22 @@ function sanitizeText(text) {
 
 // ─── Ana LangGraph Node ─────────────────────────────────────────────────────
 
-export async function guardrailNode(state) {
+export async function guardrailNode(state, config) {
     console.log("🛡️  GuardRail (MOAT Katman 1) devreye girdi...");
+
+    // 0. ⚡ KILL-SWITCH: Tenant throttle edilmişse grafı burada kes — TEK bir LLM çağrısı bile yapma.
+    //    Flag, admin tarafından TenantConfig.configObject.throttled'a yazılır (manuel throttle veya
+    //    otomatik bütçe-trip). Guardrail her graph workflow'unun ilk node'u olduğu için burada
+    //    kesmek hem hot-lead hem revizyon akışlarını maliyet patlamasına karşı korur.
+    if (config?.configurable?.tenantConfig?.configObject?.throttled === true) {
+        console.error("   🔴 TENANT THROTTLED: Workflow engellendi — hiçbir LLM çağrısı yapılmadı.");
+        return {
+            task: "[ENGELLENDI: Tenant geçici olarak kısıtlandı (throttled)]",
+            nextAgent: "END",
+            blockedReason: "TENANT_THROTTLED",
+            threatScore: 0,
+        };
+    }
 
     const taskText     = state.task     || "";
     const feedbackText = state.humanFeedback || "";

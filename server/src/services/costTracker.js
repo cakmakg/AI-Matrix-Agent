@@ -1,5 +1,67 @@
 import Transaction from "../models/Transaction.js";
 import { costEventBus } from "./costEventBus.js";
+import { TenantConfig } from "../models/TenantConfig.js";
+import { Client } from "../models/Client.js";
+import { getPlanRules } from "../config/plans.js";
+
+// ─── 💸 Otomatik Bütçe-Trip (maliyet patlaması koruması) ────────────────────────
+// Aylık per-tenant LLM gideri plan budgetUsd tavanını aşınca tenant'ı otomatik
+// throttle eder → guardrail kill-switch bir sonraki workflow'u keser.
+// In-memory akümülatör; restart'ta DB'den (bu ayki Transaction toplamı) yeniden seed edilir.
+const monthlySpend = new Map(); // cid → { monthKey, usd, plan, tripped }
+
+function currentMonthKey(d = new Date()) {
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+async function seedMonthlySpend(cid, monthKey) {
+    const start = new Date();
+    start.setUTCDate(1);
+    start.setUTCHours(0, 0, 0, 0);
+    const agg = await Transaction.aggregate([
+        { $match: { clientId: cid, category: "LLM_COST", createdAt: { $gte: start } } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    // trackLLMCost'a geçen clientId = Client._id (tenantConfig.clientId). Planı ondan çöz.
+    const client = await Client.findById(cid).catch(() => null);
+    return { monthKey, usd: agg?.[0]?.total || 0, plan: client?.plan || "free", tripped: false };
+}
+
+/**
+ * Bir LLM gideri eklendikten sonra tenant'ın aylık bütçesini kontrol eder;
+ * tavan aşıldıysa configObject.throttled = true yazar (otomatik kill-switch tetiği).
+ */
+export async function checkBudgetAndMaybeThrottle(clientId, addedUsd) {
+    const cid = String(clientId || "");
+    if (!cid || cid === "default" || !addedUsd) return;
+
+    const mk = currentMonthKey();
+    let entry = monthlySpend.get(cid);
+    if (!entry || entry.monthKey !== mk) {
+        entry = await seedMonthlySpend(cid, mk);
+        monthlySpend.set(cid, entry);
+    }
+    entry.usd += addedUsd;
+
+    const budget = getPlanRules(entry.plan)?.budgetUsd;
+    if (!budget || budget <= 0) return;              // bütçe tanımsız/0 → otomatik trip yok
+    if (entry.tripped || entry.usd < budget) return; // zaten tripped veya tavan altında
+
+    entry.tripped = true;
+    await TenantConfig.findOneAndUpdate(
+        { clientId: cid },
+        { $set: { "configObject.throttled": true, "configObject.throttleReason": "BUDGET_EXCEEDED", "configObject.throttledAt": new Date() } },
+        { upsert: true }
+    );
+    console.error(`💸 BÜTÇE-TRIP: tenant ${cid} aylık $${budget} LLM bütçesini aştı ($${entry.usd.toFixed(2)}) → otomatik throttled.`);
+    costEventBus.emit("cost", {
+        type: "budget_tripped",
+        clientId: cid,
+        budgetUsd: budget,
+        spentUsd: entry.usd,
+        timestamp: Date.now(),
+    });
+}
 
 // Anthropic direct API fiyatları — 1 Milyon token başına USD
 const MODEL_PRICING = {
@@ -51,6 +113,9 @@ export async function trackLLMCost(inputTokens, outputTokens, agentName, threadI
             model: modelName,
             timestamp: Date.now(),
         });
+
+        // 💸 Aylık bütçe tavanı aşıldıysa otomatik throttle (fire-and-forget — akışı bloklamaz).
+        checkBudgetAndMaybeThrottle(clientId, cost).catch(() => {});
     } catch (err) {
         console.error("⚠️ Maliyet kaydı hatası:", err.message);
     }
