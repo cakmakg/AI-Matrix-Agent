@@ -45,7 +45,8 @@ AUSGABEFORMAT (immer Markdown):
 export async function supplyChainNode(state, config) {
     console.log("📦 Tedarik Zinciri Planlayıcısı (Ajan 14) devrede. Stok analiz ediliyor...");
 
-    const clientId = config?.configurable?.tenantConfig?.clientId || "default";
+    // RAG filter: saklı clientId string, tenantConfig.clientId ObjectId olabilir → string'e zorla.
+    const clientId = String(config?.configurable?.tenantConfig?.clientId ?? "default");
     const taskText = state.task || "";
 
     // RAG: Tedarikçi bilgileri ve geçmiş sipariş verileri

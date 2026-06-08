@@ -29,16 +29,25 @@ const STATUS_CONFIG: Record<MissionSummary["status"], { label: string; color: st
     REJECTED: { label: "Rejected", color: "text-alert-red  border-alert-red/30  bg-alert-red/6", icon: <XCircle size={9} /> },
 };
 
-// ── DEFAULT clientId (şimdilik sabit, ileride Auth'dan gelecek) ───────────────
-const DEFAULT_CLIENT = process.env.NEXT_PUBLIC_CLIENT_ID ?? "default";
-
 // ── Main View ─────────────────────────────────────────────────────────────────
 
 export const KnowledgeView = () => {
-    const { missions, fetchMissions, setDrawerItem } = useAgentStore();
+    const { missions, fetchMissions, setDrawerItem, apiKey } = useAgentStore();
     const [activeTab, setActiveTab] = useState<ActiveTab>("archive");
+    const [clientObjectId, setClientObjectId] = useState<string | null>(null);
 
     useEffect(() => { fetchMissions(); }, [fetchMissions]);
+
+    // Tenant gerçek ObjectId'sini /api/tenant/config'tan al — slug VEYA env yerine.
+    useEffect(() => {
+        if (!apiKey) return;
+        fetch("/api/tenant/config", { headers: { "x-api-key": apiKey } })
+            .then(r => r.ok ? r.json() : null)
+            .then((data: { client?: { _id: string } } | null) => {
+                if (data?.client?._id) setClientObjectId(data.client._id);
+            })
+            .catch(() => {});
+    }, [apiKey]);
 
     return (
         <div className="flex flex-col h-full">
@@ -102,7 +111,13 @@ export const KnowledgeView = () => {
                             transition={{ duration: 0.15 }}
                             className="h-full overflow-hidden"
                         >
-                            <RagKnowledgePanel clientId={DEFAULT_CLIENT} />
+                            {clientObjectId ? (
+                                <RagKnowledgePanel clientId={clientObjectId} apiKey={apiKey} />
+                            ) : (
+                                <div className="flex items-center justify-center h-full">
+                                    <p className="font-mono text-[10px] text-white/30">Tenant-Kontext wird geladen…</p>
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -113,7 +128,7 @@ export const KnowledgeView = () => {
 
 // ── RAG Knowledge Panel ───────────────────────────────────────────────────────
 
-export const RagKnowledgePanel = ({ clientId }: { clientId: string }) => {
+export const RagKnowledgePanel = ({ clientId, apiKey }: { clientId: string; apiKey?: string | null }) => {
     const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
     const [loading, setLoading] = useState(true);
     const [inputMode, setInputMode] = useState<"text" | "pdf" | "url">("text");
@@ -129,16 +144,22 @@ export const RagKnowledgePanel = ({ clientId }: { clientId: string }) => {
     const [saveError, setSaveError] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
+    const authHeaders = useCallback((extra: Record<string, string> = {}): Record<string, string> => {
+        const h: Record<string, string> = { ...extra };
+        if (apiKey) h["x-api-key"] = apiKey;
+        return h;
+    }, [apiKey]);
+
     const fetchDocs = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/knowledge/${clientId}`);
+            const res = await fetch(`/api/knowledge/${clientId}`, { headers: authHeaders() });
             const data = await res.json() as { docs: KnowledgeDoc[] };
             setDocs(data.docs ?? []);
         } finally {
             setLoading(false);
         }
-    }, [clientId]);
+    }, [clientId, authHeaders]);
 
     useEffect(() => { fetchDocs(); }, [fetchDocs]);
 
@@ -148,40 +169,40 @@ export const RagKnowledgePanel = ({ clientId }: { clientId: string }) => {
         setSaveSuccess(null);
         try {
             if (inputMode === "text") {
-                if (!title.trim() || !content.trim()) throw new Error("Başlık ve içerik zorunludur.");
+                if (!title.trim() || !content.trim()) throw new Error("Titel und Inhalt erforderlich.");
                 const res = await fetch("/api/knowledge", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ clientId, title: title.trim(), content: content.trim() }),
+                    headers: authHeaders({ "Content-Type": "application/json" }),
+                    body: JSON.stringify({ title: title.trim(), content: content.trim() }),
                 });
                 const data = await res.json() as { success?: boolean; error?: string };
-                if (!data.success) throw new Error(data.error ?? "Save failed");
-                setSaveSuccess("Metin başarıyla vektörleştirildi.");
+                if (!data.success) throw new Error(data.error ?? "Speichern fehlgeschlagen");
+                setSaveSuccess("Text erfolgreich vektorisiert.");
                 setTitle("");
                 setContent("");
             } else if (inputMode === "url") {
-                if (!urlInput.trim()) throw new Error("URL zorunludur.");
+                if (!urlInput.trim()) throw new Error("URL erforderlich.");
                 const res = await fetch("/api/knowledge/url", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ clientId, url: urlInput.trim() }),
+                    headers: authHeaders({ "Content-Type": "application/json" }),
+                    body: JSON.stringify({ url: urlInput.trim() }),
                 });
                 const data = await res.json() as { success?: boolean; error?: string; saved?: number; domain?: string };
-                if (!data.success) throw new Error(data.error ?? "Kaydedilemedi");
-                setSaveSuccess(`${data.saved} chunk kaydedildi (${data.domain})`);
+                if (!data.success) throw new Error(data.error ?? "Speichern fehlgeschlagen");
+                setSaveSuccess(`${data.saved} Chunks gespeichert (${data.domain})`);
                 setUrlInput("");
             } else if (inputMode === "pdf") {
-                if (!file) throw new Error("Lütfen bir PDF dosyası seçin.");
+                if (!file) throw new Error("Bitte PDF auswählen.");
                 const formData = new FormData();
-                formData.append("clientId", clientId);
                 formData.append("file", file);
                 const res = await fetch("/api/knowledge/upload", {
                     method: "POST",
+                    headers: authHeaders(),
                     body: formData,
                 });
                 const data = await res.json() as { success?: boolean; error?: string; saved?: number; pages?: number };
-                if (!data.success) throw new Error(data.error ?? "Kaydedilemedi");
-                setSaveSuccess(`${data.saved} chunk kaydedildi, ${data.pages} sayfa`);
+                if (!data.success) throw new Error(data.error ?? "Speichern fehlgeschlagen");
+                setSaveSuccess(`${data.saved} Chunks, ${data.pages} Seiten gespeichert`);
                 setFile(null);
             }
             await fetchDocs();
@@ -195,7 +216,7 @@ export const RagKnowledgePanel = ({ clientId }: { clientId: string }) => {
 
     const handleDelete = async (id: string) => {
         try {
-            await fetch(`/api/knowledge/${clientId}/${id}`, { method: "DELETE" });
+            await fetch(`/api/knowledge/${clientId}/${id}`, { method: "DELETE", headers: authHeaders() });
             setDocs((prev) => prev.filter((d) => d._id !== id));
         } catch { /* ignore */ }
     };
@@ -207,11 +228,11 @@ export const RagKnowledgePanel = ({ clientId }: { clientId: string }) => {
         try {
             const res = await fetch("/api/knowledge/search", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ clientId, query: searchQuery.trim(), topK: 3 }),
+                headers: authHeaders({ "Content-Type": "application/json" }),
+                body: JSON.stringify({ query: searchQuery.trim(), topK: 3 }),
             });
             const data = await res.json() as { context?: string };
-            setSearchResult(data.context || "(Sonuç bulunamadı)");
+            setSearchResult(data.context || "(Kein Treffer)");
         } finally {
             setSearching(false);
         }

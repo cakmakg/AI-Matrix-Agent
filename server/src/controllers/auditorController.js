@@ -6,7 +6,8 @@ import { InvoiceAudit } from "../models/InvoiceAudit.js";
  */
 export const getAuditSummary = async (req, res) => {
     try {
-        const clientId = req.clientId || "default";
+        // clientId: agents store ObjectId-string; tenantMiddleware exposes slug as req.clientId — use _id for match.
+        const clientId = req.tenant?.client?._id?.toString() || req.clientId || "default";
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
@@ -63,7 +64,8 @@ export const getAuditSummary = async (req, res) => {
  */
 export const getAuditFindings = async (req, res) => {
     try {
-        const clientId = req.clientId || "default";
+        // clientId: agents store ObjectId-string; tenantMiddleware exposes slug as req.clientId — use _id for match.
+        const clientId = req.tenant?.client?._id?.toString() || req.clientId || "default";
         const limit = parseInt(req.query.limit) || 20;
         const status = req.query.status;
 

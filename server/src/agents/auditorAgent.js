@@ -38,7 +38,8 @@ AUSGABEFORMAT (immer Markdown):
 export async function auditorNode(state, config) {
     console.log("🧾 Denetçi (Ajan 13) devrede. Fatura analiz ediliyor...");
 
-    const clientId = config?.configurable?.tenantConfig?.clientId || "default";
+    // RAG filter eşleşmesi: saklı clientId string, tenantConfig.clientId ObjectId olabilir → her zaman string'e zorla.
+    const clientId = String(config?.configurable?.tenantConfig?.clientId ?? "default");
 
     // Görev metninden fatura bilgilerini çıkar
     const taskText = state.task || "";
@@ -79,9 +80,15 @@ Analysieren Sie die Rechnung jetzt vollständig und geben Sie Ihre strukturierte
         /anomalie erkannt[:\s]*✅/i.test(analysisText) ||
         /JA/i.test(analysisText.match(/anomalie erkannt[:\s]*(.*)/i)?.[1] || "");
 
-    // Güven skoru çıkar
-    const scoreMatch = analysisText.match(/(\d{1,3})\s*%/g);
-    const confidenceScore = scoreMatch ? parseInt(scoreMatch[scoreMatch.length - 1]) : 75;
+    // Güven skoru: önce "Konfidenz-Score" başlığının altındaki sayıyı ara, sadece bulunamazsa son %'i kullan.
+    const confSection = analysisText.match(/Konfidenz[- ]?Score[^\n]*\n+[^\n]*?(\d{1,3})\s*%/i);
+    let confidenceScore;
+    if (confSection) {
+        confidenceScore = parseInt(confSection[1]);
+    } else {
+        const scoreMatch = analysisText.match(/(\d{1,3})\s*%/g);
+        confidenceScore = scoreMatch ? parseInt(scoreMatch[scoreMatch.length - 1]) : 75;
+    }
 
     // 💰 Maliyet kaydı
     trackLLMCost(

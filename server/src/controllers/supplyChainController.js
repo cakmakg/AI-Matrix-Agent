@@ -6,7 +6,7 @@ import { SupplyChainEvent } from "../models/SupplyChainEvent.js";
  */
 export const getSupplySummary = async (req, res) => {
     try {
-        const clientId = req.clientId || "default";
+        const clientId = req.tenant?.client?._id?.toString() || req.clientId || "default";
 
         const [urgencyCounts, statusCounts, recentAlerts] = await Promise.all([
             // Aciliyet seviyesine göre sayım
@@ -48,7 +48,7 @@ export const getSupplySummary = async (req, res) => {
  */
 export const getSupplyAlerts = async (req, res) => {
     try {
-        const clientId = req.clientId || "default";
+        const clientId = req.tenant?.client?._id?.toString() || req.clientId || "default";
         const limit = parseInt(req.query.limit) || 20;
         const urgency = req.query.urgency;
         const status = req.query.status;
