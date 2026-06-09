@@ -8,6 +8,11 @@ emlakci-test.mjs
 # NOTE: project test suite lives in server/tests/*.test.js — do NOT ignore *.test.js
 # (node_modules/ is already ignored above, so its tests stay out either way).
 
+# Local-only: design prototype + working planning docs (not shipped to the repo)
+frontend/agent-matrix-claude/
+frontend/docs/NEW_DASHBOARD_ROADMAP.md
+frontend/docs/PROJE_DURUM_RAPORU.md
+
 # Environment
 .env
 .env.local
