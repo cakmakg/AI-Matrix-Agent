@@ -5,7 +5,8 @@ package-lock.json
 # Test / scratch files
 emlakci-test.mjs
 *.test.mjs
-*.test.js
+# NOTE: project test suite lives in server/tests/*.test.js — do NOT ignore *.test.js
+# (node_modules/ is already ignored above, so its tests stay out either way).
 
 # Environment
 .env
