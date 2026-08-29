@@ -17,7 +17,6 @@ frontend/docs/PROJE_DURUM_RAPORU.md
 .env
 .env.local
 .env.*.local
-.md
 
 # Build outputs
 dist/
@@ -31,3 +30,9 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Documentation — only the root README is tracked on GitHub.
+# Plans, analyses, test notes and per-package READMEs stay local.
+*.md
+!/README.md
+!.claude/skills/**/SKILL.md
